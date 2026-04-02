@@ -1451,7 +1451,7 @@ function renderDay(day) {
 
     html += `
       <div class="exercise-card${allDone ? ' all-done' : ''}${isOpen ? ' open' : ''}" id="${cardId}">
-        <div class="exercise-header" onclick="toggleCard('${cardId}')">
+        <div class="exercise-header" onclick="toggleCard('${cardId}', event)">
           <div class="exercise-info">
             <div class="exercise-name">${ex.name}</div>
             <div class="exercise-meta">
@@ -1596,7 +1596,8 @@ function switchDay(dayId) {
 
 let currentDayId = DAYS[0].id;
 
-function toggleCard(cardId) {
+function toggleCard(cardId, e) {
+  if (e && e.target.closest('.tip')) return;
   const card = document.getElementById(cardId);
   card.classList.toggle('open');
 }
@@ -1930,7 +1931,7 @@ document.addEventListener('touchstart', e => {
     positionTooltip(t.clientX, t.clientY);
     tooltipEl.classList.add('visible');
     clearTimeout(tooltipTimeout);
-    tooltipTimeout = setTimeout(hideTooltip, 2500);
+    tooltipTimeout = setTimeout(hideTooltip, 5000);
   }
 }, { passive: true });
 
