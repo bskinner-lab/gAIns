@@ -1120,6 +1120,10 @@ const GLOSSARY = {
 
 const STORAGE_KEY = 'hypertrophy_state';
 
+function weekStorageKey(week) {
+  return `${STORAGE_KEY}_w${week}`;
+}
+
 const DAYS = [
   {
     id: 'day1',
@@ -1307,7 +1311,9 @@ function saveWeek() {
 function changeWeek(delta) {
   currentWeek = Math.min(8, Math.max(1, currentWeek + delta));
   saveWeek();
+  initState();
   updateWeekDisplay();
+  updateOverallProgress();
   // Re-render current day so RPE context note updates
   if (currentDayId !== 'info') switchDay(currentDayId);
 }
@@ -1342,11 +1348,27 @@ function initState() {
 }
 
 function saveState() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+  try { localStorage.setItem(weekStorageKey(currentWeek), JSON.stringify(state)); } catch(e) {}
 }
 
 function loadState() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e) { return {}; }
+  try { return JSON.parse(localStorage.getItem(weekStorageKey(currentWeek)) || '{}'); } catch(e) { return {}; }
+}
+
+// Migrate old non-week-aware state to week 1
+function migrateOldState() {
+  try {
+    const old = localStorage.getItem(STORAGE_KEY);
+    if (!old) return;
+    const parsed = JSON.parse(old);
+    const dayIds = DAYS.map(d => d.id);
+    if (!dayIds.some(id => parsed[id])) return;
+    // Only migrate if week 1 has no data yet
+    if (!localStorage.getItem(weekStorageKey(1))) {
+      localStorage.setItem(weekStorageKey(1), old);
+    }
+    localStorage.removeItem(STORAGE_KEY);
+  } catch(e) {}
 }
 
 function totalSets() {
@@ -1925,7 +1947,14 @@ document.addEventListener('touchstart', e => {
 
 // EXPORT / IMPORT
 function exportData() {
-  const data = { state, currentWeek };
+  const allWeeks = {};
+  for (let w = 1; w <= 8; w++) {
+    try {
+      const d = JSON.parse(localStorage.getItem(weekStorageKey(w)) || '{}');
+      if (Object.keys(d).length) allWeeks[w] = d;
+    } catch(e) {}
+  }
+  const data = { weeks: allWeeks, currentWeek, version: 2 };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1943,14 +1972,26 @@ function importData(event) {
   reader.onload = function(e) {
     try {
       const data = JSON.parse(e.target.result);
-      if (!data.state || !data.currentWeek) { alert('Invalid backup file.'); return; }
+      if (!data.currentWeek) { alert('Invalid backup file.'); return; }
       const dayIds = DAYS.map(d => d.id);
-      const hasValidDays = dayIds.some(id => data.state[id]);
-      if (!hasValidDays) { alert('Invalid backup file — no matching workout data found.'); return; }
-      state = data.state;
+
+      if (data.version === 2 && data.weeks) {
+        // New per-week format
+        for (const [w, wState] of Object.entries(data.weeks)) {
+          localStorage.setItem(weekStorageKey(w), JSON.stringify(wState));
+        }
+      } else if (data.state) {
+        // Legacy single-state format — import as current week
+        const hasValidDays = dayIds.some(id => data.state[id]);
+        if (!hasValidDays) { alert('Invalid backup file — no matching workout data found.'); return; }
+        localStorage.setItem(weekStorageKey(data.currentWeek), JSON.stringify(data.state));
+      } else {
+        alert('Invalid backup file.'); return;
+      }
+
       currentWeek = data.currentWeek;
-      saveState();
       saveWeek();
+      initState();
       updateWeekDisplay();
       switchDay(currentDayId);
       updateOverallProgress();
@@ -1964,6 +2005,7 @@ function importData(event) {
 
 // INIT
 loadWeek();
+migrateOldState();
 initState();
 updateWeekDisplay();
 switchDay(DAYS[0].id);
