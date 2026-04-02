@@ -416,7 +416,15 @@
     color: var(--accent);
     letter-spacing: 2px;
     text-transform: uppercase;
-    margin-bottom: 32px;
+    margin-bottom: 8px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .timer-rest-rec {
+    font-size: 11px;
+    color: var(--green);
+    letter-spacing: 1px;
+    margin-bottom: 24px;
     font-family: 'DM Mono', monospace;
   }
 
@@ -746,6 +754,13 @@
     cursor: help;
   }
 
+  .tag-rest {
+    background: rgba(78,255,145,0.08);
+    border: 1px solid rgba(78,255,145,0.2);
+    color: var(--green);
+    cursor: help;
+  }
+
   /* TABS — add info tab */
   .day-tab.info-tab { margin-left: auto; color: var(--muted); }
   .day-tab.info-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
@@ -939,6 +954,7 @@
 <div class="timer-overlay" id="timerOverlay">
   <div class="timer-label">Rest Period</div>
   <div class="timer-set-info" id="timerSetInfo"></div>
+  <div class="timer-rest-rec" id="timerRestRec" style="display:none"></div>
   <div class="timer-ring-wrap">
     <svg class="timer-svg" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
       <circle class="timer-ring-bg" cx="110" cy="110" r="90"/>
@@ -1027,13 +1043,13 @@ const DAYS = [
     subtitle: 'Chest Bias · Shoulders · Triceps',
     note: '🩺 Shoulder note: Keep elbows at ~60°, not flared. Neutral grip where possible. No behind-the-neck movements.',
     exercises: [
-      { name: 'Incline DB Press', sets: 4, reps: '6–10', rpe: '7–9', note: 'Neutral grip, elbows ~60° — primary chest builder', llp: false, compound: true },
-      { name: 'Machine Chest Press', sets: 3, reps: '10–12', rpe: '7–8', note: 'Shoulder-safe loading, great for controlled reps', llp: false, compound: false },
-      { name: 'Cable Chest Fly', sets: 3, reps: '12–15', rpe: '8', note: 'Low-to-high angle, full stretch at bottom', llp: false, compound: false },
-      { name: 'Seated DB Shoulder Press', sets: 3, reps: '8–12', rpe: '7–8', note: 'Stop just below 90° if any shoulder discomfort', llp: false, compound: false },
-      { name: 'Cable Lateral Raise', sets: 3, reps: '12–15 + LLP', rpe: '8–9', note: 'Cable keeps constant tension. Add partials at bottom on last set', llp: true, compound: false },
-      { name: 'Rope Pushdown', sets: 3, reps: '12–15', rpe: '8–9', note: 'Full extension at bottom, squeeze the tricep', llp: false, compound: false },
-      { name: 'Overhead Cable Extension', sets: 2, reps: '10–12', rpe: '8', note: 'Long head emphasis — great stretch', llp: false, compound: false },
+      { name: 'Incline DB Press', sets: 4, reps: '6–10', rpe: '7–9', note: 'Neutral grip, elbows ~60° — primary chest builder', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+      { name: 'Machine Chest Press', sets: 3, reps: '10–12', rpe: '7–8', note: 'Shoulder-safe loading, great for controlled reps', llp: false, compound: false, rest: 120, restLabel: '2–2.5 min' },
+      { name: 'Cable Chest Fly', sets: 3, reps: '12–15', rpe: '8', note: 'Low-to-high angle, full stretch at bottom', llp: false, compound: false, rest: 90, restLabel: '1.5–2 min' },
+      { name: 'Seated DB Shoulder Press', sets: 3, reps: '8–12', rpe: '7–8', note: 'Stop just below 90° if any shoulder discomfort', llp: false, compound: false, rest: 120, restLabel: '2 min' },
+      { name: 'Cable Lateral Raise', sets: 3, reps: '12–15 + LLP', rpe: '8–9', note: 'Cable keeps constant tension. Add partials at bottom on last set', llp: true, compound: false, rest: 90, restLabel: '1–1.5 min' },
+      { name: 'Rope Pushdown', sets: 3, reps: '12–15', rpe: '8–9', note: 'Full extension at bottom, squeeze the tricep', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
+      { name: 'Overhead Cable Extension', sets: 2, reps: '10–12', rpe: '8', note: 'Long head emphasis — great stretch', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
     ],
     protocol: true,
   },
@@ -1044,13 +1060,13 @@ const DAYS = [
     subtitle: 'Lat + Upper Back · Biceps',
     note: '💪 Your bodyweight base makes pull work your strength. Face pulls protect the shoulder every session.',
     exercises: [
-      { name: 'Pull-Ups / Neutral Pulldown', sets: 4, reps: '6–10', rpe: '7–9', note: 'Add weight to pull-ups once 10 reps is easy', llp: false, compound: true },
-      { name: 'Chest-Supported Row', sets: 4, reps: '8–12', rpe: '7–9', note: 'Removes lower back fatigue, full ROM on every rep', llp: false, compound: true },
-      { name: 'Single-Arm Cable Row (lat bias)', sets: 3, reps: '10–12', rpe: '8', note: 'Drive elbow down and back, lean slightly away', llp: false, compound: false },
-      { name: 'Face Pulls', sets: 3, reps: '15–20', rpe: '8', note: '⭐ KEY for shoulder health — never skip this', llp: false, compound: false },
-      { name: 'Rear Delt Cable Fly', sets: 3, reps: '12–15', rpe: '8–9', note: 'Arms nearly parallel to floor, lead with elbows', llp: false, compound: false },
-      { name: 'Incline DB Curl', sets: 3, reps: '10–12 + LLP', rpe: '8–9', note: 'Great stretch at bottom. Add partials on last set', llp: true, compound: false },
-      { name: 'Hammer Curl', sets: 2, reps: '12–15', rpe: '8', note: 'Brachialis + forearm thickness', llp: false, compound: false },
+      { name: 'Pull-Ups / Neutral Pulldown', sets: 4, reps: '6–10', rpe: '7–9', note: 'Add weight to pull-ups once 10 reps is easy', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+      { name: 'Chest-Supported Row', sets: 4, reps: '8–12', rpe: '7–9', note: 'Removes lower back fatigue, full ROM on every rep', llp: false, compound: true, rest: 150, restLabel: '2–2.5 min' },
+      { name: 'Single-Arm Cable Row (lat bias)', sets: 3, reps: '10–12', rpe: '8', note: 'Drive elbow down and back, lean slightly away', llp: false, compound: false, rest: 120, restLabel: '1.5–2 min' },
+      { name: 'Face Pulls', sets: 3, reps: '15–20', rpe: '8', note: '⭐ KEY for shoulder health — never skip this', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
+      { name: 'Rear Delt Cable Fly', sets: 3, reps: '12–15', rpe: '8–9', note: 'Arms nearly parallel to floor, lead with elbows', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
+      { name: 'Incline DB Curl', sets: 3, reps: '10–12 + LLP', rpe: '8–9', note: 'Great stretch at bottom. Add partials on last set', llp: true, compound: false, rest: 90, restLabel: '1–1.5 min' },
+      { name: 'Hammer Curl', sets: 2, reps: '12–15', rpe: '8', note: 'Brachialis + forearm thickness', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
     ],
     protocol: true,
   },
@@ -1061,13 +1077,13 @@ const DAYS = [
     subtitle: 'Quads · Hamstrings · Glutes · Core',
     note: '🦵 If barbell bar position bothers shoulder, use Safety Bar Squat or Goblet Squat instead.',
     exercises: [
-      { name: 'Squat / Safety Bar Squat', sets: 4, reps: '6–10', rpe: '7–9', note: 'Safety bar removes shoulder load entirely if needed', llp: false, compound: true },
-      { name: 'Romanian Deadlift', sets: 3, reps: '8–12', rpe: '7–8', note: 'Hinge focus, slow eccentric, feel the hamstring stretch', llp: false, compound: true },
-      { name: 'Leg Press', sets: 3, reps: '10–15', rpe: '8', note: 'High foot placement = more glutes/hamstrings', llp: false, compound: false },
-      { name: 'Leg Curl', sets: 3, reps: '12–15 + LLP', rpe: '8–9', note: 'Full stretch at bottom. Add partials on last set', llp: true, compound: false },
-      { name: 'Walking Lunges', sets: 2, reps: '10 each leg', rpe: '8', note: 'Use dumbbells, controlled descent', llp: false, compound: false },
-      { name: 'Calf Raises', sets: 4, reps: '12–20', rpe: '8–9', note: 'Pause and stretch at the bottom of every rep', llp: false, compound: false },
-      { name: 'Ab Wheel', sets: 3, reps: '8–12', rpe: '8', note: 'Full rollout if able, brace hard throughout', llp: false, compound: false },
+      { name: 'Squat / Safety Bar Squat', sets: 4, reps: '6–10', rpe: '7–9', note: 'Safety bar removes shoulder load entirely if needed', llp: false, compound: true, rest: 180, restLabel: '2.5–3.5 min' },
+      { name: 'Romanian Deadlift', sets: 3, reps: '8–12', rpe: '7–8', note: 'Hinge focus, slow eccentric, feel the hamstring stretch', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+      { name: 'Leg Press', sets: 3, reps: '10–15', rpe: '8', note: 'High foot placement = more glutes/hamstrings', llp: false, compound: false, rest: 120, restLabel: '2–2.5 min' },
+      { name: 'Leg Curl', sets: 3, reps: '12–15 + LLP', rpe: '8–9', note: 'Full stretch at bottom. Add partials on last set', llp: true, compound: false, rest: 90, restLabel: '1–1.5 min' },
+      { name: 'Walking Lunges', sets: 2, reps: '10 each leg', rpe: '8', note: 'Use dumbbells, controlled descent', llp: false, compound: false, rest: 120, restLabel: '1.5–2 min' },
+      { name: 'Calf Raises', sets: 4, reps: '12–20', rpe: '8–9', note: 'Pause and stretch at the bottom of every rep', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
+      { name: 'Ab Wheel', sets: 3, reps: '8–12', rpe: '8', note: 'Full rollout if able, brace hard throughout', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
     ],
     protocol: false,
   },
@@ -1078,13 +1094,13 @@ const DAYS = [
     subtitle: 'Hypertrophy Focus · High Volume',
     note: '🔥 Higher volume, moderate weight, more time under tension.',
     exercises: [
-      { name: 'Cable Fly (low-to-high)', sets: 4, reps: '12–15', rpe: '8', note: 'Excellent chest stretch, shoulder-friendly angle', llp: false, compound: false },
-      { name: 'Neutral Pulldown', sets: 3, reps: '10–12', rpe: '8', note: 'Neutral grip reduces shoulder stress', llp: false, compound: false },
-      { name: 'Chest-Supported Row', sets: 3, reps: '10–12', rpe: '8', note: 'Focus on squeezing the upper back at the top', llp: false, compound: true },
-      { name: 'Cable Lateral Raise', sets: 3, reps: '15 + LLP', rpe: '9', note: 'Add bottom-half partials after reaching rep target', llp: true, compound: false },
-      { name: 'Rear Delt Fly', sets: 3, reps: '12–15', rpe: '8–9', note: 'Pec deck or cables — squeeze rear delts', llp: false, compound: false },
-      { name: 'EZ Bar Curl', sets: 3, reps: '10–12', rpe: '8–9', note: 'Easier on wrists and elbows than straight bar', llp: false, compound: false },
-      { name: 'Close-Grip Bench Press', sets: 3, reps: '8–12', rpe: '8', note: 'Shoulder-width grip, elbows tucked', llp: false, compound: true },
+      { name: 'Cable Fly (low-to-high)', sets: 4, reps: '12–15', rpe: '8', note: 'Excellent chest stretch, shoulder-friendly angle', llp: false, compound: false, rest: 120, restLabel: '1.5–2 min' },
+      { name: 'Neutral Pulldown', sets: 3, reps: '10–12', rpe: '8', note: 'Neutral grip reduces shoulder stress', llp: false, compound: false, rest: 120, restLabel: '2–2.5 min' },
+      { name: 'Chest-Supported Row', sets: 3, reps: '10–12', rpe: '8', note: 'Focus on squeezing the upper back at the top', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+      { name: 'Cable Lateral Raise', sets: 3, reps: '15 + LLP', rpe: '9', note: 'Add bottom-half partials after reaching rep target', llp: true, compound: false, rest: 90, restLabel: '1–1.5 min' },
+      { name: 'Rear Delt Fly', sets: 3, reps: '12–15', rpe: '8–9', note: 'Pec deck or cables — squeeze rear delts', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
+      { name: 'EZ Bar Curl', sets: 3, reps: '10–12', rpe: '8–9', note: 'Easier on wrists and elbows than straight bar', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
+      { name: 'Close-Grip Bench Press', sets: 3, reps: '8–12', rpe: '8', note: 'Shoulder-width grip, elbows tucked', llp: false, compound: true, rest: 120, restLabel: '2–2.5 min' },
     ],
     protocol: true,
   },
@@ -1095,11 +1111,11 @@ const DAYS = [
     subtitle: 'Weak Points · Compound Finisher',
     note: '🔁 Optional day. Use to bring up lagging muscle groups.',
     exercises: [
-      { name: 'Trap Bar Deadlift', sets: 3, reps: '5–8', rpe: '7–8', note: 'Neutral handles eliminate shoulder stress vs barbell', llp: false, compound: true },
-      { name: 'Dips (if shoulder OK)', sets: 3, reps: '8–12', rpe: '8', note: 'Upright torso = tricep focus. Lean forward = chest.', llp: false, compound: true },
-      { name: 'Cable Pull-Through', sets: 3, reps: '12–15', rpe: '8', note: 'Hip hinge pattern, good glute/hamstring finisher', llp: false, compound: false },
-      { name: 'Seated Row', sets: 3, reps: '10–12', rpe: '8', note: 'Neutral grip, full stretch at the front', llp: false, compound: false },
-      { name: 'Optional Arms / Delts', sets: 3, reps: '12–20', rpe: '8', note: 'Pick your weakest area — curls, laterals, or pushdowns', llp: false, compound: false },
+      { name: 'Trap Bar Deadlift', sets: 3, reps: '5–8', rpe: '7–8', note: 'Neutral handles eliminate shoulder stress vs barbell', llp: false, compound: true, rest: 180, restLabel: '2.5–3.5 min' },
+      { name: 'Dips (if shoulder OK)', sets: 3, reps: '8–12', rpe: '8', note: 'Upright torso = tricep focus. Lean forward = chest.', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+      { name: 'Cable Pull-Through', sets: 3, reps: '12–15', rpe: '8', note: 'Hip hinge pattern, good glute/hamstring finisher', llp: false, compound: false, rest: 120, restLabel: '1.5–2 min' },
+      { name: 'Seated Row', sets: 3, reps: '10–12', rpe: '8', note: 'Neutral grip, full stretch at the front', llp: false, compound: false, rest: 120, restLabel: '2 min' },
+      { name: 'Optional Arms / Delts', sets: 3, reps: '12–20', rpe: '8', note: 'Pick your weakest area — curls, laterals, or pushdowns', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
     ],
     protocol: false,
   },
@@ -1348,6 +1364,7 @@ function renderDay(day) {
     const llpTag = ex.llp ? `<span class="tag tag-llp tip" data-tip="${GLOSSARY['LLP'].replace(/"/g,'&quot;')}">LLP</span>` : '';
     const compTag = ex.compound ? `<span class="tag tag-compound tip" data-tip="${GLOSSARY['compounds'].replace(/"/g,'&quot;')}">Compound</span>` : '';
     const rpeTag = `<span class="tag tag-rpe tip" data-tip="${GLOSSARY['RPE'].replace(/"/g,'&quot;')}">RPE ${ex.rpe}</span>`;
+    const restTag = ex.restLabel ? `<span class="tag tag-rest tip" data-tip="Recommended rest between sets for this exercise">⏱ ${ex.restLabel}</span>` : '';
 
     html += `
       <div class="exercise-card${allDone ? ' all-done' : ''}${isOpen ? ' open' : ''}" id="${cardId}">
@@ -1359,7 +1376,7 @@ function renderDay(day) {
               <div class="exercise-tag"><span>${ex.reps}</span> reps</div>
               ${currentWeight ? `<div class="exercise-tag"><span>${currentWeight}</span> lbs</div>` : ''}
             </div>
-            <div class="ex-tags">${rpeTag}${llpTag}${compTag}</div>
+            <div class="ex-tags">${rpeTag}${restTag}${llpTag}${compTag}</div>
             ${ex.note ? `<div class="exercise-note-small">${ex.note}</div>` : ''}
           </div>
           <div class="exercise-status">
@@ -1544,7 +1561,15 @@ function toggleSet(dayId, exIdx, setIdx) {
   document.getElementById('timerSetInfo').textContent = `${ex.name} — Set ${setIdx + 1} Complete`;
   document.getElementById('timerNext').innerHTML = nextLabel;
 
-  startTimer(currentRestTime, () => { refreshCurrentDay(dayId); });
+  const exerciseRest = ex.rest || currentRestTime;
+  const restInfo = document.getElementById('timerRestRec');
+  if (restInfo && ex.restLabel) {
+    restInfo.textContent = `Recommended: ${ex.restLabel}`;
+    restInfo.style.display = '';
+  } else if (restInfo) {
+    restInfo.style.display = 'none';
+  }
+  startTimer(exerciseRest, () => { refreshCurrentDay(dayId); });
 }
 
 function saveWeight(dayId, exIdx) {
