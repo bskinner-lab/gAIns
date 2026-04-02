@@ -136,6 +136,12 @@
     color: var(--green);
     margin-left: 6px;
   }
+  .day-tab.all-skipped::after {
+    content: '—';
+    font-size: 9px;
+    color: var(--muted);
+    margin-left: 6px;
+  }
 
   /* MAIN */
   .main { padding: 24px; max-width: 800px; margin: 0 auto; }
@@ -299,6 +305,60 @@
     background: rgba(255,68,68,0.08);
     border-color: var(--danger);
     cursor: pointer;
+  }
+
+  .set-btn.skipped {
+    background: rgba(102,102,102,0.06);
+    border-color: var(--muted);
+    opacity: 0.55;
+  }
+  .set-btn.skipped .set-num,
+  .set-btn.skipped .set-reps { text-decoration: line-through; }
+  .set-btn.skipped:hover {
+    opacity: 0.8;
+    border-color: var(--text);
+  }
+
+  .set-skipped-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  .set-btn-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .skip-set-link {
+    font-size: 10px;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 2px 4px;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .skip-set-link:hover { color: var(--text); }
+
+  .skip-exercise-btn, .skip-day-btn {
+    font-size: 11px;
+    color: var(--muted);
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 0.5px;
+  }
+  .skip-exercise-btn:hover, .skip-day-btn:hover {
+    color: var(--text);
+    border-color: #555;
+  }
+  .skip-day-btn {
+    width: 100%;
+    padding: 8px 16px;
+    margin-top: 10px;
   }
 
   .set-weight {
@@ -1371,6 +1431,8 @@ function migrateOldState() {
   } catch(e) {}
 }
 
+function isResolved(v) { return v === true || v === 'skipped'; }
+
 function totalSets() {
   let total = 0;
   DAYS.forEach(d => d.exercises.forEach(e => total += e.sets));
@@ -1385,16 +1447,27 @@ function completedSets() {
   return done;
 }
 
+function skippedSetsCount() {
+  let count = 0;
+  DAYS.forEach(day => {
+    Object.values(state[day.id].sets).forEach(arr => arr.forEach(v => { if (v === 'skipped') count++; }));
+  });
+  return count;
+}
+
 function isDayComplete(dayId) {
   const d = state[dayId];
-  return Object.values(d.sets).every(arr => arr.every(v => v === true));
+  return Object.values(d.sets).every(arr => arr.every(v => isResolved(v)));
 }
 
 function updateOverallProgress() {
   const done = completedSets();
   const total = totalSets();
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
-  document.getElementById('overallLabel').textContent = `${done} / ${total} sets`;
+  const skipped = skippedSetsCount();
+  document.getElementById('overallLabel').textContent = skipped > 0
+    ? `${done} / ${total} sets (${skipped} skipped)`
+    : `${done} / ${total} sets`;
   document.getElementById('overallPct').textContent = `${pct}%`;
   const circumference = 138;
   const offset = circumference - (pct / 100) * circumference;
@@ -1406,7 +1479,9 @@ function renderTabs(activeId) {
   container.innerHTML = '';
   DAYS.forEach(day => {
     const btn = document.createElement('button');
-    btn.className = 'day-tab' + (day.id === activeId ? ' active' : '') + (isDayComplete(day.id) ? ' completed' : '');
+    const complete = isDayComplete(day.id);
+    const hasAnyDone = complete && Object.values(state[day.id].sets).some(arr => arr.some(v => v === true));
+    btn.className = 'day-tab' + (day.id === activeId ? ' active' : '') + (complete && hasAnyDone ? ' completed' : '') + (complete && !hasAnyDone ? ' all-skipped' : '');
     btn.textContent = day.label;
     btn.onclick = () => switchDay(day.id);
     container.appendChild(btn);
@@ -1440,6 +1515,14 @@ function renderDay(day) {
     </div>
   `;
 
+  const dayHasPending = Object.values(state[day.id].sets).some(arr => arr.some(v => v === false));
+  const dayHasSkipped = Object.values(state[day.id].sets).some(arr => arr.some(v => v === 'skipped'));
+  if (dayHasPending) {
+    html += `<button class="skip-day-btn" onclick="skipDay('${day.id}')">Skip Day</button>`;
+  } else if (isDayComplete(day.id) && dayHasSkipped) {
+    html += `<button class="skip-day-btn" onclick="skipDay('${day.id}')">Unskip Day</button>`;
+  }
+
   // Shoulder protocol — shown at top before exercises
   if (day.protocol) {
     html += `
@@ -1464,7 +1547,9 @@ function renderDay(day) {
     const weights = state[day.id].weights || {};
     const currentWeight = weights[ei] || '';
     const doneSets = sets.filter(v => v === true).length;
-    const allDone = doneSets === ex.sets;
+    const skippedSets = sets.filter(v => v === 'skipped').length;
+    const resolvedSets = doneSets + skippedSets;
+    const allDone = resolvedSets === ex.sets;
     const isOpen = !allDone;
     const cardId = `card-${day.id}-${ei}`;
 
@@ -1487,7 +1572,7 @@ function renderDay(day) {
             ${ex.note ? `<div class="exercise-note-small">${ex.note}</div>` : ''}
           </div>
           <div class="exercise-status">
-            <div class="sets-badge${allDone ? ' done' : ''}">${doneSets}/${ex.sets}</div>
+            <div class="sets-badge${allDone ? ' done' : ''}">${resolvedSets}/${ex.sets}</div>
             <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
         </div>
@@ -1496,18 +1581,29 @@ function renderDay(day) {
     `;
 
     for (let si = 0; si < ex.sets; si++) {
-      const done = sets[si] === true;
+      const val = sets[si];
+      const done = val === true;
+      const skipped = val === 'skipped';
       const setWeight = (weights[`${ei}_${si}`] || currentWeight) || '';
+      const stateClass = done ? ' done' : skipped ? ' skipped' : '';
+      let label;
+      if (done) {
+        label = `<div class="set-complete-label" id="scl-${day.id}-${ei}-${si}">✓ Done</div>`;
+      } else if (skipped) {
+        label = `<div class="set-skipped-label">— Skipped</div>`;
+      } else {
+        label = `<div class="set-action-label">Tap to complete</div>`;
+      }
       html += `
-        <button class="set-btn${done ? ' done' : ''}" id="set-${day.id}-${ei}-${si}" onclick="toggleSet('${day.id}', ${ei}, ${si})">
-          <div class="set-num">Set ${si + 1}</div>
-          <div class="set-reps">${ex.reps.split('–')[0].replace(/[^0-9]/g,'') || '—'}</div>
-          ${done
-            ? `<div class="set-complete-label" id="scl-${day.id}-${ei}-${si}">✓ Done</div>`
-            : `<div class="set-action-label">Tap to complete</div>`
-          }
-          ${setWeight ? `<div class="set-weight">${setWeight} lbs</div>` : ''}
-        </button>
+        <div class="set-btn-wrapper">
+          <button class="set-btn${stateClass}" id="set-${day.id}-${ei}-${si}" onclick="toggleSet('${day.id}', ${ei}, ${si})">
+            <div class="set-num">Set ${si + 1}</div>
+            <div class="set-reps">${ex.reps.split('–')[0].replace(/[^0-9]/g,'') || '—'}</div>
+            ${label}
+            ${setWeight ? `<div class="set-weight">${setWeight} lbs</div>` : ''}
+          </button>
+          ${!done ? `<div class="skip-set-link" onclick="event.stopPropagation(); skipSet('${day.id}', ${ei}, ${si})">${skipped ? 'Unskip' : 'Skip'}</div>` : ''}
+        </div>
       `;
     }
 
@@ -1527,6 +1623,12 @@ function renderDay(day) {
             />
             <span class="weight-unit">lbs</span>
           </div>
+          ${sets.some(v => v === false)
+            ? `<div style="text-align:center;padding:4px 0 8px"><button class="skip-exercise-btn" onclick="skipExercise('${day.id}', ${ei})">Skip Exercise</button></div>`
+            : sets.every(v => v === 'skipped')
+              ? `<div style="text-align:center;padding:4px 0 8px"><button class="skip-exercise-btn" onclick="skipExercise('${day.id}', ${ei})">Unskip Exercise</button></div>`
+              : ''
+          }
         </div>
       </div>
     `;
@@ -1714,6 +1816,52 @@ function toggleProtocol(dayId, idx) {
   state[dayId].protocol[idx] = !state[dayId].protocol[idx];
   saveState();
   switchDay(dayId);
+}
+
+function skipSet(dayId, exIdx, setIdx) {
+  const current = state[dayId].sets[exIdx][setIdx];
+  if (current === 'skipped') {
+    state[dayId].sets[exIdx][setIdx] = false;
+  } else if (current === false) {
+    state[dayId].sets[exIdx][setIdx] = 'skipped';
+  }
+  saveState();
+  refreshCurrentDay(dayId);
+}
+
+function skipExercise(dayId, exIdx) {
+  const sets = state[dayId].sets[exIdx];
+  const allSkipped = sets.every(v => v === 'skipped');
+  if (allSkipped) {
+    for (let i = 0; i < sets.length; i++) sets[i] = false;
+  } else {
+    for (let i = 0; i < sets.length; i++) {
+      if (sets[i] !== true) sets[i] = 'skipped';
+    }
+  }
+  saveState();
+  refreshCurrentDay(dayId);
+}
+
+function skipDay(dayId) {
+  const d = state[dayId];
+  const allResolved = Object.values(d.sets).every(arr => arr.every(v => isResolved(v)));
+  const hasSkipped = Object.values(d.sets).some(arr => arr.some(v => v === 'skipped'));
+  if (allResolved && hasSkipped) {
+    Object.values(d.sets).forEach(arr => {
+      for (let i = 0; i < arr.length; i++) {
+        if (arr[i] === 'skipped') arr[i] = false;
+      }
+    });
+  } else {
+    Object.values(d.sets).forEach(arr => {
+      for (let i = 0; i < arr.length; i++) {
+        if (arr[i] === false) arr[i] = 'skipped';
+      }
+    });
+  }
+  saveState();
+  refreshCurrentDay(dayId);
 }
 
 // NOTIFICATIONS
@@ -2007,8 +2155,8 @@ function getStartDay() {
   // Find first day with incomplete sets that has some progress (in-progress day)
   for (const day of DAYS) {
     const d = state[day.id];
-    const hasSomeDone = Object.values(d.sets).some(arr => arr.some(v => v === true));
-    const allDone = Object.values(d.sets).every(arr => arr.every(v => v === true));
+    const hasSomeDone = Object.values(d.sets).some(arr => arr.some(v => isResolved(v)));
+    const allDone = Object.values(d.sets).every(arr => arr.every(v => isResolved(v)));
     if (hasSomeDone && !allDone) return day.id;
   }
   // No in-progress day — find first incomplete day
