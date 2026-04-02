@@ -2003,12 +2003,28 @@ function importData(event) {
   event.target.value = '';
 }
 
+function getStartDay() {
+  // Find first day with incomplete sets that has some progress (in-progress day)
+  for (const day of DAYS) {
+    const d = state[day.id];
+    const hasSomeDone = Object.values(d.sets).some(arr => arr.some(v => v === true));
+    const allDone = Object.values(d.sets).every(arr => arr.every(v => v === true));
+    if (hasSomeDone && !allDone) return day.id;
+  }
+  // No in-progress day — find first incomplete day
+  for (const day of DAYS) {
+    if (!isDayComplete(day.id)) return day.id;
+  }
+  // All days complete
+  return DAYS[0].id;
+}
+
 // INIT
 loadWeek();
 migrateOldState();
 initState();
 updateWeekDisplay();
-switchDay(DAYS[0].id);
+switchDay(getStartDay());
 updateOverallProgress();
 </script>
 </body>
