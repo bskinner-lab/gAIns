@@ -26,6 +26,7 @@
     color: var(--text);
     font-family: 'DM Sans', sans-serif;
     min-height: 100vh;
+    -webkit-touch-callout: none;
   }
 
   /* HEADER */
@@ -1624,6 +1625,7 @@ function toggleSet(dayId, exIdx, setIdx) {
 
   state[dayId].sets[exIdx][setIdx] = true;
   saveState();
+  refreshCurrentDay(dayId);
 
   // Find next set info for timer label
   const day = DAYS.find(d => d.id === dayId);
@@ -1695,6 +1697,20 @@ function requestNotificationPermission() {
     Notification.requestPermission();
   }
 }
+
+// iOS audio unlock — playing a silent <audio> element switches the web audio
+// session to "playback" mode, bypassing the silent switch when headphones are
+// connected. This runs once on first user interaction.
+let audioUnlocked = false;
+const silentAudio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRBqSAAAAAAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRBqSAAAAAAAAAAAAAAAAAAAA');
+silentAudio.loop = false;
+
+function unlockAudio() {
+  if (audioUnlocked) return;
+  silentAudio.play().then(() => { audioUnlocked = true; }).catch(() => {});
+}
+document.addEventListener('touchstart', unlockAudio, { once: true });
+document.addEventListener('click', unlockAudio, { once: true });
 
 function playTimerSound() {
   try {
@@ -1863,6 +1879,11 @@ function updatePresetButtons(active) {
     btn.classList.toggle('active', val === active);
   });
 }
+
+// Suppress iOS shake-to-undo
+document.addEventListener('beforeinput', (e) => {
+  if (e.inputType === 'historyUndo') e.preventDefault();
+});
 
 // TOOLTIP — fixed position, escapes all overflow:hidden parents
 const tooltipEl = document.getElementById('tooltip');
