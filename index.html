@@ -362,8 +362,85 @@
   .skip-day-btn {
     width: 100%;
     padding: 8px 16px;
-    margin-top: 10px;
   }
+
+  .complete-day-btn {
+    font-size: 11px;
+    color: var(--green);
+    background: transparent;
+    border: 1px dashed rgba(78,255,145,0.3);
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 0.5px;
+    width: 100%;
+  }
+  .complete-day-btn:hover {
+    color: #6fff9a;
+    border-color: rgba(78,255,145,0.5);
+  }
+
+  .confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(4px);
+    z-index: 1001;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .confirm-overlay.visible { display: flex; }
+
+  .confirm-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 320px;
+    width: 90%;
+    text-align: center;
+  }
+  .confirm-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 2px;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .confirm-msg {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 20px;
+    line-height: 1.4;
+  }
+  .confirm-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+  .confirm-btn {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .confirm-btn.cancel {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .confirm-btn.cancel:hover { color: var(--text); border-color: #555; }
+  .confirm-btn.ok {
+    background: rgba(232,255,71,0.1);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+  }
+  .confirm-btn.ok:hover { background: rgba(232,255,71,0.2); }
 
   .set-weight {
     font-size: 10px;
@@ -1128,6 +1205,18 @@
   <button class="timer-pill-skip" onclick="event.stopPropagation(); skipTimer()">Skip</button>
 </div>
 
+<!-- CONFIRMATION MODAL -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirmTitle"></div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button class="confirm-btn cancel" onclick="closeConfirm()">Cancel</button>
+      <button class="confirm-btn ok" id="confirmOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <!-- HEADER -->
 <div class="header">
   <div>
@@ -1522,9 +1611,12 @@ function renderDay(day) {
   const dayHasPending = Object.values(state[day.id].sets).some(arr => arr.some(v => v === false));
   const dayHasSkipped = Object.values(state[day.id].sets).some(arr => arr.some(v => v === 'skipped'));
   if (dayHasPending) {
-    html += `<button class="skip-day-btn" onclick="skipDay('${day.id}')">Skip Day</button>`;
+    html += `<div style="display:flex;gap:8px;margin-top:10px">
+      <button class="skip-day-btn" onclick="showConfirm('Skip Day?','All remaining sets will be marked as skipped.',()=>skipDay('${day.id}'))">Skip Day</button>
+      <button class="complete-day-btn" onclick="showConfirm('Complete Day?','All remaining sets will be marked as done.',()=>completeDay('${day.id}'))">Complete Day</button>
+    </div>`;
   } else if (isDayComplete(day.id) && dayHasSkipped) {
-    html += `<button class="skip-day-btn" onclick="skipDay('${day.id}')">Unskip Day</button>`;
+    html += `<button class="skip-day-btn" onclick="skipDay('${day.id}')" style="margin-top:10px">Unskip Day</button>`;
   }
 
   // Shoulder protocol — shown at top before exercises
@@ -1866,6 +1958,32 @@ function skipDay(dayId) {
   }
   saveState();
   refreshCurrentDay(dayId);
+}
+
+function completeDay(dayId) {
+  Object.values(state[dayId].sets).forEach(arr => {
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i] !== true) arr[i] = true;
+    }
+  });
+  saveState();
+  refreshCurrentDay(dayId);
+}
+
+// CONFIRMATION MODAL
+let confirmAction = null;
+
+function showConfirm(title, msg, onConfirm) {
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').textContent = msg;
+  confirmAction = onConfirm;
+  document.getElementById('confirmOk').onclick = () => { closeConfirm(); if (confirmAction) confirmAction(); };
+  document.getElementById('confirmOverlay').classList.add('visible');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('visible');
+  confirmAction = null;
 }
 
 // NOTIFICATIONS
