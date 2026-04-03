@@ -1977,7 +1977,7 @@ function showConfirm(title, msg, onConfirm) {
   document.getElementById('confirmTitle').textContent = title;
   document.getElementById('confirmMsg').textContent = msg;
   confirmAction = onConfirm;
-  document.getElementById('confirmOk').onclick = () => { closeConfirm(); if (confirmAction) confirmAction(); };
+  document.getElementById('confirmOk').onclick = () => { const fn = confirmAction; closeConfirm(); if (fn) fn(); };
   document.getElementById('confirmOverlay').classList.add('visible');
 }
 
