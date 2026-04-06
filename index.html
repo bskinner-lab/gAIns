@@ -1220,7 +1220,7 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <div class="header-title">Hypertrophy Program <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.0</span></div>
+    <div class="header-title">Hypertrophy Program <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.1</span></div>
     <div class="header-subtitle">32M · Full Gym · Shoulder-Cautious</div>
     <div class="week-selector">
       <span class="week-selector-label">Week</span>
@@ -2273,6 +2273,10 @@ function importData(event) {
   event.target.value = '';
 }
 
+function isWeekComplete() {
+  return DAYS.every(day => isDayComplete(day.id));
+}
+
 function getStartDay() {
   // Find first day with incomplete sets that has some progress (in-progress day)
   for (const day of DAYS) {
@@ -2289,10 +2293,20 @@ function getStartDay() {
   return DAYS[0].id;
 }
 
+function advanceToCurrentWeek() {
+  // If current week is fully complete, advance to next incomplete week
+  while (currentWeek < 8 && isWeekComplete()) {
+    currentWeek++;
+    saveWeek();
+    initState();
+  }
+}
+
 // INIT
 loadWeek();
 migrateOldState();
 initState();
+advanceToCurrentWeek();
 updateWeekDisplay();
 switchDay(getStartDay());
 updateOverallProgress();
