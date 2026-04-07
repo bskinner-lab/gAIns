@@ -1220,7 +1220,7 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <div class="header-title">Hypertrophy Program <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.1</span></div>
+    <div class="header-title">Hypertrophy Program <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.2</span></div>
     <div class="header-subtitle">32M · Full Gym · Shoulder-Cautious</div>
     <div class="week-selector">
       <span class="week-selector-label">Week</span>
@@ -1496,6 +1496,29 @@ function initState() {
       state[day.id].sets[ei] = savedDay.sets ? (savedDay.sets[ei] || Array(ex.sets).fill(false)) : Array(ex.sets).fill(false);
       // ensure correct length
       while (state[day.id].sets[ei].length < ex.sets) state[day.id].sets[ei].push(false);
+    });
+  });
+  // Pre-populate weights from most recent previous week
+  prefillWeightsFromPreviousWeeks();
+}
+
+function prefillWeightsFromPreviousWeeks() {
+  if (currentWeek <= 1) return;
+  DAYS.forEach(day => {
+    const weights = state[day.id].weights;
+    day.exercises.forEach((ex, ei) => {
+      if (weights[ei]) return; // already has a weight this week
+      // Search backwards through previous weeks
+      for (let w = currentWeek - 1; w >= 1; w--) {
+        try {
+          const prev = JSON.parse(localStorage.getItem(weekStorageKey(w)) || '{}');
+          const prevWeights = prev[day.id] && prev[day.id].weights;
+          if (prevWeights && prevWeights[ei]) {
+            weights[ei] = prevWeights[ei];
+            return;
+          }
+        } catch(e) {}
+      }
     });
   });
 }
