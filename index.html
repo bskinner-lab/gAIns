@@ -498,6 +498,52 @@
     font-family: 'DM Mono', monospace;
   }
 
+  .effort-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0 4px;
+  }
+  .effort-label {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    font-family: 'DM Mono', monospace;
+  }
+  .effort-toggles {
+    display: flex;
+    gap: 6px;
+  }
+  .effort-btn {
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.15s;
+  }
+  .effort-btn:hover { color: var(--text); border-color: #555; }
+  .effort-btn.active-low {
+    background: rgba(78,255,145,0.1);
+    border-color: var(--green);
+    color: var(--green);
+  }
+  .effort-btn.active-medium {
+    background: rgba(232,255,71,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .effort-btn.active-high {
+    background: rgba(255,107,53,0.1);
+    border-color: var(--accent2);
+    color: var(--accent2);
+  }
+
 
 
   .set-num {
@@ -1223,7 +1269,7 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <div class="header-title">Hypertrophy Program <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.4</span></div>
+    <div class="header-title">Hypertrophy Program <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.5</span></div>
     <div class="header-subtitle">32M · Full Gym · Shoulder-Cautious</div>
     <div class="week-selector">
       <span class="week-selector-label">Week</span>
@@ -1493,6 +1539,7 @@ function initState() {
     state[day.id] = {
       sets: {},
       weights: savedDay.weights || {},
+      effort: savedDay.effort || {},
       protocol: savedDay.protocol || []
     };
     day.exercises.forEach((ex, ei) => {
@@ -1501,25 +1548,28 @@ function initState() {
       while (state[day.id].sets[ei].length < ex.sets) state[day.id].sets[ei].push(false);
     });
   });
-  // Pre-populate weights from most recent previous week
-  prefillWeightsFromPreviousWeeks();
+  // Pre-populate weights and effort from most recent previous week
+  prefillFromPreviousWeeks();
 }
 
-function prefillWeightsFromPreviousWeeks() {
+function prefillFromPreviousWeeks() {
   if (currentWeek <= 1) return;
   DAYS.forEach(day => {
     const weights = state[day.id].weights;
+    const effort = state[day.id].effort;
     day.exercises.forEach((ex, ei) => {
-      if (weights[ei]) return; // already has a weight this week
-      // Search backwards through previous weeks
       for (let w = currentWeek - 1; w >= 1; w--) {
         try {
           const prev = JSON.parse(localStorage.getItem(weekStorageKey(w)) || '{}');
-          const prevWeights = prev[day.id] && prev[day.id].weights;
-          if (prevWeights && prevWeights[ei]) {
-            weights[ei] = prevWeights[ei];
-            return;
+          const prevDay = prev[day.id];
+          if (!prevDay) continue;
+          if (!weights[ei] && prevDay.weights && prevDay.weights[ei]) {
+            weights[ei] = prevDay.weights[ei];
           }
+          if (!effort[ei] && prevDay.effort && prevDay.effort[ei]) {
+            effort[ei] = prevDay.effort[ei];
+          }
+          if (weights[ei] && effort[ei]) return;
         } catch(e) {}
       }
     });
@@ -1745,6 +1795,17 @@ function renderDay(day) {
             />
             <span class="weight-unit">lbs</span>
           </div>
+          <div class="effort-row">
+            <span class="effort-label">Effort:</span>
+            <div class="effort-toggles">
+              ${['low','medium','high'].map(lvl => {
+                const currentEffort = (state[day.id].effort || {})[ei] || '';
+                const activeClass = currentEffort === lvl ? ` active-${lvl}` : '';
+                const label = lvl.charAt(0).toUpperCase() + lvl.slice(1);
+                return `<button class="effort-btn${activeClass}" id="effort-${day.id}-${ei}-${lvl}" data-level="${lvl}" onclick="event.stopPropagation(); saveEffort('${day.id}', ${ei}, '${lvl}')">${label}</button>`;
+              }).join('')}
+            </div>
+          </div>
           ${sets.some(v => v === false)
             ? `<div style="text-align:center;padding:4px 0 8px"><button class="skip-exercise-btn" onclick="skipExercise('${day.id}', ${ei})">Skip Exercise</button></div>`
             : sets.every(v => v === 'skipped')
@@ -1926,6 +1987,18 @@ function saveWeight(dayId, exIdx) {
       if (wDiv) wDiv.remove();
     }
   }
+}
+
+function saveEffort(dayId, exIdx, level) {
+  if (!state[dayId].effort) state[dayId].effort = {};
+  const current = state[dayId].effort[exIdx];
+  state[dayId].effort[exIdx] = current === level ? '' : level;
+  saveState();
+  // Update button states inline
+  document.querySelectorAll(`[id^="effort-${dayId}-${exIdx}-"]`).forEach(btn => {
+    const btnLevel = btn.getAttribute('data-level');
+    btn.className = 'effort-btn' + (btnLevel === state[dayId].effort[exIdx] ? ` active-${btnLevel}` : '');
+  });
 }
 
 function refreshCurrentDay(dayId) {
