@@ -7,6 +7,7 @@
 <link rel="manifest" href="data:application/json,{%22name%22:%22gAIns%22,%22short_name%22:%22gAIns%22,%22display%22:%22standalone%22,%22orientation%22:%22portrait%22,%22background_color%22:%22%230a0a0a%22,%22theme_color%22:%22%230a0a0a%22}">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%230a0a0a'/%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0%25' stop-color='%23e8ff47'/%3E%3Cstop offset='50%25' stop-color='%234eff91'/%3E%3Cstop offset='100%25' stop-color='%23e8ff47'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='16' y='52' width='28' height='76' rx='8' fill='%23e8ff47'/%3E%3Crect x='136' y='52' width='28' height='76' rx='8' fill='%23e8ff47'/%3E%3Crect x='30' y='80' width='120' height='20' rx='10' fill='url(%23g)'/%3E%3Ccircle cx='90' cy='90' r='14' fill='%230a0a0a'/%3E%3Ccircle cx='90' cy='90' r='7' fill='%234eff91'/%3E%3Ccircle cx='65' cy='90' r='4.5' fill='%234eff91' opacity='.7'/%3E%3Ccircle cx='115' cy='90' r='4.5' fill='%234eff91' opacity='.7'/%3E%3Cline x1='65' y1='90' x2='83' y2='90' stroke='%234eff91' stroke-width='2'/%3E%3Cline x1='97' y1='90' x2='115' y2='90' stroke='%234eff91' stroke-width='2'/%3E%3Cline x1='90' y1='76' x2='90' y2='52' stroke='%234eff91' stroke-width='2' opacity='.5'/%3E%3Cline x1='90' y1='104' x2='90' y2='128' stroke='%234eff91' stroke-width='2' opacity='.5'/%3E%3Ccircle cx='90' cy='49' r='4' fill='%234eff91' opacity='.4'/%3E%3Ccircle cx='90' cy='131' r='4' fill='%234eff91' opacity='.4'/%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1269,7 +1270,7 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.6</span></div>
+    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.7</span></div>
     <div class="header-subtitle">32M · Full Gym · Shoulder-Cautious</div>
     <div class="week-selector">
       <span class="week-selector-label">Week</span>
@@ -2400,6 +2401,58 @@ function advanceToCurrentWeek() {
     initState();
   }
 }
+
+// Generate apple-touch-icon via canvas (iOS requires PNG)
+(function() {
+  const s = 180, r = 40;
+  const c = document.createElement('canvas');
+  c.width = s; c.height = s;
+  const ctx = c.getContext('2d');
+  // Rounded rect background
+  ctx.beginPath();
+  ctx.moveTo(r, 0); ctx.lineTo(s-r, 0); ctx.quadraticCurveTo(s, 0, s, r);
+  ctx.lineTo(s, s-r); ctx.quadraticCurveTo(s, s, s-r, s);
+  ctx.lineTo(r, s); ctx.quadraticCurveTo(0, s, 0, s-r);
+  ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0);
+  ctx.closePath();
+  ctx.fillStyle = '#0a0a0a'; ctx.fill();
+  // Weight plates
+  ctx.fillStyle = '#e8ff47';
+  ctx.beginPath(); ctx.roundRect(16, 52, 28, 76, 8); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(136, 52, 28, 76, 8); ctx.fill();
+  // Bar with gradient
+  const grad = ctx.createLinearGradient(30, 0, 150, 0);
+  grad.addColorStop(0, '#e8ff47'); grad.addColorStop(0.5, '#4eff91'); grad.addColorStop(1, '#e8ff47');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.roundRect(30, 80, 120, 20, 10); ctx.fill();
+  // Center node cutout
+  ctx.fillStyle = '#0a0a0a';
+  ctx.beginPath(); ctx.arc(90, 90, 14, 0, Math.PI*2); ctx.fill();
+  // AI nodes
+  ctx.fillStyle = '#4eff91';
+  ctx.beginPath(); ctx.arc(90, 90, 7, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 0.7;
+  ctx.beginPath(); ctx.arc(65, 90, 4.5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(115, 90, 4.5, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1;
+  // Connections
+  ctx.strokeStyle = '#4eff91'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(65,90); ctx.lineTo(83,90); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(97,90); ctx.lineTo(115,90); ctx.stroke();
+  ctx.globalAlpha = 0.5;
+  ctx.beginPath(); ctx.moveTo(90,76); ctx.lineTo(90,52); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(90,104); ctx.lineTo(90,128); ctx.stroke();
+  ctx.globalAlpha = 0.4;
+  ctx.fillStyle = '#4eff91';
+  ctx.beginPath(); ctx.arc(90, 49, 4, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(90, 131, 4, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1;
+  // Set as apple-touch-icon
+  const link = document.createElement('link');
+  link.rel = 'apple-touch-icon';
+  link.href = c.toDataURL('image/png');
+  document.head.appendChild(link);
+})();
 
 // INIT
 loadWeek();
