@@ -1270,7 +1270,7 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.7</span></div>
+    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.8</span></div>
     <div class="header-subtitle">32M · Full Gym · Shoulder-Cautious</div>
     <div class="week-selector">
       <span class="week-selector-label">Week</span>
@@ -2093,9 +2093,28 @@ function requestNotificationPermission() {
   }
 }
 
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if (!Ctor) return null;
+    try { audioCtx = new Ctor(); }
+    catch(err) { console.warn('AudioContext creation failed', err); return null; }
+  }
+  return audioCtx;
+}
+
+function primeAudio() {
+  const ctx = getAudioCtx();
+  if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+}
+
 function playTimerSound() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const schedule = () => {
+    const t0 = ctx.currentTime;
     [0, 0.15, 0.3].forEach(delay => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -2103,12 +2122,17 @@ function playTimerSound() {
       gain.connect(ctx.destination);
       osc.frequency.value = 880;
       osc.type = 'sine';
-      gain.gain.setValueAtTime(0.3, ctx.currentTime + delay);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + delay + 0.12);
-      osc.start(ctx.currentTime + delay);
-      osc.stop(ctx.currentTime + delay + 0.12);
+      gain.gain.setValueAtTime(0.3, t0 + delay);
+      gain.gain.exponentialRampToValueAtTime(0.01, t0 + delay + 0.12);
+      osc.start(t0 + delay);
+      osc.stop(t0 + delay + 0.12);
     });
-  } catch(e) {}
+  };
+  if (ctx.state === 'suspended') {
+    ctx.resume().then(schedule).catch(err => console.warn('audio resume failed', err));
+  } else {
+    schedule();
+  }
 }
 
 function notifyTimerDone() {
@@ -2129,6 +2153,7 @@ let timerMinimized = false;
 const CIRCUMFERENCE = 565; // 2 * π * 90
 
 function startTimer(seconds, onComplete) {
+  primeAudio();
   clearInterval(timerInterval);
   timerTotal = seconds;
   timerEndTime = Date.now() + seconds * 1000;
@@ -2314,6 +2339,10 @@ document.addEventListener('touchstart', e => {
     tooltipTimeout = setTimeout(hideTooltip, 5000);
   }
 }, { passive: true });
+
+// Prime AudioContext on first user gesture so later timer beeps are reliable
+document.addEventListener('touchstart', primeAudio, { once: true, passive: true });
+document.addEventListener('click', primeAudio, { once: true });
 
 // EXPORT / IMPORT
 function exportData() {
