@@ -1270,7 +1270,7 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.8</span></div>
+    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.9</span></div>
     <div class="header-subtitle">32M · Full Gym · Shoulder-Cautious</div>
     <div class="week-selector">
       <span class="week-selector-label">Week</span>
@@ -1943,6 +1943,11 @@ function toggleSet(dayId, exIdx, setIdx) {
   const ex = day.exercises[exIdx];
   const nextSetInEx = setIdx + 1 < ex.sets ? setIdx + 1 : null;
   const nextEx = nextSetInEx === null ? day.exercises[exIdx + 1] : null;
+
+  // Workout finished — no rest needed, skip timer + beep
+  if (isDayComplete(dayId)) {
+    return;
+  }
 
   let nextLabel = '';
   if (nextSetInEx !== null) {
