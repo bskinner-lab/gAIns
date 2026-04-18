@@ -1270,7 +1270,7 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.9</span></div>
+    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.10</span></div>
     <div class="header-subtitle">32M · Full Gym · Shoulder-Cautious</div>
     <div class="week-selector">
       <span class="week-selector-label">Week</span>
@@ -2291,7 +2291,12 @@ function updatePresetButtons(active) {
   });
 }
 
-// Suppress iOS shake-to-undo
+// Suppress iOS shake-to-undo: blur inputs on outside tap so iOS has no undo target
+document.addEventListener('touchstart', (e) => {
+  if (document.activeElement && document.activeElement.tagName === 'INPUT' && !e.target.closest('input')) {
+    document.activeElement.blur();
+  }
+}, { passive: true });
 document.addEventListener('beforeinput', (e) => {
   if (e.inputType === 'historyUndo') e.preventDefault();
 });
