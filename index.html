@@ -1270,7 +1270,7 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.10</span></div>
+    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.11</span></div>
     <div class="header-subtitle">32M · Full Gym · Shoulder-Cautious</div>
     <div class="week-selector">
       <span class="week-selector-label">Week</span>
@@ -1309,8 +1309,8 @@
 <script>
 // GLOSSARY for hover tooltips
 const GLOSSARY = {
-  'LLP': 'Length-Limited Partials: bottom-half reps in the fully stretched position, performed on the last set only. Maximizes tension where the muscle is longest — high stimulus, low joint stress.',
-  'RPE': 'Rate of Perceived Exertion (1–10). RPE 7 = 3 reps left in the tank. RPE 8 = 2 left. RPE 9 = 1 left. RPE 10 = absolute failure.',
+  'LLP': 'Length-Limited Partials: bottom-half reps in the fully stretched position (last set only). For isolation exercises only — never on compounds. Maximizes tension where the muscle is longest — high stimulus, low joint stress.',
+  'RPE': 'Rate of Perceived Exertion (1–10). RPE 7 = 3 reps left. RPE 8 = 2 left. RPE 9 = 1 left. Exercise RPE is the allowed range; weekly RPE determines how deep into that range to push. Early weeks stay near the lower end, later weeks push toward the upper end.',
   'RIR': 'Reps In Reserve — how many more reps you could have done before failure. RIR 2 = stopped with 2 reps left.',
   'drop set': 'Complete your working set, immediately reduce weight 20–30%, then continue for more reps without rest.',
   'compounds': 'Multi-joint movements (squat, deadlift, bench press, rows) that recruit many muscle groups simultaneously. Higher injury risk at failure — always keep 1–2 RIR.',
@@ -1335,13 +1335,13 @@ const DAYS = [
     subtitle: 'Chest Bias · Shoulders · Triceps',
     note: '🩺 Shoulder note: Keep elbows at ~60°, not flared. Neutral grip where possible. No behind-the-neck movements.',
     exercises: [
-      { name: 'Incline DB Press', sets: 4, reps: '6–10', rpe: '7–9', note: 'Neutral grip, elbows ~60° — primary chest builder', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
-      { name: 'Machine Chest Press', sets: 3, reps: '10–12', rpe: '7–8', note: 'Shoulder-safe loading, great for controlled reps', llp: false, compound: false, rest: 120, restLabel: '2–2.5 min' },
-      { name: 'Cable Chest Fly', sets: 3, reps: '12–15', rpe: '8', note: 'Low-to-high angle, full stretch at bottom', llp: false, compound: false, rest: 90, restLabel: '1.5–2 min' },
-      { name: 'Seated DB Shoulder Press', sets: 3, reps: '8–12', rpe: '7–8', note: 'Stop just below 90° if any shoulder discomfort', llp: false, compound: false, rest: 120, restLabel: '2 min' },
-      { name: 'Cable Lateral Raise', sets: 3, reps: '12–15 + LLP', rpe: '8–9', note: 'Cable keeps constant tension. Add partials at bottom on last set', llp: true, compound: false, rest: 90, restLabel: '1–1.5 min' },
-      { name: 'Rope Pushdown', sets: 3, reps: '12–15', rpe: '8–9', note: 'Full extension at bottom, squeeze the tricep', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
-      { name: 'Overhead Cable Extension', sets: 2, reps: '10–12', rpe: '8', note: 'Long head emphasis — great stretch', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
+      { id: 'incline_db_press', name: 'Incline DB Press', sets: 4, reps: '6–10', rpe: '7–9', note: 'Neutral grip, elbows ~60° — primary chest builder', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+      { id: 'machine_chest_press', name: 'Machine Chest Press', sets: 3, reps: '10–12', rpe: '7–8', note: 'Shoulder-safe loading, great for controlled reps', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
+      { id: 'seated_db_press', name: 'Seated DB Shoulder Press', sets: 3, reps: '8–12', rpe: '7–8', note: 'Stop just below 90° if any shoulder discomfort', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+      { id: 'cable_chest_fly', name: 'Cable Chest Fly', sets: 3, reps: '12–15', rpe: '8', note: 'Low-to-high angle, full stretch at bottom', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+      { id: 'cable_lat_raise_push', name: 'Cable Lateral Raise', sets: 3, reps: '12–15 + LLP', rpe: '8–9', note: 'Cable keeps constant tension. Add partials at bottom on last set', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+      { id: 'rope_pushdown', name: 'Rope Pushdown', sets: 3, reps: '12–15', rpe: '8–9', note: 'Full extension at bottom, squeeze the tricep', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+      { id: 'overhead_cable_ext', name: 'Overhead Cable Extension', sets: 2, reps: '10–12', rpe: '8', note: 'Long head emphasis — great stretch', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
     ],
     protocol: true,
   },
@@ -1352,13 +1352,13 @@ const DAYS = [
     subtitle: 'Lat + Upper Back · Biceps',
     note: '💪 Your bodyweight base makes pull work your strength. Face pulls protect the shoulder every session.',
     exercises: [
-      { name: 'Pull-Ups / Neutral Pulldown', sets: 4, reps: '6–10', rpe: '7–9', note: 'Add weight to pull-ups once 10 reps is easy', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
-      { name: 'Chest-Supported Row', sets: 4, reps: '8–12', rpe: '7–9', note: 'Removes lower back fatigue, full ROM on every rep', llp: false, compound: true, rest: 150, restLabel: '2–2.5 min' },
-      { name: 'Single-Arm Cable Row (lat bias)', sets: 3, reps: '10–12', rpe: '8', note: 'Drive elbow down and back, lean slightly away', llp: false, compound: false, rest: 120, restLabel: '1.5–2 min' },
-      { name: 'Face Pulls', sets: 3, reps: '15–20', rpe: '8', note: '⭐ KEY for shoulder health — never skip this', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
-      { name: 'Rear Delt Cable Fly', sets: 3, reps: '12–15', rpe: '8–9', note: 'Arms nearly parallel to floor, lead with elbows', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
-      { name: 'Incline DB Curl', sets: 3, reps: '10–12 + LLP', rpe: '8–9', note: 'Great stretch at bottom. Add partials on last set', llp: true, compound: false, rest: 90, restLabel: '1–1.5 min' },
-      { name: 'Hammer Curl', sets: 2, reps: '12–15', rpe: '8', note: 'Brachialis + forearm thickness', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
+      { id: 'pullups_pulldown', name: 'Pull-Ups / Neutral Pulldown', sets: 4, reps: '6–10', rpe: '7–9', note: 'Add weight to pull-ups once 10 reps is easy', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+      { id: 'chest_supported_row', name: 'Chest-Supported Row', sets: 4, reps: '8–12', rpe: '7–9', note: 'Removes lower back fatigue, full ROM on every rep', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+      { id: 'single_arm_cable_row', name: 'Single-Arm Cable Row (lat bias)', sets: 3, reps: '10–12', rpe: '8', note: 'Drive elbow down and back, lean slightly away', llp: false, compound: false, rest: 90, restLabel: '1.5–2 min' },
+      { id: 'face_pulls', name: 'Face Pulls', sets: 3, reps: '15–20', rpe: '8', note: '⭐ KEY for shoulder health — never skip this', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+      { id: 'rear_delt_cable_fly', name: 'Rear Delt Cable Fly', sets: 3, reps: '12–15', rpe: '8–9', note: 'Arms nearly parallel to floor, lead with elbows', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+      { id: 'incline_db_curl', name: 'Incline DB Curl', sets: 3, reps: '10–12 + LLP', rpe: '8–9', note: 'Great stretch at bottom. Add partials on last set', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+      { id: 'hammer_curl', name: 'Hammer Curl', sets: 2, reps: '12–15', rpe: '8', note: 'Brachialis + forearm thickness', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
     ],
     protocol: true,
   },
@@ -1369,13 +1369,13 @@ const DAYS = [
     subtitle: 'Quads · Hamstrings · Glutes · Core',
     note: '🦵 If barbell bar position bothers shoulder, use Safety Bar Squat or Goblet Squat instead.',
     exercises: [
-      { name: 'Squat / Safety Bar Squat', sets: 4, reps: '6–10', rpe: '7–9', note: 'Safety bar removes shoulder load entirely if needed', llp: false, compound: true, rest: 180, restLabel: '2.5–3.5 min' },
-      { name: 'Romanian Deadlift', sets: 3, reps: '8–12', rpe: '7–8', note: 'Hinge focus, slow eccentric, feel the hamstring stretch', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
-      { name: 'Leg Press', sets: 3, reps: '10–15', rpe: '8', note: 'High foot placement = more glutes/hamstrings', llp: false, compound: false, rest: 120, restLabel: '2–2.5 min' },
-      { name: 'Leg Curl', sets: 3, reps: '12–15 + LLP', rpe: '8–9', note: 'Full stretch at bottom. Add partials on last set', llp: true, compound: false, rest: 90, restLabel: '1–1.5 min' },
-      { name: 'Walking Lunges', sets: 2, reps: '10 each leg', rpe: '8', note: 'Use dumbbells, controlled descent', llp: false, compound: false, rest: 120, restLabel: '1.5–2 min' },
-      { name: 'Calf Raises', sets: 4, reps: '12–20', rpe: '8–9', note: 'Pause and stretch at the bottom of every rep', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
-      { name: 'Ab Wheel', sets: 3, reps: '8–12', rpe: '8', note: 'Full rollout if able, brace hard throughout', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
+      { id: 'squat', name: 'Squat / Safety Bar Squat', sets: 4, reps: '6–10', rpe: '7–9', note: 'Safety bar removes shoulder load entirely if needed', llp: false, compound: true, rest: 210, restLabel: '2.5–3.5 min' },
+      { id: 'rdl', name: 'Romanian Deadlift', sets: 3, reps: '8–12', rpe: '7–8', note: 'Hinge focus, slow eccentric, feel the hamstring stretch', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+      { id: 'leg_curl', name: 'Leg Curl', sets: 3, reps: '12–15 + LLP', rpe: '8–9', note: 'Full stretch at bottom. Add partials on last set', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+      { id: 'leg_press', name: 'Leg Press', sets: 3, reps: '10–15', rpe: '8', note: 'High foot placement = more glutes/hamstrings', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
+      { id: 'walking_lunges', name: 'Walking Lunges', sets: 2, reps: '10 each leg', rpe: '8', note: 'Use dumbbells, controlled descent', llp: false, compound: false, rest: 120, restLabel: '1.5–2 min' },
+      { id: 'calf_raises', name: 'Calf Raises', sets: 4, reps: '12–20', rpe: '8–9', note: 'Pause and stretch at the bottom of every rep', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+      { id: 'core', name: 'Core', sets: 3, reps: '8–12', rpe: '8', note: 'Ab Wheel, Hanging Leg Raises, Pallof Press, or Cable Crunches', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
     ],
     protocol: false,
   },
@@ -1386,13 +1386,13 @@ const DAYS = [
     subtitle: 'Hypertrophy Focus · High Volume',
     note: '🔥 Higher volume, moderate weight, more time under tension.',
     exercises: [
-      { name: 'Cable Fly (low-to-high)', sets: 4, reps: '12–15', rpe: '8', note: 'Excellent chest stretch, shoulder-friendly angle', llp: false, compound: false, rest: 120, restLabel: '1.5–2 min' },
-      { name: 'Neutral Pulldown', sets: 3, reps: '10–12', rpe: '8', note: 'Neutral grip reduces shoulder stress', llp: false, compound: false, rest: 120, restLabel: '2–2.5 min' },
-      { name: 'Chest-Supported Row', sets: 3, reps: '10–12', rpe: '8', note: 'Focus on squeezing the upper back at the top', llp: false, compound: true, rest: 120, restLabel: '2 min' },
-      { name: 'Cable Lateral Raise', sets: 3, reps: '15 + LLP', rpe: '9', note: 'Add bottom-half partials after reaching rep target', llp: true, compound: false, rest: 90, restLabel: '1–1.5 min' },
-      { name: 'Rear Delt Fly', sets: 3, reps: '12–15', rpe: '8–9', note: 'Pec deck or cables — squeeze rear delts', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
-      { name: 'EZ Bar Curl', sets: 3, reps: '10–12', rpe: '8–9', note: 'Easier on wrists and elbows than straight bar', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
-      { name: 'Close-Grip Bench Press', sets: 3, reps: '8–12', rpe: '8', note: 'Shoulder-width grip, elbows tucked', llp: false, compound: true, rest: 120, restLabel: '2–2.5 min' },
+      { id: 'cable_fly_upper', name: 'Cable Fly (low-to-high)', sets: 4, reps: '12–15', rpe: '8', note: 'Excellent chest stretch, shoulder-friendly angle', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+      { id: 'neutral_pulldown', name: 'Neutral Pulldown', sets: 3, reps: '10–12', rpe: '8', note: 'Neutral grip reduces shoulder stress', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
+      { id: 'chest_row_upper', name: 'Chest-Supported Row', sets: 3, reps: '10–12', rpe: '8', note: 'Focus on squeezing the upper back at the top', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+      { id: 'close_grip_bench', name: 'Close-Grip Bench Press', sets: 3, reps: '8–12', rpe: '8', note: 'Shoulder-width grip, elbows tucked', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+      { id: 'cable_lat_raise_upper', name: 'Cable Lateral Raise', sets: 3, reps: '15 + LLP', rpe: '9', note: 'Add bottom-half partials after reaching rep target', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+      { id: 'rear_delt_fly', name: 'Rear Delt Fly', sets: 3, reps: '12–15', rpe: '8–9', note: 'Pec deck or cables — squeeze rear delts', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+      { id: 'ez_bar_curl', name: 'EZ Bar Curl', sets: 3, reps: '10–12', rpe: '8–9', note: 'Easier on wrists and elbows than straight bar', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
     ],
     protocol: true,
   },
@@ -1403,11 +1403,11 @@ const DAYS = [
     subtitle: 'Weak Points · Compound Finisher',
     note: '🔁 Optional day. Use to bring up lagging muscle groups.',
     exercises: [
-      { name: 'Trap Bar Deadlift', sets: 3, reps: '5–8', rpe: '7–8', note: 'Neutral handles eliminate shoulder stress vs barbell', llp: false, compound: true, rest: 180, restLabel: '2.5–3.5 min' },
-      { name: 'Dips (if shoulder OK)', sets: 3, reps: '8–12', rpe: '8', note: 'Upright torso = tricep focus. Lean forward = chest.', llp: false, compound: true, rest: 120, restLabel: '2 min' },
-      { name: 'Cable Pull-Through', sets: 3, reps: '12–15', rpe: '8', note: 'Hip hinge pattern, good glute/hamstring finisher', llp: false, compound: false, rest: 120, restLabel: '1.5–2 min' },
-      { name: 'Seated Row', sets: 3, reps: '10–12', rpe: '8', note: 'Neutral grip, full stretch at the front', llp: false, compound: false, rest: 120, restLabel: '2 min' },
-      { name: 'Optional Arms / Delts', sets: 3, reps: '12–20', rpe: '8', note: 'Pick your weakest area — curls, laterals, or pushdowns', llp: false, compound: false, rest: 90, restLabel: '1–1.5 min' },
+      { id: 'trap_bar_dl', name: 'Trap Bar Deadlift', sets: 3, reps: '5–8', rpe: '7–8', note: 'Neutral handles eliminate shoulder stress vs barbell', llp: false, compound: true, rest: 210, restLabel: '2.5–3.5 min' },
+      { id: 'dips', name: 'Dips (if shoulder OK)', sets: 3, reps: '8–12', rpe: '8', note: 'Upright torso = tricep focus. Lean forward = chest.', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+      { id: 'cable_pull_through', name: 'Cable Pull-Through', sets: 3, reps: '12–15', rpe: '8', note: 'Hip hinge pattern, good glute/hamstring finisher', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+      { id: 'seated_row', name: 'Seated Row', sets: 3, reps: '10–12', rpe: '8', note: 'Neutral grip, full stretch at the front', llp: false, compound: false, rest: 120, restLabel: '2 min' },
+      { id: 'optional_arms', name: 'Optional Arms / Delts', sets: 3, reps: '12–20', rpe: '8', note: 'Pick your weakest area — curls, laterals, or pushdowns', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
     ],
     protocol: false,
   },
@@ -1431,7 +1431,8 @@ const MESOCYCLE = [
       'Focus: technique + control',
       '3–4 sec eccentric on every set',
       '1 sec pause in stretched position',
-      'No LLP yet',
+      'LLP mostly OFF — optional light LLP on cable lateral raises only',
+      'Stay near lower end of exercise RPE range',
       'Baseline volume',
     ],
   },
@@ -1443,8 +1444,8 @@ const MESOCYCLE = [
     color: '#e8ff47',
     points: [
       '+1 set to: lateral delts, rear delts, biceps',
-      'Add LLP to 1 set per exercise',
-      'Begin pushing last sets harder',
+      'LLP introduced gradually on isolations (last set)',
+      'Begin pushing toward mid-range of exercise RPE',
     ],
   },
   {
@@ -1454,8 +1455,9 @@ const MESOCYCLE = [
     rir: '1–2 RIR on most sets',
     color: '#ff9f47',
     points: [
-      'LLP on all key isolations (last set)',
+      'LLP fully integrated on selected isolations (last set)',
       '+1 drop set per workout (laterals or curls)',
+      'Push toward upper end of exercise RPE range',
       'Volume near MRV',
     ],
   },
@@ -1467,8 +1469,9 @@ const MESOCYCLE = [
     color: '#ff6b35',
     points: [
       '+1 set to weak points',
-      'LLP on 2 exercises per session',
+      'Highest LLP usage — 2+ exercises per session',
       'Optional rest-pause (isolation only)',
+      'Push top of exercise RPE range on isolations',
       '⚠️ Monitor sleep + shoulder joints closely',
     ],
   },
@@ -1481,7 +1484,8 @@ const MESOCYCLE = [
     points: [
       'Volume ↓ 50–60%',
       'Intensity ↓ 10–15%',
-      'Remove LLP, drop sets, intensity techniques',
+      'Remove ALL LLP, drop sets, intensity techniques',
+      'Stay at bottom of exercise RPE range',
       'Goal: feel recovered and hungry to train',
     ],
   },
@@ -1529,12 +1533,51 @@ function updateWeekDisplay() {
   phaseEl.style.color = phase.color;
 }
 
-// STATE — sets[ei][si] = false | true, weights[ei] = number|null
+// STATE — sets[exId][si] = false | true | 'skipped', weights[exId] = number|null
 let state = {};
 
+// Build map of old numeric index → exercise id for each day
+const LEGACY_ID_MAP = {};
+DAYS.forEach(day => {
+  LEGACY_ID_MAP[day.id] = {};
+  day.exercises.forEach((ex, i) => { LEGACY_ID_MAP[day.id][i] = ex.id; });
+});
+
+function migrateDayState(dayId, sd) {
+  if (!sd || !sd.sets) return sd;
+  const hasStringKeys = Object.keys(sd.sets).some(k => isNaN(k));
+  if (hasStringKeys) return sd;
+  const map = LEGACY_ID_MAP[dayId];
+  const m = { sets: {}, weights: {}, effort: {}, protocol: sd.protocol || [] };
+  Object.keys(sd.sets).forEach(k => {
+    const exId = map[k];
+    if (exId) m.sets[exId] = sd.sets[k];
+  });
+  if (sd.weights) {
+    Object.keys(sd.weights).forEach(k => {
+      if (k.includes('_')) {
+        const [ei, si] = k.split('_');
+        const exId = map[ei];
+        if (exId) m.weights[`${exId}_${si}`] = sd.weights[k];
+      } else {
+        const exId = map[k];
+        if (exId) m.weights[exId] = sd.weights[k];
+      }
+    });
+  }
+  if (sd.effort) {
+    Object.keys(sd.effort).forEach(k => {
+      const exId = map[k];
+      if (exId) m.effort[exId] = sd.effort[k];
+    });
+  }
+  return m;
+}
+
 function initState() {
-  // Try to load from localStorage first
-  const saved = loadState();
+  const raw = loadState();
+  const saved = {};
+  DAYS.forEach(day => { saved[day.id] = migrateDayState(day.id, raw[day.id]); });
   DAYS.forEach(day => {
     const savedDay = saved[day.id] || {};
     state[day.id] = {
@@ -1543,13 +1586,12 @@ function initState() {
       effort: savedDay.effort || {},
       protocol: savedDay.protocol || []
     };
-    day.exercises.forEach((ex, ei) => {
-      state[day.id].sets[ei] = savedDay.sets ? (savedDay.sets[ei] || Array(ex.sets).fill(false)) : Array(ex.sets).fill(false);
-      // ensure correct length
-      while (state[day.id].sets[ei].length < ex.sets) state[day.id].sets[ei].push(false);
+    day.exercises.forEach(ex => {
+      state[day.id].sets[ex.id] = savedDay.sets ? (savedDay.sets[ex.id] || Array(ex.sets).fill(false)) : Array(ex.sets).fill(false);
+      while (state[day.id].sets[ex.id].length < ex.sets) state[day.id].sets[ex.id].push(false);
     });
   });
-  // Pre-populate weights and effort from most recent previous week
+  saveState();
   prefillFromPreviousWeeks();
 }
 
@@ -1558,19 +1600,19 @@ function prefillFromPreviousWeeks() {
   DAYS.forEach(day => {
     const weights = state[day.id].weights;
     const effort = state[day.id].effort;
-    day.exercises.forEach((ex, ei) => {
+    day.exercises.forEach(ex => {
       for (let w = currentWeek - 1; w >= 1; w--) {
         try {
-          const prev = JSON.parse(localStorage.getItem(weekStorageKey(w)) || '{}');
-          const prevDay = prev[day.id];
-          if (!prevDay) continue;
-          if (!weights[ei] && prevDay.weights && prevDay.weights[ei]) {
-            weights[ei] = prevDay.weights[ei];
+          const raw = JSON.parse(localStorage.getItem(weekStorageKey(w)) || '{}');
+          const prev = migrateDayState(day.id, raw[day.id]);
+          if (!prev) continue;
+          if (!weights[ex.id] && prev.weights && prev.weights[ex.id]) {
+            weights[ex.id] = prev.weights[ex.id];
           }
-          if (!effort[ei] && prevDay.effort && prevDay.effort[ei]) {
-            effort[ei] = prevDay.effort[ei];
+          if (!effort[ex.id] && prev.effort && prev.effort[ex.id]) {
+            effort[ex.id] = prev.effort[ex.id];
           }
-          if (weights[ei] && effort[ei]) return;
+          if (weights[ex.id] && effort[ex.id]) return;
         } catch(e) {}
       }
     });
@@ -1716,15 +1758,15 @@ function renderDay(day) {
   }
 
   day.exercises.forEach((ex, ei) => {
-    const sets = state[day.id].sets[ei];
+    const sets = state[day.id].sets[ex.id];
     const weights = state[day.id].weights || {};
-    const currentWeight = weights[ei] || '';
+    const currentWeight = weights[ex.id] || '';
     const doneSets = sets.filter(v => v === true).length;
     const skippedSets = sets.filter(v => v === 'skipped').length;
     const resolvedSets = doneSets + skippedSets;
     const allDone = resolvedSets === ex.sets;
     const isOpen = !allDone;
-    const cardId = `card-${day.id}-${ei}`;
+    const cardId = `card-${day.id}-${ex.id}`;
 
     const llpTag = ex.llp ? `<span class="tag tag-llp tip" data-tip="${GLOSSARY['LLP'].replace(/"/g,'&quot;')}">LLP</span>` : '';
     const compTag = ex.compound ? `<span class="tag tag-compound tip" data-tip="${GLOSSARY['compounds'].replace(/"/g,'&quot;')}">Compound</span>` : '';
@@ -1757,11 +1799,11 @@ function renderDay(day) {
       const val = sets[si];
       const done = val === true;
       const skipped = val === 'skipped';
-      const setWeight = (weights[`${ei}_${si}`] || currentWeight) || '';
+      const setWeight = (weights[`${ex.id}_${si}`] || currentWeight) || '';
       const stateClass = done ? ' done' : skipped ? ' skipped' : '';
       let label;
       if (done) {
-        label = `<div class="set-complete-label" id="scl-${day.id}-${ei}-${si}">✓ Done</div>`;
+        label = `<div class="set-complete-label" id="scl-${day.id}-${ex.id}-${si}">✓ Done</div>`;
       } else if (skipped) {
         label = `<div class="set-skipped-label">— Skipped</div>`;
       } else {
@@ -1769,13 +1811,13 @@ function renderDay(day) {
       }
       html += `
         <div class="set-btn-wrapper">
-          <button class="set-btn${stateClass}" id="set-${day.id}-${ei}-${si}" onclick="toggleSet('${day.id}', ${ei}, ${si})">
+          <button class="set-btn${stateClass}" id="set-${day.id}-${ex.id}-${si}" onclick="toggleSet('${day.id}', '${ex.id}', ${si})">
             <div class="set-num">Set ${si + 1}</div>
             <div class="set-reps">${ex.reps.split('–')[0].replace(/[^0-9]/g,'') || '—'}</div>
             ${label}
             ${setWeight ? `<div class="set-weight">${setWeight} lbs</div>` : ''}
           </button>
-          ${!done ? `<div class="skip-set-link" onclick="event.stopPropagation(); skipSet('${day.id}', ${ei}, ${si})">${skipped ? 'Unskip' : 'Skip'}</div>` : ''}
+          ${!done ? `<div class="skip-set-link" onclick="event.stopPropagation(); skipSet('${day.id}', '${ex.id}', ${si})">${skipped ? 'Unskip' : 'Skip'}</div>` : ''}
         </div>
       `;
     }
@@ -1790,8 +1832,8 @@ function renderDay(day) {
               inputmode="decimal"
               placeholder="0"
               value="${currentWeight}"
-              id="weight-${day.id}-${ei}"
-              oninput="saveWeight('${day.id}', ${ei})"
+              id="weight-${day.id}-${ex.id}"
+              oninput="saveWeight('${day.id}', '${ex.id}')"
               onkeydown="if(event.key==='Enter') this.blur();"
             />
             <span class="weight-unit">lbs</span>
@@ -1800,17 +1842,17 @@ function renderDay(day) {
             <span class="effort-label">Effort:</span>
             <div class="effort-toggles">
               ${['low','medium','high'].map(lvl => {
-                const currentEffort = (state[day.id].effort || {})[ei] || '';
+                const currentEffort = (state[day.id].effort || {})[ex.id] || '';
                 const activeClass = currentEffort === lvl ? ` active-${lvl}` : '';
                 const label = lvl.charAt(0).toUpperCase() + lvl.slice(1);
-                return `<button class="effort-btn${activeClass}" id="effort-${day.id}-${ei}-${lvl}" data-level="${lvl}" onclick="event.stopPropagation(); saveEffort('${day.id}', ${ei}, '${lvl}')">${label}</button>`;
+                return `<button class="effort-btn${activeClass}" id="effort-${day.id}-${ex.id}-${lvl}" data-level="${lvl}" onclick="event.stopPropagation(); saveEffort('${day.id}', '${ex.id}', '${lvl}')">${label}</button>`;
               }).join('')}
             </div>
           </div>
           ${sets.some(v => v === false)
-            ? `<div style="text-align:center;padding:4px 0 8px"><button class="skip-exercise-btn" onclick="skipExercise('${day.id}', ${ei})">Skip Exercise</button></div>`
+            ? `<div style="text-align:center;padding:4px 0 8px"><button class="skip-exercise-btn" onclick="skipExercise('${day.id}', '${ex.id}')">Skip Exercise</button></div>`
             : sets.every(v => v === 'skipped')
-              ? `<div style="text-align:center;padding:4px 0 8px"><button class="skip-exercise-btn" onclick="skipExercise('${day.id}', ${ei})">Unskip Exercise</button></div>`
+              ? `<div style="text-align:center;padding:4px 0 8px"><button class="skip-exercise-btn" onclick="skipExercise('${day.id}', '${ex.id}')">Unskip Exercise</button></div>`
               : ''
           }
         </div>
@@ -1858,9 +1900,10 @@ function renderInfoPanel() {
     <div class="rules-title">⚙️ Execution Rules</div>
     <div class="rules-list">
       <div class="rule-item">First set of each exercise → 3–4 sec <span class="tip" data-tip="${GLOSSARY['eccentric'].replace(/"/g,'&quot;')}">eccentric</span></div>
-      <div class="rule-item"><span class="tip" data-tip="${GLOSSARY['LLP'].replace(/"/g,'&quot;')}">LLP</span> = bottom-half partials in stretched position (last set only)</div>
+      <div class="rule-item"><span class="tip" data-tip="${GLOSSARY['LLP'].replace(/"/g,'&quot;')}">LLP</span> = bottom-half partials on last set only — isolations only, never compounds</div>
       <div class="rule-item">No failure on <span class="tip" data-tip="${GLOSSARY['compounds'].replace(/"/g,'&quot;')}">compounds</span> — RPE &lt;10 always</div>
-      <div class="rule-item">Track pump on a 1–10 scale each session</div>
+      <div class="rule-item">Exercise RPE = allowed range. Weekly phase determines how deep to push into that range</div>
+      <div class="rule-item">Rest: compounds 2–3.5 min · machine compounds 2–2.5 min · isolations 1–1.5 min</div>
     </div>
   </div>
 
@@ -1912,12 +1955,11 @@ function toggleCard(cardId, e) {
   card.classList.toggle('open');
 }
 
-function toggleSet(dayId, exIdx, setIdx) {
-  const wasDone = state[dayId].sets[exIdx][setIdx] === true;
+function toggleSet(dayId, exId, setIdx) {
+  const wasDone = state[dayId].sets[exId][setIdx] === true;
 
   if (wasDone) {
-    // UNDO
-    state[dayId].sets[exIdx][setIdx] = false;
+    state[dayId].sets[exId][setIdx] = false;
     saveState();
     refreshCurrentDay(dayId);
     return;
@@ -1925,29 +1967,27 @@ function toggleSet(dayId, exIdx, setIdx) {
 
   requestNotificationPermission();
 
-  // COMPLETE SET — snapshot current weight to this specific set
-  const weightInput = document.getElementById(`weight-${dayId}-${exIdx}`);
+  const weightInput = document.getElementById(`weight-${dayId}-${exId}`);
   const wVal = weightInput ? weightInput.value.trim() : '';
   if (wVal) {
     if (!state[dayId].weights) state[dayId].weights = {};
-    state[dayId].weights[`${exIdx}_${setIdx}`] = wVal;
-    state[dayId].weights[exIdx] = wVal; // also update exercise-level default
+    state[dayId].weights[`${exId}_${setIdx}`] = wVal;
+    state[dayId].weights[exId] = wVal;
   }
 
-  state[dayId].sets[exIdx][setIdx] = true;
+  state[dayId].sets[exId][setIdx] = true;
   saveState();
   refreshCurrentDay(dayId);
 
-  // Find next set info for timer label
-  const day = DAYS.find(d => d.id === dayId);
-  const ex = day.exercises[exIdx];
-  const nextSetInEx = setIdx + 1 < ex.sets ? setIdx + 1 : null;
-  const nextEx = nextSetInEx === null ? day.exercises[exIdx + 1] : null;
-
-  // Workout finished — no rest needed, skip timer + beep
   if (isDayComplete(dayId)) {
     return;
   }
+
+  const day = DAYS.find(d => d.id === dayId);
+  const exIdx = day.exercises.findIndex(e => e.id === exId);
+  const ex = day.exercises[exIdx];
+  const nextSetInEx = setIdx + 1 < ex.sets ? setIdx + 1 : null;
+  const nextEx = nextSetInEx === null ? day.exercises[exIdx + 1] : null;
 
   let nextLabel = '';
   if (nextSetInEx !== null) {
@@ -1972,18 +2012,19 @@ function toggleSet(dayId, exIdx, setIdx) {
   startTimer(exerciseRest, () => { refreshCurrentDay(dayId); });
 }
 
-function saveWeight(dayId, exIdx) {
-  const input = document.getElementById(`weight-${dayId}-${exIdx}`);
+function saveWeight(dayId, exId) {
+  const input = document.getElementById(`weight-${dayId}-${exId}`);
   if (!input) return;
   const val = input.value.trim();
   if (!state[dayId].weights) state[dayId].weights = {};
-  state[dayId].weights[exIdx] = val;
+  state[dayId].weights[exId] = val;
   saveState();
-  // Update set weight displays inline
   const day = DAYS.find(d => d.id === dayId);
   if (!day) return;
-  for (let si = 0; si < day.exercises[exIdx].sets; si++) {
-    const btn = document.getElementById(`set-${dayId}-${exIdx}-${si}`);
+  const ex = day.exercises.find(e => e.id === exId);
+  if (!ex) return;
+  for (let si = 0; si < ex.sets; si++) {
+    const btn = document.getElementById(`set-${dayId}-${exId}-${si}`);
     if (!btn) continue;
     let wDiv = btn.querySelector('.set-weight');
     if (val) {
@@ -1995,15 +2036,14 @@ function saveWeight(dayId, exIdx) {
   }
 }
 
-function saveEffort(dayId, exIdx, level) {
+function saveEffort(dayId, exId, level) {
   if (!state[dayId].effort) state[dayId].effort = {};
-  const current = state[dayId].effort[exIdx];
-  state[dayId].effort[exIdx] = current === level ? '' : level;
+  const current = state[dayId].effort[exId];
+  state[dayId].effort[exId] = current === level ? '' : level;
   saveState();
-  // Update button states inline
-  document.querySelectorAll(`[id^="effort-${dayId}-${exIdx}-"]`).forEach(btn => {
+  document.querySelectorAll(`[id^="effort-${dayId}-${exId}-"]`).forEach(btn => {
     const btnLevel = btn.getAttribute('data-level');
-    btn.className = 'effort-btn' + (btnLevel === state[dayId].effort[exIdx] ? ` active-${btnLevel}` : '');
+    btn.className = 'effort-btn' + (btnLevel === state[dayId].effort[exId] ? ` active-${btnLevel}` : '');
   });
 }
 
@@ -2019,19 +2059,19 @@ function toggleProtocol(dayId, idx) {
   switchDay(dayId);
 }
 
-function skipSet(dayId, exIdx, setIdx) {
-  const current = state[dayId].sets[exIdx][setIdx];
+function skipSet(dayId, exId, setIdx) {
+  const current = state[dayId].sets[exId][setIdx];
   if (current === 'skipped') {
-    state[dayId].sets[exIdx][setIdx] = false;
+    state[dayId].sets[exId][setIdx] = false;
   } else if (current === false) {
-    state[dayId].sets[exIdx][setIdx] = 'skipped';
+    state[dayId].sets[exId][setIdx] = 'skipped';
   }
   saveState();
   refreshCurrentDay(dayId);
 }
 
-function skipExercise(dayId, exIdx) {
-  const sets = state[dayId].sets[exIdx];
+function skipExercise(dayId, exId) {
+  const sets = state[dayId].sets[exId];
   const allSkipped = sets.every(v => v === 'skipped');
   if (allSkipped) {
     for (let i = 0; i < sets.length; i++) sets[i] = false;
