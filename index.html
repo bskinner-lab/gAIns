@@ -1270,7 +1270,7 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.11</span></div>
+    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.12</span></div>
     <div class="header-subtitle">32M · Full Gym · Shoulder-Cautious</div>
     <div class="week-selector">
       <span class="week-selector-label">Week</span>
@@ -2189,6 +2189,7 @@ function notifyTimerDone() {
 
 // TIMER — timestamp-based so it survives backgrounding
 let timerInterval = null;
+let audioKeepAlive = null;
 let timerEndTime = null;   // absolute epoch ms when timer expires
 let timerTotal = 90;
 let currentRestTime = 90;
@@ -2197,8 +2198,28 @@ let timerMinimized = false;
 
 const CIRCUMFERENCE = 565; // 2 * π * 90
 
+function startAudioKeepAlive() {
+  if (audioKeepAlive) clearInterval(audioKeepAlive);
+  audioKeepAlive = setInterval(() => {
+    const ctx = getAudioCtx();
+    if (!ctx || ctx.state !== 'running') return;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    g.gain.value = 0;
+    osc.connect(g);
+    g.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.001);
+  }, 5000);
+}
+
+function stopAudioKeepAlive() {
+  if (audioKeepAlive) { clearInterval(audioKeepAlive); audioKeepAlive = null; }
+}
+
 function startTimer(seconds, onComplete) {
   primeAudio();
+  startAudioKeepAlive();
   clearInterval(timerInterval);
   timerTotal = seconds;
   timerEndTime = Date.now() + seconds * 1000;
@@ -2285,6 +2306,7 @@ function skipTimer() {
 function closeTimer() {
   timerEndTime = null;
   timerMinimized = false;
+  stopAudioKeepAlive();
   document.getElementById('timerOverlay').classList.remove('visible');
   document.getElementById('timerPill').classList.remove('visible');
 }
