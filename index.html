@@ -62,6 +62,37 @@
     margin-top: 2px;
   }
 
+  .program-selector {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+  }
+
+  .program-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .program-btn:hover {
+    color: var(--text);
+    border-color: #555;
+  }
+
+  .program-btn.active {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(232,255,71,0.08);
+  }
+
   .overall-progress {
     display: flex;
     align-items: center;
@@ -1270,12 +1301,16 @@
 <!-- HEADER -->
 <div class="header">
   <div>
-    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.12</span></div>
-    <div class="header-subtitle">32M · Full Gym · Shoulder-Cautious</div>
+    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.13</span></div>
+    <div class="header-subtitle" id="headerSubtitle">32M · Full Gym · Shoulder-Cautious</div>
+    <div class="program-selector" id="programSelector">
+      <button class="program-btn active" onclick="switchProgram(0)">Meso 1</button>
+      <button class="program-btn" onclick="switchProgram(1)">Meso 2</button>
+    </div>
     <div class="week-selector">
       <span class="week-selector-label">Week</span>
       <button class="week-btn" onclick="changeWeek(-1)">&#8249;</button>
-      <div class="week-display" id="weekDisplay">1 / 8</div>
+      <div class="week-display" id="weekDisplay">1 / —</div>
       <button class="week-btn" onclick="changeWeek(1)">&#8250;</button>
       <span class="week-phase" id="weekPhase">Foundation · RPE 6.5–7.5</span>
     </div>
@@ -1323,225 +1358,466 @@ const GLOSSARY = {
 
 const STORAGE_KEY = 'hypertrophy_state';
 
-function weekStorageKey(week) {
-  return `${STORAGE_KEY}_w${week}`;
+const PROGRAMS = [
+  {
+    id: 'meso1',
+    name: 'Mesocycle 1',
+    subtitle: '32M · Full Gym · Shoulder-Cautious',
+    totalWeeks: 8,
+    days: [
+      {
+        id: 'day1',
+        label: 'Day 1',
+        title: 'PUSH',
+        subtitle: 'Chest Bias · Shoulders · Triceps',
+        note: '🩺 Shoulder note: Keep elbows at ~60°, not flared. Neutral grip where possible. No behind-the-neck movements.',
+        exercises: [
+          { id: 'incline_db_press', name: 'Incline DB Press', sets: 4, reps: '6–10', rpe: '7–9', note: 'Neutral grip, elbows ~60° — primary chest builder', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+          { id: 'machine_chest_press', name: 'Machine Chest Press', sets: 3, reps: '10–12', rpe: '7–8', note: 'Shoulder-safe loading, great for controlled reps', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
+          { id: 'seated_db_press', name: 'Seated DB Shoulder Press', sets: 3, reps: '8–12', rpe: '7–8', note: 'Stop just below 90° if any shoulder discomfort', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+          { id: 'cable_chest_fly', name: 'Cable Chest Fly', sets: 3, reps: '12–15', rpe: '8', note: 'Low-to-high angle, full stretch at bottom', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'cable_lat_raise_push', name: 'Cable Lateral Raise', sets: 3, reps: '12–15 + LLP', rpe: '8–9', note: 'Cable keeps constant tension. Add partials at bottom on last set', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'rope_pushdown', name: 'Rope Pushdown', sets: 3, reps: '12–15', rpe: '8–9', note: 'Full extension at bottom, squeeze the tricep', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'overhead_cable_ext', name: 'Overhead Cable Extension', sets: 2, reps: '10–12', rpe: '8', note: 'Long head emphasis — great stretch', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+        ],
+        protocol: true,
+      },
+      {
+        id: 'day2',
+        label: 'Day 2',
+        title: 'PULL',
+        subtitle: 'Lat + Upper Back · Biceps',
+        note: '💪 Your bodyweight base makes pull work your strength. Face pulls protect the shoulder every session.',
+        exercises: [
+          { id: 'pullups_pulldown', name: 'Pull-Ups / Neutral Pulldown', sets: 4, reps: '6–10', rpe: '7–9', note: 'Add weight to pull-ups once 10 reps is easy', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+          { id: 'chest_supported_row', name: 'Chest-Supported Row', sets: 4, reps: '8–12', rpe: '7–9', note: 'Removes lower back fatigue, full ROM on every rep', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+          { id: 'single_arm_cable_row', name: 'Single-Arm Cable Row (lat bias)', sets: 3, reps: '10–12', rpe: '8', note: 'Drive elbow down and back, lean slightly away', llp: false, compound: false, rest: 90, restLabel: '1.5–2 min' },
+          { id: 'face_pulls', name: 'Face Pulls', sets: 3, reps: '15–20', rpe: '8', note: '⭐ KEY for shoulder health — never skip this', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'rear_delt_cable_fly', name: 'Rear Delt Cable Fly', sets: 3, reps: '12–15', rpe: '8–9', note: 'Arms nearly parallel to floor, lead with elbows', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'incline_db_curl', name: 'Incline DB Curl', sets: 3, reps: '10–12 + LLP', rpe: '8–9', note: 'Great stretch at bottom. Add partials on last set', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'hammer_curl', name: 'Hammer Curl', sets: 2, reps: '12–15', rpe: '8', note: 'Brachialis + forearm thickness', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+        ],
+        protocol: true,
+      },
+      {
+        id: 'day3',
+        label: 'Day 3',
+        title: 'LEGS',
+        subtitle: 'Quads · Hamstrings · Glutes · Core',
+        note: '🦵 If barbell bar position bothers shoulder, use Safety Bar Squat or Goblet Squat instead.',
+        exercises: [
+          { id: 'squat', name: 'Squat / Safety Bar Squat', sets: 4, reps: '6–10', rpe: '7–9', note: 'Safety bar removes shoulder load entirely if needed', llp: false, compound: true, rest: 210, restLabel: '2.5–3.5 min' },
+          { id: 'rdl', name: 'Romanian Deadlift', sets: 3, reps: '8–12', rpe: '7–8', note: 'Hinge focus, slow eccentric, feel the hamstring stretch', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+          { id: 'leg_curl', name: 'Leg Curl', sets: 3, reps: '12–15 + LLP', rpe: '8–9', note: 'Full stretch at bottom. Add partials on last set', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'leg_press', name: 'Leg Press', sets: 3, reps: '10–15', rpe: '8', note: 'High foot placement = more glutes/hamstrings', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
+          { id: 'walking_lunges', name: 'Walking Lunges', sets: 2, reps: '10 each leg', rpe: '8', note: 'Use dumbbells, controlled descent', llp: false, compound: false, rest: 120, restLabel: '1.5–2 min' },
+          { id: 'calf_raises', name: 'Calf Raises', sets: 4, reps: '12–20', rpe: '8–9', note: 'Pause and stretch at the bottom of every rep', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'core', name: 'Core', sets: 3, reps: '8–12', rpe: '8', note: 'Ab Wheel, Hanging Leg Raises, Pallof Press, or Cable Crunches', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+        ],
+        protocol: false,
+      },
+      {
+        id: 'day4',
+        label: 'Day 4',
+        title: 'UPPER',
+        subtitle: 'Hypertrophy Focus · High Volume',
+        note: '🔥 Higher volume, moderate weight, more time under tension.',
+        exercises: [
+          { id: 'cable_fly_upper', name: 'Cable Fly (low-to-high)', sets: 4, reps: '12–15', rpe: '8', note: 'Excellent chest stretch, shoulder-friendly angle', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'neutral_pulldown', name: 'Neutral Pulldown', sets: 3, reps: '10–12', rpe: '8', note: 'Neutral grip reduces shoulder stress', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
+          { id: 'chest_row_upper', name: 'Chest-Supported Row', sets: 3, reps: '10–12', rpe: '8', note: 'Focus on squeezing the upper back at the top', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+          { id: 'close_grip_bench', name: 'Close-Grip Bench Press', sets: 3, reps: '8–12', rpe: '8', note: 'Shoulder-width grip, elbows tucked', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+          { id: 'cable_lat_raise_upper', name: 'Cable Lateral Raise', sets: 3, reps: '15 + LLP', rpe: '9', note: 'Add bottom-half partials after reaching rep target', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'rear_delt_fly', name: 'Rear Delt Fly', sets: 3, reps: '12–15', rpe: '8–9', note: 'Pec deck or cables — squeeze rear delts', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'ez_bar_curl', name: 'EZ Bar Curl', sets: 3, reps: '10–12', rpe: '8–9', note: 'Easier on wrists and elbows than straight bar', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+        ],
+        protocol: true,
+      },
+      {
+        id: 'day5',
+        label: 'Day 5',
+        title: 'FULL BODY',
+        subtitle: 'Weak Points · Compound Finisher',
+        note: '🔁 Optional day. Use to bring up lagging muscle groups.',
+        exercises: [
+          { id: 'trap_bar_dl', name: 'Trap Bar Deadlift', sets: 3, reps: '5–8', rpe: '7–8', note: 'Neutral handles eliminate shoulder stress vs barbell', llp: false, compound: true, rest: 210, restLabel: '2.5–3.5 min' },
+          { id: 'dips', name: 'Dips (if shoulder OK)', sets: 3, reps: '8–12', rpe: '8', note: 'Upright torso = tricep focus. Lean forward = chest.', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+          { id: 'cable_pull_through', name: 'Cable Pull-Through', sets: 3, reps: '12–15', rpe: '8', note: 'Hip hinge pattern, good glute/hamstring finisher', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'seated_row', name: 'Seated Row', sets: 3, reps: '10–12', rpe: '8', note: 'Neutral grip, full stretch at the front', llp: false, compound: false, rest: 120, restLabel: '2 min' },
+          { id: 'optional_arms', name: 'Optional Arms / Delts', sets: 3, reps: '12–20', rpe: '8', note: 'Pick your weakest area — curls, laterals, or pushdowns', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+        ],
+        protocol: false,
+      },
+    ],
+    protocolItems: [
+      'Band Pull-Aparts — 2×20 before any pressing',
+      'Face Pulls — always included on pull days',
+      'External Rotation (band/cable) — 2×15 per arm',
+      'Stop immediately if sharp joint pain occurs',
+    ],
+    mesocycle: [
+      {
+        weeks: 'Weeks 1–2',
+        label: 'Foundation',
+        rpe: '6.5–7.5',
+        rir: '2–3 reps in reserve',
+        color: '#4eff91',
+        points: [
+          'Focus: technique + control',
+          '3–4 sec eccentric on every set',
+          '1 sec pause in stretched position',
+          'LLP mostly OFF — optional light LLP on cable lateral raises only',
+          'Stay near lower end of exercise RPE range',
+          'Baseline volume',
+        ],
+      },
+      {
+        weeks: 'Weeks 3–4',
+        label: 'Overload',
+        rpe: '7–8.5',
+        rir: '1–2 reps in reserve',
+        color: '#e8ff47',
+        points: [
+          '+1 set to: lateral delts, rear delts, biceps',
+          'LLP introduced gradually on isolations (last set)',
+          'Begin pushing toward mid-range of exercise RPE',
+        ],
+      },
+      {
+        weeks: 'Weeks 5–6',
+        label: 'High Stimulus',
+        rpe: '8–9',
+        rir: '1–2 RIR on most sets',
+        color: '#ff9f47',
+        points: [
+          'LLP fully integrated on selected isolations (last set)',
+          '+1 drop set per workout (laterals or curls)',
+          'Push toward upper end of exercise RPE range',
+          'Volume near MRV',
+        ],
+      },
+      {
+        weeks: 'Week 7',
+        label: 'Overreach',
+        rpe: '9–9.5',
+        rir: 'Isolations only near failure',
+        color: '#ff6b35',
+        points: [
+          '+1 set to weak points',
+          'Highest LLP usage — 2+ exercises per session',
+          'Optional rest-pause (isolation only)',
+          'Push top of exercise RPE range on isolations',
+          '⚠️ Monitor sleep + shoulder joints closely',
+        ],
+      },
+      {
+        weeks: 'Week 8',
+        label: 'Deload',
+        rpe: '6–7',
+        rir: 'Feel fresh, not fatigued',
+        color: '#8b8bff',
+        points: [
+          'Volume ↓ 50–60%',
+          'Intensity ↓ 10–15%',
+          'Remove ALL LLP, drop sets, intensity techniques',
+          'Stay at bottom of exercise RPE range',
+          'Goal: feel recovered and hungry to train',
+        ],
+      },
+    ],
+    weekPhases: [
+      { label: 'Foundation',     rpe: 'RPE 6.5–7.5', llp: false, color: '#4eff91' },
+      { label: 'Foundation',     rpe: 'RPE 6.5–7.5', llp: false, color: '#4eff91' },
+      { label: 'Overload',       rpe: 'RPE 7–8.5',   llp: true,  color: '#e8ff47' },
+      { label: 'Overload',       rpe: 'RPE 7–8.5',   llp: true,  color: '#e8ff47' },
+      { label: 'High Stimulus',  rpe: 'RPE 8–9',     llp: true,  color: '#ff9f47' },
+      { label: 'High Stimulus',  rpe: 'RPE 8–9',     llp: true,  color: '#ff9f47' },
+      { label: 'Overreach',      rpe: 'RPE 9–9.5',   llp: true,  color: '#ff6b35' },
+      { label: 'Deload',         rpe: 'RPE 6–7',     llp: false, color: '#8b8bff' },
+    ],
+  },
+  {
+    id: 'meso2',
+    name: 'Mesocycle 2',
+    subtitle: 'Delt + Upper Back Specialization',
+    totalWeeks: 8,
+    days: [
+      {
+        id: 'day1',
+        label: 'Day 1',
+        title: 'PUSH',
+        subtitle: 'Delt Bias · Chest · Triceps',
+        note: '🩺 Delt-focused push day. Keep elbows safe on presses, prioritize lateral delt volume.',
+        exercises: [
+          { id: 'm2_incline_smith', name: 'Incline Smith Press', sets: 4, reps: '5–8', rpe: '7–9', note: 'Controlled descent, slight incline for upper chest + front delt', llp: false, compound: true, rest: 165, restLabel: '2.5–3 min' },
+          { id: 'm2_landmine_press', name: 'Landmine Press', sets: 3, reps: '8–10', rpe: '7–8', note: 'Shoulder-friendly pressing angle, great for front delts', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+          { id: 'm2_cable_fly', name: 'Cable Fly', sets: 3, reps: '12–15', rpe: '8', note: 'Full stretch at bottom, squeeze at top', llp: false, compound: false, rest: 90, restLabel: '1.5–2 min' },
+          { id: 'm2_cable_lat_raise_d1', name: 'Cable Lateral Raise', sets: 4, reps: '12–20', rpe: '8–9', note: 'Primary delt builder — cable keeps constant tension', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'm2_lean_lat_raise', name: 'Lean-Away Lateral Raise', sets: 2, reps: '15–20', rpe: '8–9', note: 'Lengthened bias for lateral delt, lean away from anchor', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'm2_rope_pushdown_d1', name: 'Rope Pushdown', sets: 3, reps: '12–15', rpe: '8', note: 'Full extension at bottom, squeeze the tricep', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'm2_single_oh_ext', name: 'Single-Arm Overhead Extension', sets: 2, reps: '12–15', rpe: '8', note: 'Long head emphasis — great stretch overhead', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+        ],
+        protocol: true,
+      },
+      {
+        id: 'day2',
+        label: 'Day 2',
+        title: 'PULL',
+        subtitle: 'Upper Back Bias · Biceps',
+        note: '💪 Upper back density focus. Prioritize row and pulldown volume for thickness.',
+        exercises: [
+          { id: 'm2_weighted_pullup', name: 'Weighted Pull-Up', sets: 4, reps: '5–8', rpe: '7–9', note: 'Add weight progressively, full ROM', llp: false, compound: true, rest: 165, restLabel: '2.5–3 min' },
+          { id: 'm2_chest_row_d2', name: 'Chest-Supported Row', sets: 4, reps: '8–10', rpe: '7–9', note: 'Removes lower back fatigue, focus on upper back squeeze', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+          { id: 'm2_single_pulldown', name: 'Single-Arm Pulldown', sets: 3, reps: '10–12', rpe: '8', note: 'Mind-muscle connection on each side independently', llp: true, compound: false, rest: 90, restLabel: '1.5–2 min' },
+          { id: 'm2_rear_delt_row', name: 'Rear Delt Row', sets: 3, reps: '12–15', rpe: '8–9', note: 'Wide grip, elbows high for rear delt emphasis', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'm2_face_pull', name: 'Face Pull', sets: 3, reps: '15–20', rpe: '8', note: '⭐ Shoulder health + rear delt — never skip', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'm2_bayesian_curl', name: 'Bayesian Curl', sets: 3, reps: '10–15', rpe: '8–9', note: 'Cable behind you for max stretch on long head', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'm2_hammer_curl', name: 'Hammer Curl', sets: 2, reps: '12–15', rpe: '8', note: 'Brachialis + forearm thickness', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+        ],
+        protocol: true,
+      },
+      {
+        id: 'day3',
+        label: 'Day 3',
+        title: 'LEGS',
+        subtitle: 'Posterior Chain Bias · Quads · Core',
+        note: '🦵 Posterior chain emphasis — hamstrings, glutes, and calves get extra attention.',
+        exercises: [
+          { id: 'm2_ssb_squat', name: 'Safety Bar Squat', sets: 4, reps: '6–10', rpe: '7–9', note: 'Removes shoulder load entirely, great quad builder', llp: false, compound: true, rest: 210, restLabel: '2.5–3.5 min' },
+          { id: 'm2_bss', name: 'Bulgarian Split Squat', sets: 3, reps: '8–12', rpe: '8', note: 'Single-leg stability + quad/glute emphasis', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+          { id: 'm2_rdl', name: 'Romanian Deadlift', sets: 3, reps: '8–10', rpe: '7–8', note: 'Hinge focus, slow eccentric, feel the hamstring stretch', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+          { id: 'm2_seated_leg_curl', name: 'Seated Leg Curl', sets: 3, reps: '12–15', rpe: '8–9', note: 'Full stretch at bottom, squeeze at top', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'm2_leg_press', name: 'Leg Press', sets: 3, reps: '10–15', rpe: '8', note: 'High foot placement = more glutes/hamstrings', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
+          { id: 'm2_standing_calf', name: 'Standing Calf Raise', sets: 4, reps: '12–20', rpe: '8–9', note: 'Pause and stretch at the bottom of every rep', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'm2_hanging_leg_raise', name: 'Hanging Leg Raise', sets: 3, reps: '10–15', rpe: '8', note: 'Control the swing, focus on lower abs', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+        ],
+        protocol: false,
+      },
+      {
+        id: 'day4',
+        label: 'Day 4',
+        title: 'UPPER',
+        subtitle: 'Upper Hypertrophy · High Volume',
+        note: '🔥 High volume upper body — balanced push/pull with extra delt and back work.',
+        exercises: [
+          { id: 'm2_machine_press', name: 'Machine Chest Press', sets: 4, reps: '8–12', rpe: '7–8', note: 'Shoulder-safe loading, controlled reps', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
+          { id: 'm2_neutral_pulldown', name: 'Neutral Pulldown', sets: 3, reps: '10–12', rpe: '8', note: 'Neutral grip reduces shoulder stress', llp: true, compound: false, rest: 120, restLabel: '2 min' },
+          { id: 'm2_chest_row_d4', name: 'Chest-Supported Row', sets: 3, reps: '10–12', rpe: '8', note: 'Focus on squeezing the upper back at the top', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+          { id: 'm2_cg_smith', name: 'Close-Grip Smith Press', sets: 3, reps: '8–12', rpe: '8', note: 'Tricep-focused pressing, elbows tucked', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+          { id: 'm2_cable_lat_raise_d4', name: 'Cable Lateral Raise', sets: 3, reps: '15–20', rpe: '9', note: 'Add bottom-half partials after reaching rep target', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'm2_rear_delt_fly', name: 'Rear Delt Fly', sets: 3, reps: '12–15', rpe: '8–9', note: 'Pec deck or cables — squeeze rear delts', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'm2_ez_curl', name: 'EZ Bar Curl', sets: 3, reps: '10–12', rpe: '8–9', note: 'Easier on wrists and elbows than straight bar', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+        ],
+        protocol: true,
+      },
+      {
+        id: 'day5',
+        label: 'Day 5',
+        title: 'WEAK POINT',
+        subtitle: 'Pump Day · Delts · Arms · Core',
+        note: '🔁 Pump day — high reps, short rest, bring up weak points.',
+        exercises: [
+          { id: 'm2_cable_lat_raise_d5', name: 'Cable Lateral Raise', sets: 3, reps: '15–20', rpe: '8–9', note: 'Extra delt volume — light and controlled', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'm2_rear_delt_fly_d5', name: 'Rear Delt Fly', sets: 3, reps: '15–20', rpe: '8–9', note: 'High reps, focus on squeeze at the back', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'm2_cable_curl', name: 'Cable Curl', sets: 3, reps: '12–15', rpe: '8–9', note: 'Constant tension through full ROM', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'm2_rope_pushdown_d5', name: 'Rope Pushdown', sets: 3, reps: '12–15', rpe: '8–9', note: 'Full extension, squeeze tricep at bottom', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+          { id: 'm2_cable_crunch', name: 'Cable Crunch', sets: 3, reps: '12–15', rpe: '8', note: 'Controlled reps, don\'t use momentum', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+        ],
+        protocol: false,
+      },
+    ],
+    protocolItems: [
+      'Band Pull-Aparts — 2×20 before any pressing',
+      'Face Pulls — always included on pull days',
+      'External Rotation (band/cable) — 2×15 per arm',
+      'Stop immediately if sharp joint pain occurs',
+    ],
+    mesocycle: [
+      {
+        weeks: 'Weeks 1–2',
+        label: 'Foundation / Resensitization',
+        rpe: '6.5–7.5',
+        rir: '2–3 reps in reserve',
+        color: '#4eff91',
+        points: [
+          'Focus: technique + control',
+          'Slow eccentrics (3–4 sec first set)',
+          'Prioritize technique and control',
+          'LLP mostly OFF — optional light LLP on cable lateral raises only',
+          'No grinders or failure',
+          'Baseline volume',
+        ],
+      },
+      {
+        weeks: 'Weeks 3–4',
+        label: 'Progressive Overload',
+        rpe: '7–8.5',
+        rir: '1–2 reps in reserve',
+        color: '#e8ff47',
+        points: [
+          '+1 set to lateral delts and rear delts',
+          'LLP introduced on: cable lateral raise, bayesian curl, leg curl',
+          'Begin pushing final sets harder',
+        ],
+      },
+      {
+        weeks: 'Weeks 5–6',
+        label: 'Peak Hypertrophy',
+        rpe: '8–9',
+        rir: '1–2 RIR on most sets',
+        color: '#ff9f47',
+        points: [
+          'LLP on: cable lateral raise, rear delt fly, bayesian curl, leg curl',
+          '1 drop set per workout on isolation movements',
+          'Most sets 1–2 reps from failure',
+          'Volume near MRV',
+        ],
+      },
+      {
+        weeks: 'Week 7',
+        label: 'Controlled Overreach',
+        rpe: '9–9.5',
+        rir: 'Isolations only near failure',
+        color: '#ff6b35',
+        points: [
+          'Max LLP usage — up to 4 exercises per session',
+          'Optional rest-pause on isolation exercises only',
+          '⚠️ Monitor sleep and shoulder fatigue closely',
+        ],
+      },
+      {
+        weeks: 'Week 8',
+        label: 'Deload',
+        rpe: '6–7',
+        rir: 'Feel fresh, not fatigued',
+        color: '#8b8bff',
+        points: [
+          'Volume ↓ 50–60%',
+          'Intensity ↓ 10–15%',
+          'Remove ALL LLP, drop sets, intensity techniques',
+          'Focus on recovery and movement quality',
+          'Goal: feel recovered and hungry to train',
+        ],
+      },
+    ],
+    weekPhases: [
+      { label: 'Foundation',          rpe: 'RPE 6.5–7.5', llp: false, color: '#4eff91' },
+      { label: 'Foundation',          rpe: 'RPE 6.5–7.5', llp: false, color: '#4eff91' },
+      { label: 'Progressive Overload', rpe: 'RPE 7–8.5',  llp: true,  color: '#e8ff47' },
+      { label: 'Progressive Overload', rpe: 'RPE 7–8.5',  llp: true,  color: '#e8ff47' },
+      { label: 'Peak Hypertrophy',    rpe: 'RPE 8–9',     llp: true,  color: '#ff9f47' },
+      { label: 'Peak Hypertrophy',    rpe: 'RPE 8–9',     llp: true,  color: '#ff9f47' },
+      { label: 'Controlled Overreach', rpe: 'RPE 9–9.5',  llp: true,  color: '#ff6b35' },
+      { label: 'Deload',              rpe: 'RPE 6–7',     llp: false, color: '#8b8bff' },
+    ],
+  },
+];
+
+let DAYS = PROGRAMS[0].days;
+let MESOCYCLE = PROGRAMS[0].mesocycle;
+let WEEK_PHASES = PROGRAMS[0].weekPhases;
+let PROTOCOL_ITEMS = PROGRAMS[0].protocolItems;
+
+// PROGRAM TRACKING
+let currentProgramIdx = 0;
+
+function currentProgramId() {
+  return PROGRAMS[currentProgramIdx].id;
 }
 
-const DAYS = [
-  {
-    id: 'day1',
-    label: 'Day 1',
-    title: 'PUSH',
-    subtitle: 'Chest Bias · Shoulders · Triceps',
-    note: '🩺 Shoulder note: Keep elbows at ~60°, not flared. Neutral grip where possible. No behind-the-neck movements.',
-    exercises: [
-      { id: 'incline_db_press', name: 'Incline DB Press', sets: 4, reps: '6–10', rpe: '7–9', note: 'Neutral grip, elbows ~60° — primary chest builder', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
-      { id: 'machine_chest_press', name: 'Machine Chest Press', sets: 3, reps: '10–12', rpe: '7–8', note: 'Shoulder-safe loading, great for controlled reps', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
-      { id: 'seated_db_press', name: 'Seated DB Shoulder Press', sets: 3, reps: '8–12', rpe: '7–8', note: 'Stop just below 90° if any shoulder discomfort', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
-      { id: 'cable_chest_fly', name: 'Cable Chest Fly', sets: 3, reps: '12–15', rpe: '8', note: 'Low-to-high angle, full stretch at bottom', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
-      { id: 'cable_lat_raise_push', name: 'Cable Lateral Raise', sets: 3, reps: '12–15 + LLP', rpe: '8–9', note: 'Cable keeps constant tension. Add partials at bottom on last set', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
-      { id: 'rope_pushdown', name: 'Rope Pushdown', sets: 3, reps: '12–15', rpe: '8–9', note: 'Full extension at bottom, squeeze the tricep', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
-      { id: 'overhead_cable_ext', name: 'Overhead Cable Extension', sets: 2, reps: '10–12', rpe: '8', note: 'Long head emphasis — great stretch', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
-    ],
-    protocol: true,
-  },
-  {
-    id: 'day2',
-    label: 'Day 2',
-    title: 'PULL',
-    subtitle: 'Lat + Upper Back · Biceps',
-    note: '💪 Your bodyweight base makes pull work your strength. Face pulls protect the shoulder every session.',
-    exercises: [
-      { id: 'pullups_pulldown', name: 'Pull-Ups / Neutral Pulldown', sets: 4, reps: '6–10', rpe: '7–9', note: 'Add weight to pull-ups once 10 reps is easy', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
-      { id: 'chest_supported_row', name: 'Chest-Supported Row', sets: 4, reps: '8–12', rpe: '7–9', note: 'Removes lower back fatigue, full ROM on every rep', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
-      { id: 'single_arm_cable_row', name: 'Single-Arm Cable Row (lat bias)', sets: 3, reps: '10–12', rpe: '8', note: 'Drive elbow down and back, lean slightly away', llp: false, compound: false, rest: 90, restLabel: '1.5–2 min' },
-      { id: 'face_pulls', name: 'Face Pulls', sets: 3, reps: '15–20', rpe: '8', note: '⭐ KEY for shoulder health — never skip this', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
-      { id: 'rear_delt_cable_fly', name: 'Rear Delt Cable Fly', sets: 3, reps: '12–15', rpe: '8–9', note: 'Arms nearly parallel to floor, lead with elbows', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
-      { id: 'incline_db_curl', name: 'Incline DB Curl', sets: 3, reps: '10–12 + LLP', rpe: '8–9', note: 'Great stretch at bottom. Add partials on last set', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
-      { id: 'hammer_curl', name: 'Hammer Curl', sets: 2, reps: '12–15', rpe: '8', note: 'Brachialis + forearm thickness', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
-    ],
-    protocol: true,
-  },
-  {
-    id: 'day3',
-    label: 'Day 3',
-    title: 'LEGS',
-    subtitle: 'Quads · Hamstrings · Glutes · Core',
-    note: '🦵 If barbell bar position bothers shoulder, use Safety Bar Squat or Goblet Squat instead.',
-    exercises: [
-      { id: 'squat', name: 'Squat / Safety Bar Squat', sets: 4, reps: '6–10', rpe: '7–9', note: 'Safety bar removes shoulder load entirely if needed', llp: false, compound: true, rest: 210, restLabel: '2.5–3.5 min' },
-      { id: 'rdl', name: 'Romanian Deadlift', sets: 3, reps: '8–12', rpe: '7–8', note: 'Hinge focus, slow eccentric, feel the hamstring stretch', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
-      { id: 'leg_curl', name: 'Leg Curl', sets: 3, reps: '12–15 + LLP', rpe: '8–9', note: 'Full stretch at bottom. Add partials on last set', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
-      { id: 'leg_press', name: 'Leg Press', sets: 3, reps: '10–15', rpe: '8', note: 'High foot placement = more glutes/hamstrings', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
-      { id: 'walking_lunges', name: 'Walking Lunges', sets: 2, reps: '10 each leg', rpe: '8', note: 'Use dumbbells, controlled descent', llp: false, compound: false, rest: 120, restLabel: '1.5–2 min' },
-      { id: 'calf_raises', name: 'Calf Raises', sets: 4, reps: '12–20', rpe: '8–9', note: 'Pause and stretch at the bottom of every rep', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
-      { id: 'core', name: 'Core', sets: 3, reps: '8–12', rpe: '8', note: 'Ab Wheel, Hanging Leg Raises, Pallof Press, or Cable Crunches', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
-    ],
-    protocol: false,
-  },
-  {
-    id: 'day4',
-    label: 'Day 4',
-    title: 'UPPER',
-    subtitle: 'Hypertrophy Focus · High Volume',
-    note: '🔥 Higher volume, moderate weight, more time under tension.',
-    exercises: [
-      { id: 'cable_fly_upper', name: 'Cable Fly (low-to-high)', sets: 4, reps: '12–15', rpe: '8', note: 'Excellent chest stretch, shoulder-friendly angle', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
-      { id: 'neutral_pulldown', name: 'Neutral Pulldown', sets: 3, reps: '10–12', rpe: '8', note: 'Neutral grip reduces shoulder stress', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
-      { id: 'chest_row_upper', name: 'Chest-Supported Row', sets: 3, reps: '10–12', rpe: '8', note: 'Focus on squeezing the upper back at the top', llp: false, compound: true, rest: 120, restLabel: '2 min' },
-      { id: 'close_grip_bench', name: 'Close-Grip Bench Press', sets: 3, reps: '8–12', rpe: '8', note: 'Shoulder-width grip, elbows tucked', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
-      { id: 'cable_lat_raise_upper', name: 'Cable Lateral Raise', sets: 3, reps: '15 + LLP', rpe: '9', note: 'Add bottom-half partials after reaching rep target', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
-      { id: 'rear_delt_fly', name: 'Rear Delt Fly', sets: 3, reps: '12–15', rpe: '8–9', note: 'Pec deck or cables — squeeze rear delts', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
-      { id: 'ez_bar_curl', name: 'EZ Bar Curl', sets: 3, reps: '10–12', rpe: '8–9', note: 'Easier on wrists and elbows than straight bar', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
-    ],
-    protocol: true,
-  },
-  {
-    id: 'day5',
-    label: 'Day 5',
-    title: 'FULL BODY',
-    subtitle: 'Weak Points · Compound Finisher',
-    note: '🔁 Optional day. Use to bring up lagging muscle groups.',
-    exercises: [
-      { id: 'trap_bar_dl', name: 'Trap Bar Deadlift', sets: 3, reps: '5–8', rpe: '7–8', note: 'Neutral handles eliminate shoulder stress vs barbell', llp: false, compound: true, rest: 210, restLabel: '2.5–3.5 min' },
-      { id: 'dips', name: 'Dips (if shoulder OK)', sets: 3, reps: '8–12', rpe: '8', note: 'Upright torso = tricep focus. Lean forward = chest.', llp: false, compound: true, rest: 120, restLabel: '2 min' },
-      { id: 'cable_pull_through', name: 'Cable Pull-Through', sets: 3, reps: '12–15', rpe: '8', note: 'Hip hinge pattern, good glute/hamstring finisher', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
-      { id: 'seated_row', name: 'Seated Row', sets: 3, reps: '10–12', rpe: '8', note: 'Neutral grip, full stretch at the front', llp: false, compound: false, rest: 120, restLabel: '2 min' },
-      { id: 'optional_arms', name: 'Optional Arms / Delts', sets: 3, reps: '12–20', rpe: '8', note: 'Pick your weakest area — curls, laterals, or pushdowns', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
-    ],
-    protocol: false,
-  },
-];
+function weekStorageKey(week) {
+  return `${STORAGE_KEY}_${currentProgramId()}_w${week}`;
+}
 
-const PROTOCOL_ITEMS = [
-  'Band Pull-Aparts — 2×20 before any pressing',
-  'Face Pulls — always included on pull days',
-  'External Rotation (band/cable) — 2×15 per arm',
-  'Stop immediately if sharp joint pain occurs',
-];
-
-const MESOCYCLE = [
-  {
-    weeks: 'Weeks 1–2',
-    label: 'Foundation',
-    rpe: '6.5–7.5',
-    rir: '2–3 reps in reserve',
-    color: '#4eff91',
-    points: [
-      'Focus: technique + control',
-      '3–4 sec eccentric on every set',
-      '1 sec pause in stretched position',
-      'LLP mostly OFF — optional light LLP on cable lateral raises only',
-      'Stay near lower end of exercise RPE range',
-      'Baseline volume',
-    ],
-  },
-  {
-    weeks: 'Weeks 3–4',
-    label: 'Overload',
-    rpe: '7–8.5',
-    rir: '1–2 reps in reserve',
-    color: '#e8ff47',
-    points: [
-      '+1 set to: lateral delts, rear delts, biceps',
-      'LLP introduced gradually on isolations (last set)',
-      'Begin pushing toward mid-range of exercise RPE',
-    ],
-  },
-  {
-    weeks: 'Weeks 5–6',
-    label: 'High Stimulus',
-    rpe: '8–9',
-    rir: '1–2 RIR on most sets',
-    color: '#ff9f47',
-    points: [
-      'LLP fully integrated on selected isolations (last set)',
-      '+1 drop set per workout (laterals or curls)',
-      'Push toward upper end of exercise RPE range',
-      'Volume near MRV',
-    ],
-  },
-  {
-    weeks: 'Week 7',
-    label: 'Overreach',
-    rpe: '9–9.5',
-    rir: 'Isolations only near failure',
-    color: '#ff6b35',
-    points: [
-      '+1 set to weak points',
-      'Highest LLP usage — 2+ exercises per session',
-      'Optional rest-pause (isolation only)',
-      'Push top of exercise RPE range on isolations',
-      '⚠️ Monitor sleep + shoulder joints closely',
-    ],
-  },
-  {
-    weeks: 'Week 8',
-    label: 'Deload',
-    rpe: '6–7',
-    rir: 'Feel fresh, not fatigued',
-    color: '#8b8bff',
-    points: [
-      'Volume ↓ 50–60%',
-      'Intensity ↓ 10–15%',
-      'Remove ALL LLP, drop sets, intensity techniques',
-      'Stay at bottom of exercise RPE range',
-      'Goal: feel recovered and hungry to train',
-    ],
-  },
-];
+function weekKey() {
+  return `hypertrophy_week_${currentProgramId()}`;
+}
 
 // WEEK TRACKING
-const WEEK_PHASES = [
-  { label: 'Foundation',     rpe: 'RPE 6.5–7.5', llp: false, color: '#4eff91' },
-  { label: 'Foundation',     rpe: 'RPE 6.5–7.5', llp: false, color: '#4eff91' },
-  { label: 'Overload',       rpe: 'RPE 7–8.5',   llp: true,  color: '#e8ff47' },
-  { label: 'Overload',       rpe: 'RPE 7–8.5',   llp: true,  color: '#e8ff47' },
-  { label: 'High Stimulus',  rpe: 'RPE 8–9',     llp: true,  color: '#ff9f47' },
-  { label: 'High Stimulus',  rpe: 'RPE 8–9',     llp: true,  color: '#ff9f47' },
-  { label: 'Overreach',      rpe: 'RPE 9–9.5',   llp: true,  color: '#ff6b35' },
-  { label: 'Deload',         rpe: 'RPE 6–7',     llp: false, color: '#8b8bff' },
-];
-
 let currentWeek = 1;
 
 function loadWeek() {
-  try { currentWeek = parseInt(localStorage.getItem('hypertrophy_week') || '1'); } catch(e) {}
+  try { currentWeek = parseInt(localStorage.getItem(weekKey()) || '1'); } catch(e) {}
+  const maxWeeks = PROGRAMS[currentProgramIdx].totalWeeks;
   if (isNaN(currentWeek) || currentWeek < 1) currentWeek = 1;
-  if (currentWeek > 8) currentWeek = 8;
+  if (currentWeek > maxWeeks) currentWeek = maxWeeks;
 }
 
 function saveWeek() {
-  try { localStorage.setItem('hypertrophy_week', currentWeek); } catch(e) {}
+  try { localStorage.setItem(weekKey(), currentWeek); } catch(e) {}
+}
+
+function loadProgram() {
+  try {
+    const saved = parseInt(localStorage.getItem('hypertrophy_program') || '0');
+    if (!isNaN(saved) && saved >= 0 && saved < PROGRAMS.length) currentProgramIdx = saved;
+  } catch(e) {}
+}
+
+function saveProgram() {
+  try { localStorage.setItem('hypertrophy_program', currentProgramIdx); } catch(e) {}
 }
 
 function changeWeek(delta) {
-  currentWeek = Math.min(8, Math.max(1, currentWeek + delta));
+  const maxWeeks = PROGRAMS[currentProgramIdx].totalWeeks;
+  currentWeek = Math.min(maxWeeks, Math.max(1, currentWeek + delta));
   saveWeek();
   initState();
   updateWeekDisplay();
   updateOverallProgress();
-  // Re-render current day so RPE context note updates
   if (currentDayId !== 'info') switchDay(currentDayId);
 }
 
 function updateWeekDisplay() {
   const phase = WEEK_PHASES[currentWeek - 1];
-  document.getElementById('weekDisplay').textContent = `${currentWeek} / 8`;
+  const maxWeeks = PROGRAMS[currentProgramIdx].totalWeeks;
+  document.getElementById('weekDisplay').textContent = `${currentWeek} / ${maxWeeks}`;
   const phaseEl = document.getElementById('weekPhase');
   phaseEl.textContent = `${phase.label} · ${phase.rpe}`;
   phaseEl.style.color = phase.color;
 }
 
+function updateProgramSelector() {
+  document.querySelectorAll('.program-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', i === currentProgramIdx);
+  });
+  document.getElementById('headerSubtitle').textContent = PROGRAMS[currentProgramIdx].subtitle;
+}
+
+function rebuildLegacyIdMap() {
+  Object.keys(LEGACY_ID_MAP).forEach(k => delete LEGACY_ID_MAP[k]);
+  DAYS.forEach(day => {
+    LEGACY_ID_MAP[day.id] = {};
+    day.exercises.forEach((ex, i) => { LEGACY_ID_MAP[day.id][i] = ex.id; });
+  });
+}
+
+let programInitialized = false;
+function switchProgram(idx) {
+  if (programInitialized && idx === currentProgramIdx) return;
+  programInitialized = true;
+  const prog = PROGRAMS[idx];
+  currentProgramIdx = idx;
+  DAYS = prog.days;
+  MESOCYCLE = prog.mesocycle;
+  WEEK_PHASES = prog.weekPhases;
+  PROTOCOL_ITEMS = prog.protocolItems;
+  rebuildLegacyIdMap();
+  saveProgram();
+  loadWeek();
+  initState();
+  advanceToCurrentWeek();
+  updateWeekDisplay();
+  updateProgramSelector();
+  switchDay(getStartDay());
+  updateOverallProgress();
+}
+
 // STATE — sets[exId][si] = false | true | 'skipped', weights[exId] = number|null
 let state = {};
 
-// Build map of old numeric index → exercise id for each day
 const LEGACY_ID_MAP = {};
-DAYS.forEach(day => {
-  LEGACY_ID_MAP[day.id] = {};
-  day.exercises.forEach((ex, i) => { LEGACY_ID_MAP[day.id][i] = ex.id; });
-});
+rebuildLegacyIdMap();
 
 function migrateDayState(dayId, sd) {
   if (!sd || !sd.sets) return sd;
@@ -1635,12 +1911,30 @@ function migrateOldState() {
     const parsed = JSON.parse(old);
     const dayIds = DAYS.map(d => d.id);
     if (!dayIds.some(id => parsed[id])) return;
-    // Only migrate if week 1 has no data yet
     if (!localStorage.getItem(weekStorageKey(1))) {
       localStorage.setItem(weekStorageKey(1), old);
     }
     localStorage.removeItem(STORAGE_KEY);
   } catch(e) {}
+}
+
+function migrateToMultiProgram() {
+  if (localStorage.getItem('hypertrophy_migrated_v3')) return;
+  for (let w = 1; w <= 8; w++) {
+    const oldKey = `${STORAGE_KEY}_w${w}`;
+    const newKey = `${STORAGE_KEY}_meso1_w${w}`;
+    const data = localStorage.getItem(oldKey);
+    if (data && !localStorage.getItem(newKey)) {
+      localStorage.setItem(newKey, data);
+      localStorage.removeItem(oldKey);
+    }
+  }
+  const oldWeek = localStorage.getItem('hypertrophy_week');
+  if (oldWeek && !localStorage.getItem('hypertrophy_week_meso1')) {
+    localStorage.setItem('hypertrophy_week_meso1', oldWeek);
+    localStorage.removeItem('hypertrophy_week');
+  }
+  localStorage.setItem('hypertrophy_migrated_v3', '1');
 }
 
 function isResolved(v) { return v === true || v === 'skipped'; }
@@ -1870,7 +2164,7 @@ function renderDay(day) {
 
 function renderInfoPanel() {
   let html = `<div class="meso-section">
-    <div class="meso-title">8-WEEK MESOCYCLE</div>
+    <div class="meso-title">${PROGRAMS[currentProgramIdx].totalWeeks}-WEEK MESOCYCLE — ${PROGRAMS[currentProgramIdx].name.toUpperCase()}</div>
     <div class="meso-subtitle">Progressive overload structured in phases</div>
     <div class="meso-cards">
   `;
@@ -2418,14 +2712,21 @@ document.addEventListener('click', primeAudio, { once: true });
 
 // EXPORT / IMPORT
 function exportData() {
-  const allWeeks = {};
-  for (let w = 1; w <= 8; w++) {
-    try {
-      const d = JSON.parse(localStorage.getItem(weekStorageKey(w)) || '{}');
-      if (Object.keys(d).length) allWeeks[w] = d;
-    } catch(e) {}
-  }
-  const data = { weeks: allWeeks, currentWeek, version: 2 };
+  const savedProgIdx = currentProgramIdx;
+  const allPrograms = {};
+  PROGRAMS.forEach((prog, pi) => {
+    const weeks = {};
+    for (let w = 1; w <= prog.totalWeeks; w++) {
+      try {
+        const key = `${STORAGE_KEY}_${prog.id}_w${w}`;
+        const d = JSON.parse(localStorage.getItem(key) || '{}');
+        if (Object.keys(d).length) weeks[w] = d;
+      } catch(e) {}
+    }
+    const weekNum = parseInt(localStorage.getItem(`hypertrophy_week_${prog.id}`) || '1');
+    allPrograms[prog.id] = { weeks, currentWeek: weekNum };
+  });
+  const data = { programs: allPrograms, currentProgram: savedProgIdx, version: 3 };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2443,29 +2744,32 @@ function importData(event) {
   reader.onload = function(e) {
     try {
       const data = JSON.parse(e.target.result);
-      if (!data.currentWeek) { alert('Invalid backup file.'); return; }
-      const dayIds = DAYS.map(d => d.id);
 
-      if (data.version === 2 && data.weeks) {
-        // New per-week format
-        for (const [w, wState] of Object.entries(data.weeks)) {
-          localStorage.setItem(weekStorageKey(w), JSON.stringify(wState));
+      if (data.version === 3 && data.programs) {
+        for (const [progId, progData] of Object.entries(data.programs)) {
+          for (const [w, wState] of Object.entries(progData.weeks)) {
+            localStorage.setItem(`${STORAGE_KEY}_${progId}_w${w}`, JSON.stringify(wState));
+          }
+          localStorage.setItem(`hypertrophy_week_${progId}`, progData.currentWeek);
         }
-      } else if (data.state) {
-        // Legacy single-state format — import as current week
-        const hasValidDays = dayIds.some(id => data.state[id]);
-        if (!hasValidDays) { alert('Invalid backup file — no matching workout data found.'); return; }
-        localStorage.setItem(weekStorageKey(data.currentWeek), JSON.stringify(data.state));
+        if (typeof data.currentProgram === 'number') {
+          currentProgramIdx = data.currentProgram;
+          saveProgram();
+        }
+      } else if (data.version === 2 && data.weeks) {
+        if (!data.currentWeek) { alert('Invalid backup file.'); return; }
+        for (const [w, wState] of Object.entries(data.weeks)) {
+          localStorage.setItem(`${STORAGE_KEY}_meso1_w${w}`, JSON.stringify(wState));
+        }
+        localStorage.setItem('hypertrophy_week_meso1', data.currentWeek);
+      } else if (data.state && data.currentWeek) {
+        localStorage.setItem(`${STORAGE_KEY}_meso1_w${data.currentWeek}`, JSON.stringify(data.state));
+        localStorage.setItem('hypertrophy_week_meso1', data.currentWeek);
       } else {
         alert('Invalid backup file.'); return;
       }
 
-      currentWeek = data.currentWeek;
-      saveWeek();
-      initState();
-      updateWeekDisplay();
-      switchDay(currentDayId);
-      updateOverallProgress();
+      switchProgram(currentProgramIdx);
     } catch (err) {
       alert('Could not read backup file.');
     }
@@ -2496,7 +2800,8 @@ function getStartDay() {
 
 function advanceToCurrentWeek() {
   // If current week is fully complete, advance to next incomplete week
-  while (currentWeek < 8 && isWeekComplete()) {
+  const maxWeeks = PROGRAMS[currentProgramIdx].totalWeeks;
+  while (currentWeek < maxWeeks && isWeekComplete()) {
     currentWeek++;
     saveWeek();
     initState();
@@ -2556,13 +2861,10 @@ function advanceToCurrentWeek() {
 })();
 
 // INIT
-loadWeek();
 migrateOldState();
-initState();
-advanceToCurrentWeek();
-updateWeekDisplay();
-switchDay(getStartDay());
-updateOverallProgress();
+migrateToMultiProgram();
+loadProgram();
+switchProgram(currentProgramIdx);
 </script>
 </body>
 </html>
