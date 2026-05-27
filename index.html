@@ -477,6 +477,110 @@
   }
   .confirm-btn.ok:hover { background: rgba(232,255,71,0.2); }
 
+  .swap-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 6px;
+    transition: color 0.15s;
+    line-height: 1;
+  }
+  .swap-btn:hover { color: var(--accent); }
+  .swap-btn.swapped { color: var(--green); }
+
+  .swap-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(4px);
+    z-index: 1001;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .swap-overlay.visible { display: flex; }
+
+  .swap-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    max-width: 360px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .swap-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .swap-current {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 16px;
+    letter-spacing: 0.5px;
+  }
+
+  .swap-option {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .swap-option:hover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+  .swap-option.active { border-color: var(--green); background: rgba(78,255,145,0.06); }
+
+  .swap-option-name {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .swap-option-meta {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+
+  .swap-option-note {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.3;
+  }
+
+  .swap-option-revert {
+    border-style: dashed;
+  }
+
+  .swap-cancel {
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+  }
+  .swap-cancel:hover { color: var(--text); border-color: #555; }
+
   .set-weight {
     font-size: 10px;
     color: var(--accent);
@@ -1298,10 +1402,19 @@
   </div>
 </div>
 
+<div class="swap-overlay" id="swapOverlay">
+  <div class="swap-box">
+    <div class="swap-title">SWAP EXERCISE</div>
+    <div class="swap-current" id="swapCurrent"></div>
+    <div id="swapList"></div>
+    <button class="swap-cancel" onclick="closeSwapPicker()">Cancel</button>
+  </div>
+</div>
+
 <!-- HEADER -->
 <div class="header">
   <div>
-    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.13</span></div>
+    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.14</span></div>
     <div class="header-subtitle" id="headerSubtitle">32M · Full Gym · Shoulder-Cautious</div>
     <div class="program-selector" id="programSelector">
       <button class="program-btn active" onclick="switchProgram(0)">Meso 1</button>
@@ -1713,6 +1826,247 @@ const PROGRAMS = [
   },
 ];
 
+const EXERCISE_ALTERNATIVES = {
+  // ── Meso 1 ──
+  // Day 1 — Push
+  'incline_db_press': [
+    { id: 'alt_incline_bb', name: 'Incline Barbell Press', sets: 4, reps: '6–10', rpe: '7–9', note: 'Classic barbell variation, wider grip = more chest', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+    { id: 'alt_incline_smith', name: 'Incline Smith Press', sets: 4, reps: '6–10', rpe: '7–9', note: 'Guided path, good for heavy loads without spotter', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+    { id: 'alt_incline_hammer', name: 'Incline Hammer Strength', sets: 4, reps: '8–12', rpe: '7–9', note: 'Machine pressing, great for controlled reps', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+  ],
+  'machine_chest_press': [
+    { id: 'alt_flat_db', name: 'Flat DB Press', sets: 3, reps: '8–12', rpe: '7–8', note: 'Free weight variation, greater ROM', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+    { id: 'alt_hammer_press', name: 'Hammer Strength Press', sets: 3, reps: '10–12', rpe: '7–8', note: 'Converging press path for natural movement', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
+  ],
+  'seated_db_press': [
+    { id: 'alt_machine_ohp', name: 'Machine Shoulder Press', sets: 3, reps: '8–12', rpe: '7–8', note: 'Guided path, easier on stabilizers', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+    { id: 'alt_landmine_press_m1', name: 'Landmine Press', sets: 3, reps: '8–10', rpe: '7–8', note: 'Shoulder-friendly pressing angle', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+  ],
+  'cable_chest_fly': [
+    { id: 'alt_pec_deck', name: 'Pec Deck', sets: 3, reps: '12–15', rpe: '8', note: 'Machine fly, constant tension throughout', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_db_fly', name: 'Incline DB Fly', sets: 3, reps: '12–15', rpe: '8', note: 'Great stretch at bottom, control the eccentric', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'cable_lat_raise_push': [
+    { id: 'alt_db_lat_raise', name: 'DB Lateral Raise', sets: 3, reps: '12–15', rpe: '8–9', note: 'Classic dumbbell variation, control the weight', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_machine_lat_raise', name: 'Machine Lateral Raise', sets: 3, reps: '12–15', rpe: '8–9', note: 'Machine provides consistent resistance curve', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'rope_pushdown': [
+    { id: 'alt_v_bar_pushdown', name: 'V-Bar Pushdown', sets: 3, reps: '12–15', rpe: '8–9', note: 'V-bar allows heavier loads', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_straight_bar_pd', name: 'Straight Bar Pushdown', sets: 3, reps: '12–15', rpe: '8–9', note: 'Overhand grip emphasizes lateral head', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'overhead_cable_ext': [
+    { id: 'alt_skull_crusher', name: 'Skull Crushers (EZ Bar)', sets: 2, reps: '10–12', rpe: '8', note: 'Lying tricep extension, great long head stretch', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_db_oh_ext', name: 'DB Overhead Extension', sets: 2, reps: '10–12', rpe: '8', note: 'Single dumbbell, both hands, deep stretch', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  // Day 2 — Pull
+  'pullups_pulldown': [
+    { id: 'alt_lat_pulldown', name: 'Wide-Grip Lat Pulldown', sets: 4, reps: '8–12', rpe: '7–9', note: 'Pronated grip, good for lat width', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+    { id: 'alt_assisted_pullup', name: 'Assisted Pull-Up Machine', sets: 4, reps: '8–12', rpe: '7–9', note: 'Build pull-up strength progressively', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+  ],
+  'chest_supported_row': [
+    { id: 'alt_t_bar_row', name: 'T-Bar Row', sets: 4, reps: '8–12', rpe: '7–9', note: 'Neutral grip option, great for thickness', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+    { id: 'alt_machine_row', name: 'Machine Row', sets: 4, reps: '8–12', rpe: '7–9', note: 'Chest pad removes lower back fatigue', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+    { id: 'alt_seal_row', name: 'Seal Row', sets: 4, reps: '8–12', rpe: '7–9', note: 'Lying on bench, strict upper back isolation', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+  ],
+  'single_arm_cable_row': [
+    { id: 'alt_db_row', name: 'Single-Arm DB Row', sets: 3, reps: '10–12', rpe: '8', note: 'Classic dumbbell row, brace on bench', llp: false, compound: false, rest: 90, restLabel: '1.5–2 min' },
+    { id: 'alt_meadows_row', name: 'Meadows Row', sets: 3, reps: '10–12', rpe: '8', note: 'Landmine-based row, unique angle', llp: false, compound: false, rest: 90, restLabel: '1.5–2 min' },
+  ],
+  'rear_delt_cable_fly': [
+    { id: 'alt_reverse_pec_deck', name: 'Reverse Pec Deck', sets: 3, reps: '12–15', rpe: '8–9', note: 'Machine isolation for rear delts', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_bent_over_rear', name: 'Bent-Over Rear Delt Fly', sets: 3, reps: '12–15', rpe: '8–9', note: 'DB variation, hinge forward ~45°', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'incline_db_curl': [
+    { id: 'alt_preacher_curl', name: 'Preacher Curl', sets: 3, reps: '10–12', rpe: '8–9', note: 'Great for bicep peak, prevents cheating', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_bayesian_curl_m1', name: 'Bayesian Curl', sets: 3, reps: '10–12', rpe: '8–9', note: 'Cable behind you for max long head stretch', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'hammer_curl': [
+    { id: 'alt_rope_curl', name: 'Rope Cable Curl', sets: 2, reps: '12–15', rpe: '8', note: 'Neutral grip curl with constant cable tension', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_cross_body_curl', name: 'Cross-Body Hammer Curl', sets: 2, reps: '12–15', rpe: '8', note: 'Emphasizes brachialis with cross-body angle', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  // Day 3 — Legs
+  'squat': [
+    { id: 'alt_goblet_squat', name: 'Goblet Squat', sets: 4, reps: '8–12', rpe: '7–9', note: 'DB held at chest, great for depth and form', llp: false, compound: true, rest: 210, restLabel: '2.5–3.5 min' },
+    { id: 'alt_hack_squat', name: 'Hack Squat', sets: 4, reps: '8–12', rpe: '7–9', note: 'Machine squat, removes balance demands', llp: false, compound: true, rest: 210, restLabel: '2.5–3.5 min' },
+    { id: 'alt_front_squat', name: 'Front Squat', sets: 4, reps: '6–10', rpe: '7–9', note: 'Quad dominant, upright torso', llp: false, compound: true, rest: 210, restLabel: '2.5–3.5 min' },
+  ],
+  'rdl': [
+    { id: 'alt_stiff_leg_dl', name: 'Stiff-Leg Deadlift', sets: 3, reps: '8–12', rpe: '7–8', note: 'Straighter legs for more hamstring emphasis', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+    { id: 'alt_single_leg_rdl', name: 'Single-Leg RDL', sets: 3, reps: '8–10 each', rpe: '7–8', note: 'Unilateral, great for balance and hamstrings', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+  ],
+  'leg_curl': [
+    { id: 'alt_lying_leg_curl', name: 'Lying Leg Curl', sets: 3, reps: '12–15', rpe: '8–9', note: 'Prone position, different hamstring angle', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_nordic_curl', name: 'Nordic Curl (assisted)', sets: 3, reps: '6–10', rpe: '8–9', note: 'Bodyweight eccentric, use band for assist', llp: false, compound: false, rest: 90, restLabel: '1.5–2 min' },
+  ],
+  'leg_press': [
+    { id: 'alt_belt_squat', name: 'Belt Squat', sets: 3, reps: '10–15', rpe: '8', note: 'Zero spinal load, pure legs', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
+    { id: 'alt_smith_squat', name: 'Smith Machine Squat', sets: 3, reps: '10–15', rpe: '8', note: 'Guided path, foot position adjustable', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
+  ],
+  'walking_lunges': [
+    { id: 'alt_reverse_lunge', name: 'Reverse Lunges', sets: 2, reps: '10 each leg', rpe: '8', note: 'Step backward, easier on knees', llp: false, compound: false, rest: 120, restLabel: '1.5–2 min' },
+    { id: 'alt_split_squat', name: 'Stationary Split Squat', sets: 2, reps: '10 each leg', rpe: '8', note: 'No walking required, stable base', llp: false, compound: false, rest: 120, restLabel: '1.5–2 min' },
+  ],
+  'calf_raises': [
+    { id: 'alt_seated_calf', name: 'Seated Calf Raise', sets: 4, reps: '12–20', rpe: '8–9', note: 'Emphasizes soleus, bent-knee position', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_leg_press_calf', name: 'Leg Press Calf Raise', sets: 4, reps: '12–20', rpe: '8–9', note: 'Use the leg press sled for calf raises', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'core': [
+    { id: 'alt_cable_crunch_m1', name: 'Cable Crunch', sets: 3, reps: '12–15', rpe: '8', note: 'Weighted ab isolation with cable stack', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_pallof_press', name: 'Pallof Press', sets: 3, reps: '10–12 each', rpe: '8', note: 'Anti-rotation core stability', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_hanging_leg_m1', name: 'Hanging Leg Raise', sets: 3, reps: '10–15', rpe: '8', note: 'Great for lower abs, control the swing', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  // Day 4 — Upper
+  'cable_fly_upper': [
+    { id: 'alt_pec_deck_upper', name: 'Pec Deck', sets: 4, reps: '12–15', rpe: '8', note: 'Machine fly, consistent tension', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_db_fly_upper', name: 'Flat DB Fly', sets: 4, reps: '12–15', rpe: '8', note: 'Free weight fly, deep stretch at bottom', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'neutral_pulldown': [
+    { id: 'alt_close_grip_pd', name: 'Close-Grip Pulldown', sets: 3, reps: '10–12', rpe: '8', note: 'V-bar attachment, great lat stretch', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
+    { id: 'alt_straight_arm_pd', name: 'Straight-Arm Pulldown', sets: 3, reps: '12–15', rpe: '8', note: 'Isolation for lats, constant tension', llp: false, compound: false, rest: 90, restLabel: '1.5–2 min' },
+  ],
+  'chest_row_upper': [
+    { id: 'alt_cable_row_upper', name: 'Seated Cable Row', sets: 3, reps: '10–12', rpe: '8', note: 'Neutral grip, full stretch at the front', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+    { id: 'alt_db_row_upper', name: 'Single-Arm DB Row', sets: 3, reps: '10–12', rpe: '8', note: 'Unilateral back work, brace on bench', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+  ],
+  'close_grip_bench': [
+    { id: 'alt_dip_upper', name: 'Dips (tricep focus)', sets: 3, reps: '8–12', rpe: '8', note: 'Upright torso for tricep emphasis', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+    { id: 'alt_cg_smith_m1', name: 'Close-Grip Smith Press', sets: 3, reps: '8–12', rpe: '8', note: 'Guided path, focus on lockout', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+  ],
+  'cable_lat_raise_upper': [
+    { id: 'alt_db_lat_raise_upper', name: 'DB Lateral Raise', sets: 3, reps: '15 + LLP', rpe: '9', note: 'Dumbbell variation, partials on last set', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'rear_delt_fly': [
+    { id: 'alt_reverse_pec_upper', name: 'Reverse Pec Deck', sets: 3, reps: '12–15', rpe: '8–9', note: 'Machine rear delt isolation', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_band_pull_apart', name: 'Band Pull-Aparts', sets: 3, reps: '15–20', rpe: '8–9', note: 'High reps, great for rear delt pump', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'ez_bar_curl': [
+    { id: 'alt_bb_curl', name: 'Barbell Curl', sets: 3, reps: '10–12', rpe: '8–9', note: 'Straight bar, classic bicep builder', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_cable_curl_m1', name: 'Cable Curl', sets: 3, reps: '10–12', rpe: '8–9', note: 'Constant tension through full ROM', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  // Day 5 — Full Body
+  'trap_bar_dl': [
+    { id: 'alt_conv_deadlift', name: 'Conventional Deadlift', sets: 3, reps: '5–8', rpe: '7–8', note: 'Barbell from floor, full posterior chain', llp: false, compound: true, rest: 210, restLabel: '2.5–3.5 min' },
+    { id: 'alt_sumo_deadlift', name: 'Sumo Deadlift', sets: 3, reps: '5–8', rpe: '7–8', note: 'Wide stance, shorter ROM, less back stress', llp: false, compound: true, rest: 210, restLabel: '2.5–3.5 min' },
+  ],
+  'dips': [
+    { id: 'alt_machine_dip', name: 'Machine Dip', sets: 3, reps: '8–12', rpe: '8', note: 'Assisted or plate-loaded dip machine', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+    { id: 'alt_cg_bench_fb', name: 'Close-Grip Bench', sets: 3, reps: '8–12', rpe: '8', note: 'Shoulder-width grip, elbows tucked', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+  ],
+  'cable_pull_through': [
+    { id: 'alt_hip_thrust', name: 'Hip Thrust', sets: 3, reps: '10–15', rpe: '8', note: 'Barbell or machine, peak glute contraction', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_kb_swing', name: 'Kettlebell Swing', sets: 3, reps: '15–20', rpe: '8', note: 'Explosive hip hinge, great conditioning', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'seated_row': [
+    { id: 'alt_cable_row_fb', name: 'Cable Row (wide grip)', sets: 3, reps: '10–12', rpe: '8', note: 'Wide grip for upper back emphasis', llp: false, compound: false, rest: 120, restLabel: '2 min' },
+    { id: 'alt_machine_row_fb', name: 'Machine Row', sets: 3, reps: '10–12', rpe: '8', note: 'Chest-supported machine variation', llp: false, compound: false, rest: 120, restLabel: '2 min' },
+  ],
+
+  // ── Meso 2 ──
+  // Day 1 — Push (Delt Bias)
+  'm2_incline_smith': [
+    { id: 'alt_m2_incline_db', name: 'Incline DB Press', sets: 4, reps: '6–10', rpe: '7–9', note: 'Neutral grip, elbows ~60° for shoulder safety', llp: false, compound: true, rest: 165, restLabel: '2.5–3 min' },
+    { id: 'alt_m2_incline_bb', name: 'Incline Barbell Press', sets: 4, reps: '5–8', rpe: '7–9', note: 'Free weight barbell pressing', llp: false, compound: true, rest: 165, restLabel: '2.5–3 min' },
+  ],
+  'm2_landmine_press': [
+    { id: 'alt_m2_db_ohp', name: 'Seated DB Shoulder Press', sets: 3, reps: '8–10', rpe: '7–8', note: 'Classic overhead pressing with dumbbells', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+    { id: 'alt_m2_machine_ohp', name: 'Machine Shoulder Press', sets: 3, reps: '8–10', rpe: '7–8', note: 'Guided path, easier on stabilizers', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+  ],
+  'm2_cable_fly': [
+    { id: 'alt_m2_pec_deck', name: 'Pec Deck', sets: 3, reps: '12–15', rpe: '8', note: 'Machine fly, constant tension', llp: false, compound: false, rest: 90, restLabel: '1.5–2 min' },
+    { id: 'alt_m2_db_fly', name: 'Incline DB Fly', sets: 3, reps: '12–15', rpe: '8', note: 'Great stretch at bottom, slow eccentric', llp: false, compound: false, rest: 90, restLabel: '1.5–2 min' },
+  ],
+  'm2_cable_lat_raise_d1': [
+    { id: 'alt_m2_db_lat_d1', name: 'DB Lateral Raise', sets: 4, reps: '12–20', rpe: '8–9', note: 'Classic dumbbell variation', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_m2_machine_lat_d1', name: 'Machine Lateral Raise', sets: 4, reps: '12–20', rpe: '8–9', note: 'Consistent resistance curve', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'm2_rope_pushdown_d1': [
+    { id: 'alt_m2_vbar_pd_d1', name: 'V-Bar Pushdown', sets: 3, reps: '12–15', rpe: '8', note: 'V-bar allows heavier loads', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  // Day 2 — Pull (Upper Back Bias)
+  'm2_weighted_pullup': [
+    { id: 'alt_m2_lat_pd', name: 'Wide-Grip Lat Pulldown', sets: 4, reps: '8–12', rpe: '7–9', note: 'Pronated grip for lat width', llp: false, compound: true, rest: 165, restLabel: '2.5–3 min' },
+    { id: 'alt_m2_neutral_pd_d2', name: 'Neutral-Grip Pulldown', sets: 4, reps: '8–12', rpe: '7–9', note: 'Neutral grip reduces shoulder stress', llp: false, compound: true, rest: 165, restLabel: '2.5–3 min' },
+  ],
+  'm2_chest_row_d2': [
+    { id: 'alt_m2_tbar_row', name: 'T-Bar Row', sets: 4, reps: '8–10', rpe: '7–9', note: 'Great for back thickness', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+    { id: 'alt_m2_seal_row', name: 'Seal Row', sets: 4, reps: '8–10', rpe: '7–9', note: 'Strict upper back isolation on bench', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+  ],
+  'm2_single_pulldown': [
+    { id: 'alt_m2_sa_cable_row', name: 'Single-Arm Cable Row', sets: 3, reps: '10–12', rpe: '8', note: 'Drive elbow down and back', llp: true, compound: false, rest: 90, restLabel: '1.5–2 min' },
+  ],
+  'm2_rear_delt_row': [
+    { id: 'alt_m2_face_pull_d2', name: 'Cable Face Pull (wide)', sets: 3, reps: '12–15', rpe: '8–9', note: 'Extra-wide pull for rear delts', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_m2_reverse_pec', name: 'Reverse Pec Deck', sets: 3, reps: '12–15', rpe: '8–9', note: 'Machine isolation for rear delts', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'm2_bayesian_curl': [
+    { id: 'alt_m2_incline_curl', name: 'Incline DB Curl', sets: 3, reps: '10–15', rpe: '8–9', note: 'Great stretch on the long head', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_m2_preacher_curl', name: 'Preacher Curl', sets: 3, reps: '10–15', rpe: '8–9', note: 'Strict form, peak contraction focus', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  // Day 3 — Legs (Posterior Chain Bias)
+  'm2_ssb_squat': [
+    { id: 'alt_m2_hack_squat', name: 'Hack Squat', sets: 4, reps: '8–12', rpe: '7–9', note: 'Machine squat, zero shoulder load', llp: false, compound: true, rest: 210, restLabel: '2.5–3.5 min' },
+    { id: 'alt_m2_goblet_squat', name: 'Goblet Squat', sets: 4, reps: '8–12', rpe: '7–9', note: 'DB at chest, great depth cue', llp: false, compound: true, rest: 210, restLabel: '2.5–3.5 min' },
+  ],
+  'm2_bss': [
+    { id: 'alt_m2_reverse_lunge', name: 'Reverse Lunges', sets: 3, reps: '8–12', rpe: '8', note: 'Step backward, easier on knees', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+    { id: 'alt_m2_step_up', name: 'Step-Ups', sets: 3, reps: '10 each leg', rpe: '8', note: 'High box for glute emphasis', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+  ],
+  'm2_rdl': [
+    { id: 'alt_m2_stiff_leg', name: 'Stiff-Leg Deadlift', sets: 3, reps: '8–10', rpe: '7–8', note: 'Straighter legs, more hamstring focus', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+    { id: 'alt_m2_good_morning', name: 'Good Mornings', sets: 3, reps: '8–10', rpe: '7–8', note: 'Barbell on back, hip hinge focus', llp: false, compound: true, rest: 150, restLabel: '2–3 min' },
+  ],
+  'm2_seated_leg_curl': [
+    { id: 'alt_m2_lying_curl', name: 'Lying Leg Curl', sets: 3, reps: '12–15', rpe: '8–9', note: 'Prone position, full ROM', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'm2_leg_press': [
+    { id: 'alt_m2_belt_squat', name: 'Belt Squat', sets: 3, reps: '10–15', rpe: '8', note: 'Zero spinal load, pure legs', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
+  ],
+  'm2_standing_calf': [
+    { id: 'alt_m2_seated_calf', name: 'Seated Calf Raise', sets: 4, reps: '12–20', rpe: '8–9', note: 'Emphasizes soleus, bent-knee', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'm2_hanging_leg_raise': [
+    { id: 'alt_m2_cable_crunch_d3', name: 'Cable Crunch', sets: 3, reps: '12–15', rpe: '8', note: 'Weighted ab isolation', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_m2_ab_wheel', name: 'Ab Wheel Rollout', sets: 3, reps: '8–12', rpe: '8', note: 'Anti-extension core work', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  // Day 4 — Upper Hypertrophy
+  'm2_machine_press': [
+    { id: 'alt_m2_flat_db', name: 'Flat DB Press', sets: 4, reps: '8–12', rpe: '7–8', note: 'Free weight pressing, greater ROM', llp: false, compound: true, rest: 135, restLabel: '2–2.5 min' },
+    { id: 'alt_m2_hammer_press', name: 'Hammer Strength Press', sets: 4, reps: '8–12', rpe: '7–8', note: 'Converging press path', llp: false, compound: false, rest: 135, restLabel: '2–2.5 min' },
+  ],
+  'm2_neutral_pulldown': [
+    { id: 'alt_m2_close_grip_pd', name: 'Close-Grip Pulldown', sets: 3, reps: '10–12', rpe: '8', note: 'V-bar for deep lat stretch', llp: true, compound: false, rest: 120, restLabel: '2 min' },
+  ],
+  'm2_cg_smith': [
+    { id: 'alt_m2_cg_bench', name: 'Close-Grip Bench Press', sets: 3, reps: '8–12', rpe: '8', note: 'Free weight, elbows tucked', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+    { id: 'alt_m2_dip_d4', name: 'Dips (tricep focus)', sets: 3, reps: '8–12', rpe: '8', note: 'Upright torso, tricep emphasis', llp: false, compound: true, rest: 120, restLabel: '2 min' },
+  ],
+  'm2_cable_lat_raise_d4': [
+    { id: 'alt_m2_db_lat_d4', name: 'DB Lateral Raise', sets: 3, reps: '15–20', rpe: '9', note: 'Dumbbell variation with partials', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'm2_rear_delt_fly': [
+    { id: 'alt_m2_reverse_pec_d4', name: 'Reverse Pec Deck', sets: 3, reps: '12–15', rpe: '8–9', note: 'Machine rear delt isolation', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_m2_bent_rear_d4', name: 'Bent-Over Rear Delt Fly', sets: 3, reps: '12–15', rpe: '8–9', note: 'DB variation, hinge forward ~45°', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'm2_ez_curl': [
+    { id: 'alt_m2_bb_curl', name: 'Barbell Curl', sets: 3, reps: '10–12', rpe: '8–9', note: 'Straight bar curl', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_m2_cable_curl_d4', name: 'Cable Curl', sets: 3, reps: '10–12', rpe: '8–9', note: 'Constant tension through full ROM', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  // Day 5 — Weak Point / Pump
+  'm2_cable_lat_raise_d5': [
+    { id: 'alt_m2_db_lat_d5', name: 'DB Lateral Raise', sets: 3, reps: '15–20', rpe: '8–9', note: 'Light dumbbells, high reps', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'm2_cable_curl': [
+    { id: 'alt_m2_db_curl_d5', name: 'DB Curl', sets: 3, reps: '12–15', rpe: '8–9', note: 'Alternating or simultaneous', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'm2_rope_pushdown_d5': [
+    { id: 'alt_m2_oh_ext_d5', name: 'Overhead Cable Extension', sets: 3, reps: '12–15', rpe: '8–9', note: 'Long head stretch emphasis', llp: true, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+  'm2_cable_crunch': [
+    { id: 'alt_m2_plank', name: 'Plank Hold', sets: 3, reps: '30–60 sec', rpe: '8', note: 'Isometric core stability', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+    { id: 'alt_m2_pallof', name: 'Pallof Press', sets: 3, reps: '10–12 each', rpe: '8', note: 'Anti-rotation core work', llp: false, compound: false, rest: 75, restLabel: '1–1.5 min' },
+  ],
+};
+
 let DAYS = PROGRAMS[0].days;
 let MESOCYCLE = PROGRAMS[0].mesocycle;
 let WEEK_PHASES = PROGRAMS[0].weekPhases;
@@ -1792,6 +2146,15 @@ function rebuildLegacyIdMap() {
   });
 }
 
+function resolveExercise(dayId, ex) {
+  const swaps = (state[dayId] && state[dayId].swaps) || {};
+  const altId = swaps[ex.id];
+  if (!altId) return ex;
+  const alts = EXERCISE_ALTERNATIVES[ex.id];
+  if (!alts) return ex;
+  return alts.find(a => a.id === altId) || ex;
+}
+
 let programInitialized = false;
 function switchProgram(idx) {
   if (programInitialized && idx === currentProgramIdx) return;
@@ -1860,9 +2223,11 @@ function initState() {
       sets: {},
       weights: savedDay.weights || {},
       effort: savedDay.effort || {},
-      protocol: savedDay.protocol || []
+      protocol: savedDay.protocol || [],
+      swaps: savedDay.swaps || {}
     };
-    day.exercises.forEach(ex => {
+    day.exercises.forEach(originalEx => {
+      const ex = resolveExercise(day.id, originalEx);
       state[day.id].sets[ex.id] = savedDay.sets ? (savedDay.sets[ex.id] || Array(ex.sets).fill(false)) : Array(ex.sets).fill(false);
       while (state[day.id].sets[ex.id].length < ex.sets) state[day.id].sets[ex.id].push(false);
     });
@@ -1876,7 +2241,8 @@ function prefillFromPreviousWeeks() {
   DAYS.forEach(day => {
     const weights = state[day.id].weights;
     const effort = state[day.id].effort;
-    day.exercises.forEach(ex => {
+    day.exercises.forEach(originalEx => {
+      const ex = resolveExercise(day.id, originalEx);
       for (let w = currentWeek - 1; w >= 1; w--) {
         try {
           const raw = JSON.parse(localStorage.getItem(weekStorageKey(w)) || '{}');
@@ -1941,14 +2307,21 @@ function isResolved(v) { return v === true || v === 'skipped'; }
 
 function totalSets() {
   let total = 0;
-  DAYS.forEach(d => d.exercises.forEach(e => total += e.sets));
+  DAYS.forEach(d => d.exercises.forEach(originalEx => {
+    const ex = resolveExercise(d.id, originalEx);
+    total += ex.sets;
+  }));
   return total;
 }
 
 function completedSets() {
   let done = 0;
   DAYS.forEach(day => {
-    Object.values(state[day.id].sets).forEach(arr => arr.forEach(v => { if (v === true) done++; }));
+    day.exercises.forEach(originalEx => {
+      const ex = resolveExercise(day.id, originalEx);
+      const arr = state[day.id].sets[ex.id];
+      if (arr) arr.forEach(v => { if (v === true) done++; });
+    });
   });
   return done;
 }
@@ -1956,14 +2329,23 @@ function completedSets() {
 function skippedSetsCount() {
   let count = 0;
   DAYS.forEach(day => {
-    Object.values(state[day.id].sets).forEach(arr => arr.forEach(v => { if (v === 'skipped') count++; }));
+    day.exercises.forEach(originalEx => {
+      const ex = resolveExercise(day.id, originalEx);
+      const arr = state[day.id].sets[ex.id];
+      if (arr) arr.forEach(v => { if (v === 'skipped') count++; });
+    });
   });
   return count;
 }
 
 function isDayComplete(dayId) {
-  const d = state[dayId];
-  return Object.values(d.sets).every(arr => arr.every(v => isResolved(v)));
+  const day = DAYS.find(d => d.id === dayId);
+  if (!day) return false;
+  return day.exercises.every(originalEx => {
+    const ex = resolveExercise(dayId, originalEx);
+    const arr = state[dayId].sets[ex.id];
+    return arr && arr.every(v => isResolved(v));
+  });
 }
 
 function updateOverallProgress() {
@@ -1986,7 +2368,8 @@ function renderTabs(activeId) {
   DAYS.forEach(day => {
     const btn = document.createElement('button');
     const complete = isDayComplete(day.id);
-    const hasAnyDone = complete && Object.values(state[day.id].sets).some(arr => arr.some(v => v === true));
+    const ids = activeExIds(day.id);
+    const hasAnyDone = complete && ids.some(id => state[day.id].sets[id] && state[day.id].sets[id].some(v => v === true));
     btn.className = 'day-tab' + (day.id === activeId ? ' active' : '') + (complete && hasAnyDone ? ' completed' : '') + (complete && !hasAnyDone ? ' all-skipped' : '');
     btn.textContent = day.label;
     btn.onclick = () => switchDay(day.id);
@@ -2021,8 +2404,9 @@ function renderDay(day) {
     </div>
   `;
 
-  const dayHasPending = Object.values(state[day.id].sets).some(arr => arr.some(v => v === false));
-  const dayHasSkipped = Object.values(state[day.id].sets).some(arr => arr.some(v => v === 'skipped'));
+  const activeIds = activeExIds(day.id);
+  const dayHasPending = activeIds.some(id => state[day.id].sets[id] && state[day.id].sets[id].some(v => v === false));
+  const dayHasSkipped = activeIds.some(id => state[day.id].sets[id] && state[day.id].sets[id].some(v => v === 'skipped'));
   if (dayHasPending) {
     html += `<div style="display:flex;gap:8px;margin-top:10px">
       <button class="skip-day-btn" onclick="showConfirm('Skip Day?','All remaining sets will be marked as skipped.',()=>skipDay('${day.id}'))">Skip Day</button>
@@ -2051,8 +2435,10 @@ function renderDay(day) {
     html += `</div></div>`;
   }
 
-  day.exercises.forEach((ex, ei) => {
-    const sets = state[day.id].sets[ex.id];
+  day.exercises.forEach((originalEx, ei) => {
+    const ex = resolveExercise(day.id, originalEx);
+    const isSwapped = ex.id !== originalEx.id;
+    const sets = state[day.id].sets[ex.id] || Array(ex.sets).fill(false);
     const weights = state[day.id].weights || {};
     const currentWeight = weights[ex.id] || '';
     const doneSets = sets.filter(v => v === true).length;
@@ -2061,6 +2447,11 @@ function renderDay(day) {
     const allDone = resolvedSets === ex.sets;
     const isOpen = !allDone;
     const cardId = `card-${day.id}-${ex.id}`;
+
+    const hasAlts = EXERCISE_ALTERNATIVES[originalEx.id];
+    const swapBtn = hasAlts
+      ? `<button class="swap-btn${isSwapped ? ' swapped' : ''}" onclick="event.stopPropagation(); showSwapPicker('${day.id}', '${originalEx.id}')" data-tip="Swap exercise">⇄</button>`
+      : '';
 
     const llpTag = ex.llp ? `<span class="tag tag-llp tip" data-tip="${GLOSSARY['LLP'].replace(/"/g,'&quot;')}">LLP</span>` : '';
     const compTag = ex.compound ? `<span class="tag tag-compound tip" data-tip="${GLOSSARY['compounds'].replace(/"/g,'&quot;')}">Compound</span>` : '';
@@ -2081,6 +2472,7 @@ function renderDay(day) {
             ${ex.note ? `<div class="exercise-note-small">${ex.note}</div>` : ''}
           </div>
           <div class="exercise-status">
+            ${swapBtn}
             <div class="sets-badge${allDone ? ' done' : ''}">${resolvedSets}/${ex.sets}</div>
             <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
@@ -2278,10 +2670,11 @@ function toggleSet(dayId, exId, setIdx) {
   }
 
   const day = DAYS.find(d => d.id === dayId);
-  const exIdx = day.exercises.findIndex(e => e.id === exId);
-  const ex = day.exercises[exIdx];
+  const exIdx = day.exercises.findIndex(e => resolveExercise(dayId, e).id === exId);
+  const ex = resolveExercise(dayId, day.exercises[exIdx]);
   const nextSetInEx = setIdx + 1 < ex.sets ? setIdx + 1 : null;
-  const nextEx = nextSetInEx === null ? day.exercises[exIdx + 1] : null;
+  const nextOriginalEx = nextSetInEx === null ? day.exercises[exIdx + 1] : null;
+  const nextEx = nextOriginalEx ? resolveExercise(dayId, nextOriginalEx) : null;
 
   let nextLabel = '';
   if (nextSetInEx !== null) {
@@ -2378,29 +2771,37 @@ function skipExercise(dayId, exId) {
   refreshCurrentDay(dayId);
 }
 
+function activeExIds(dayId) {
+  const day = DAYS.find(d => d.id === dayId);
+  if (!day) return [];
+  return day.exercises.map(ex => resolveExercise(dayId, ex).id);
+}
+
 function skipDay(dayId) {
   const d = state[dayId];
-  const allResolved = Object.values(d.sets).every(arr => arr.every(v => isResolved(v)));
-  const hasSkipped = Object.values(d.sets).some(arr => arr.some(v => v === 'skipped'));
-  if (allResolved && hasSkipped) {
-    Object.values(d.sets).forEach(arr => {
-      for (let i = 0; i < arr.length; i++) {
+  const ids = activeExIds(dayId);
+  const allResolved = ids.every(id => d.sets[id] && d.sets[id].every(v => isResolved(v)));
+  const hasSkipped = ids.some(id => d.sets[id] && d.sets[id].some(v => v === 'skipped'));
+  ids.forEach(id => {
+    const arr = d.sets[id];
+    if (!arr) return;
+    for (let i = 0; i < arr.length; i++) {
+      if (allResolved && hasSkipped) {
         if (arr[i] === 'skipped') arr[i] = false;
-      }
-    });
-  } else {
-    Object.values(d.sets).forEach(arr => {
-      for (let i = 0; i < arr.length; i++) {
+      } else {
         if (arr[i] === false) arr[i] = 'skipped';
       }
-    });
-  }
+    }
+  });
   saveState();
   refreshCurrentDay(dayId);
 }
 
 function completeDay(dayId) {
-  Object.values(state[dayId].sets).forEach(arr => {
+  const ids = activeExIds(dayId);
+  ids.forEach(id => {
+    const arr = state[dayId].sets[id];
+    if (!arr) return;
     for (let i = 0; i < arr.length; i++) {
       if (arr[i] !== true) arr[i] = true;
     }
@@ -2423,6 +2824,59 @@ function showConfirm(title, msg, onConfirm) {
 function closeConfirm() {
   document.getElementById('confirmOverlay').classList.remove('visible');
   confirmAction = null;
+}
+
+// EXERCISE SWAP
+function showSwapPicker(dayId, originalExId) {
+  const alts = EXERCISE_ALTERNATIVES[originalExId];
+  if (!alts) return;
+  const day = DAYS.find(d => d.id === dayId);
+  const originalEx = day.exercises.find(e => e.id === originalExId);
+  const currentSwap = (state[dayId].swaps || {})[originalExId];
+
+  document.getElementById('swapCurrent').textContent = `Current: ${resolveExercise(dayId, originalEx).name}`;
+
+  let listHtml = '';
+  if (currentSwap) {
+    listHtml += `<div class="swap-option swap-option-revert" onclick="performSwap('${dayId}', '${originalExId}', '${originalExId}')">
+      <div class="swap-option-name">↩ ${originalEx.name}</div>
+      <div class="swap-option-meta">${originalEx.sets} sets · ${originalEx.reps} reps · RPE ${originalEx.rpe}</div>
+      <div class="swap-option-note">Revert to original exercise</div>
+    </div>`;
+  }
+  alts.forEach(alt => {
+    const isActive = currentSwap === alt.id;
+    listHtml += `<div class="swap-option${isActive ? ' active' : ''}" onclick="performSwap('${dayId}', '${originalExId}', '${alt.id}')">
+      <div class="swap-option-name">${alt.name}</div>
+      <div class="swap-option-meta">${alt.sets} sets · ${alt.reps} reps · RPE ${alt.rpe} · ⏱ ${alt.restLabel}</div>
+      <div class="swap-option-note">${alt.note}</div>
+    </div>`;
+  });
+  document.getElementById('swapList').innerHTML = listHtml;
+  document.getElementById('swapOverlay').classList.add('visible');
+}
+
+function performSwap(dayId, originalExId, newExId) {
+  if (!state[dayId].swaps) state[dayId].swaps = {};
+  if (newExId === originalExId) {
+    delete state[dayId].swaps[originalExId];
+  } else {
+    state[dayId].swaps[originalExId] = newExId;
+  }
+  const day = DAYS.find(d => d.id === dayId);
+  const originalEx = day.exercises.find(e => e.id === originalExId);
+  const ex = resolveExercise(dayId, originalEx);
+  if (!state[dayId].sets[ex.id]) {
+    state[dayId].sets[ex.id] = Array(ex.sets).fill(false);
+  }
+  saveState();
+  closeSwapPicker();
+  switchDay(dayId);
+  updateOverallProgress();
+}
+
+function closeSwapPicker() {
+  document.getElementById('swapOverlay').classList.remove('visible');
 }
 
 // NOTIFICATIONS
@@ -2783,11 +3237,10 @@ function isWeekComplete() {
 }
 
 function getStartDay() {
-  // Find first day with incomplete sets that has some progress (in-progress day)
   for (const day of DAYS) {
-    const d = state[day.id];
-    const hasSomeDone = Object.values(d.sets).some(arr => arr.some(v => isResolved(v)));
-    const allDone = Object.values(d.sets).every(arr => arr.every(v => isResolved(v)));
+    const ids = activeExIds(day.id);
+    const hasSomeDone = ids.some(id => state[day.id].sets[id] && state[day.id].sets[id].some(v => isResolved(v)));
+    const allDone = ids.every(id => state[day.id].sets[id] && state[day.id].sets[id].every(v => isResolved(v)));
     if (hasSomeDone && !allDone) return day.id;
   }
   // No in-progress day — find first incomplete day
