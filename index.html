@@ -680,6 +680,81 @@
     color: var(--accent2);
   }
 
+  /* Inline prior-week reference on exercise cards */
+  .last-week-ref {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    padding: 6px 0 0;
+  }
+  .lwr-weight { color: var(--text); }
+  .lwr-none { color: #444; }
+  .lwr-effort { font-size: 10px; letter-spacing: 0.5px; }
+  .lwr-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    display: inline-block; margin-left: 4px;
+  }
+  .lwr-effort.lwr-low { color: var(--green); }
+  .lwr-dot.lwr-low, .prog-dot.lwr-low { background: var(--green); }
+  .lwr-effort.lwr-medium { color: var(--accent); }
+  .lwr-dot.lwr-medium, .prog-dot.lwr-medium { background: var(--accent); }
+  .lwr-effort.lwr-high { color: var(--accent2); }
+  .lwr-dot.lwr-high, .prog-dot.lwr-high { background: var(--accent2); }
+
+  /* Progress / progression view */
+  .prog-day { margin-bottom: 28px; }
+  .prog-day-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 12px;
+  }
+  .prog-ex {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .prog-ex-name {
+    font-size: 13px; color: var(--text); margin-bottom: 8px; font-weight: 600;
+  }
+  .prog-spark { width: 100%; height: 40px; display: block; margin-bottom: 10px; }
+  .prog-spark-empty {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    color: var(--muted); margin-bottom: 10px;
+  }
+  .prog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
+    gap: 6px;
+  }
+  .prog-cell {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 2px;
+    text-align: center;
+  }
+  .prog-cell.empty { opacity: 0.4; }
+  .prog-wk {
+    font-family: 'DM Mono', monospace; font-size: 9px;
+    letter-spacing: 0.5px; color: var(--muted);
+  }
+  .prog-val {
+    font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text);
+    display: flex; align-items: center; justify-content: center; gap: 3px;
+  }
+  .prog-dot {
+    width: 6px; height: 6px; border-radius: 50%; display: inline-block;
+  }
+  .prog-empty {
+    font-size: 12px; color: var(--muted);
+    text-align: center; padding: 40px 20px; line-height: 1.6;
+  }
+
 
 
   .set-num {
@@ -2261,6 +2336,41 @@ function prefillFromPreviousWeeks() {
   });
 }
 
+// Cross-week history for a single exercise (current program). Ascending by week.
+// Reads each week's localStorage blob via migrateDayState; prefers in-memory
+// `state` for the current week so unsaved edits are reflected.
+function getExerciseHistory(dayId, exId) {
+  const maxWeeks = PROGRAMS[currentProgramIdx].totalWeeks;
+  const out = [];
+  for (let w = 1; w <= maxWeeks; w++) {
+    let dayState;
+    if (w === currentWeek && state[dayId]) {
+      dayState = state[dayId];
+    } else {
+      try {
+        const raw = JSON.parse(localStorage.getItem(weekStorageKey(w)) || '{}');
+        dayState = migrateDayState(dayId, raw[dayId]);
+      } catch (e) { dayState = null; }
+    }
+    if (!dayState) continue;
+    const rawW = (dayState.weights || {})[exId];
+    const weight = (rawW === '' || rawW == null) ? null : Number(rawW);
+    const eff = (dayState.effort || {})[exId] || '';
+    if (weight == null && !eff) continue;
+    out.push({ week: w, weight, effort: eff });
+  }
+  return out;
+}
+
+// Most recent logged entry strictly before the current week, or null.
+function priorWeekEntry(dayId, exId) {
+  const hist = getExerciseHistory(dayId, exId);
+  for (let i = hist.length - 1; i >= 0; i--) {
+    if (hist[i].week < currentWeek) return hist[i];
+  }
+  return null;
+}
+
 function saveState() {
   try { localStorage.setItem(weekStorageKey(currentWeek), JSON.stringify(state)); } catch(e) {}
 }
@@ -2381,6 +2491,12 @@ function renderTabs(activeId) {
   info.textContent = 'Plan';
   info.onclick = () => switchDay('info');
   container.appendChild(info);
+  // Progress tab
+  const prog = document.createElement('button');
+  prog.className = 'day-tab info-tab' + (activeId === 'progress' ? ' active' : '');
+  prog.textContent = 'Progress';
+  prog.onclick = () => switchDay('progress');
+  container.appendChild(prog);
 }
 
 function tip(term) {
@@ -2448,6 +2564,18 @@ function renderDay(day) {
     const isOpen = !allDone;
     const cardId = `card-${day.id}-${ex.id}`;
 
+    const prior = priorWeekEntry(day.id, ex.id);
+    const effortLabel = { low: 'Low', medium: 'Med', high: 'High' };
+    const lastWeekRef = prior ? `
+      <div class="last-week-ref">Last (W${prior.week}):
+        ${prior.weight != null
+          ? `<span class="lwr-weight">${prior.weight} lbs</span>`
+          : `<span class="lwr-none">—</span>`}
+        ${prior.effort
+          ? `<span class="lwr-dot lwr-${prior.effort}"></span><span class="lwr-effort lwr-${prior.effort}">${effortLabel[prior.effort]}</span>`
+          : ''}
+      </div>` : '';
+
     const hasAlts = EXERCISE_ALTERNATIVES[originalEx.id];
     const swapBtn = hasAlts
       ? `<button class="swap-btn${isSwapped ? ' swapped' : ''}" onclick="event.stopPropagation(); showSwapPicker('${day.id}', '${originalEx.id}')" data-tip="Swap exercise">⇄</button>`
@@ -2510,6 +2638,7 @@ function renderDay(day) {
 
     html += `
           </div>
+          ${lastWeekRef}
           <div class="weight-row">
             <span class="weight-label">Weight:</span>
             <input
@@ -2615,6 +2744,88 @@ function renderInfoPanel() {
   return html;
 }
 
+function sparklineSVG(hist) {
+  const pts = hist.filter(h => h.weight != null);
+  if (pts.length < 2) return '<div class="prog-spark-empty">Need 2+ weeks of weight for a trend</div>';
+
+  const W = 240, H = 40, pad = 6;
+  const weeks = pts.map(p => p.week);
+  const vals = pts.map(p => p.weight);
+  const minW = Math.min(...weeks), maxW = Math.max(...weeks);
+  const minV = Math.min(...vals), maxV = Math.max(...vals);
+  const spanW = (maxW - minW) || 1;
+  const spanV = (maxV - minV) || 1;
+  const x = wk => pad + ((wk - minW) / spanW) * (W - 2 * pad);
+  const y = v => (H - pad) - ((v - minV) / spanV) * (H - 2 * pad);
+
+  const linePts = pts.map(p => `${x(p.week).toFixed(1)},${y(p.weight).toFixed(1)}`).join(' ');
+  const effColor = { low: 'var(--green)', medium: 'var(--accent)', high: 'var(--accent2)' };
+  const dots = pts.map(p => {
+    const c = p.effort ? effColor[p.effort] : 'var(--muted)';
+    return `<circle cx="${x(p.week).toFixed(1)}" cy="${y(p.weight).toFixed(1)}" r="3" fill="${c}"/>`;
+  }).join('');
+
+  return `<svg class="prog-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <polyline points="${linePts}" fill="none" stroke="var(--border)" stroke-width="1.5"/>
+      ${dots}
+    </svg>`;
+}
+
+function renderProgressPanel() {
+  const maxWeeks = PROGRAMS[currentProgramIdx].totalWeeks;
+  let html = `<div class="meso-section">
+    <div class="meso-title">PROGRESSION</div>
+    <div class="meso-subtitle">${PROGRAMS[currentProgramIdx].name} · weight & effort by week</div>`;
+
+  let anyData = false;
+
+  DAYS.forEach(day => {
+    let dayRows = '';
+    day.exercises.forEach(originalEx => {
+      const ex = resolveExercise(day.id, originalEx);
+      const hist = getExerciseHistory(day.id, ex.id);
+      if (!hist.length) return;
+      anyData = true;
+
+      const byWeek = {};
+      hist.forEach(h => { byWeek[h.week] = h; });
+
+      const cells = [];
+      for (let w = 1; w <= maxWeeks; w++) {
+        const h = byWeek[w];
+        if (!h) {
+          cells.push(`<div class="prog-cell empty"><div class="prog-wk">W${w}</div><div class="prog-val">·</div></div>`);
+        } else {
+          const dot = h.effort ? `<span class="prog-dot lwr-${h.effort}"></span>` : '';
+          const val = h.weight != null ? h.weight : '—';
+          cells.push(`<div class="prog-cell"><div class="prog-wk">W${w}</div><div class="prog-val">${val}${dot}</div></div>`);
+        }
+      }
+
+      dayRows += `
+        <div class="prog-ex">
+          <div class="prog-ex-name">${ex.name}</div>
+          ${sparklineSVG(hist)}
+          <div class="prog-grid">${cells.join('')}</div>
+        </div>`;
+    });
+
+    if (dayRows) {
+      html += `<div class="prog-day">
+        <div class="prog-day-label">${day.label} · ${day.title}</div>
+        ${dayRows}
+      </div>`;
+    }
+  });
+
+  if (!anyData) {
+    html += `<div class="prog-empty">No weights or effort logged yet. Track a few sessions and your progression will appear here.</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
 function toggleMeso(i) {
   document.getElementById(`meso-${i}`).classList.toggle('open');
 }
@@ -2625,6 +2836,12 @@ function switchDay(dayId) {
     mainContent.innerHTML = `<div class="day-panel active" id="info">${renderInfoPanel()}</div>`;
     renderTabs('info');
     currentDayId = 'info';
+    return;
+  }
+  if (dayId === 'progress') {
+    mainContent.innerHTML = `<div class="day-panel active" id="progress">${renderProgressPanel()}</div>`;
+    renderTabs('progress');
+    currentDayId = 'progress';
     return;
   }
   const day = DAYS.find(d => d.id === dayId);
