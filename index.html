@@ -111,6 +111,27 @@ body {
 .tab { background: transparent; border: none; cursor: pointer; padding: 12px 7px; min-height: 42px; white-space: nowrap; font-family: var(--font-mono); font-size: 9px; letter-spacing: .8px; font-weight: 600; color: var(--muted-2); }
 .tab.on { background: var(--ink); color: var(--on-dark); }
 .tab i { color: var(--accent); font-style: normal; }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); margin: 0 20px; }
+.stat { padding: 10px 0 10px 10px; border-right: 1px solid var(--border); }
+.stat:first-child { padding-left: 0; }
+.stat:last-child { border-right: none; }
+.stat-k { font-family: var(--font-mono); font-size: 8px; letter-spacing: 1px; color: var(--muted-2); }
+.stat-v { font-family: var(--font-display); font-size: 18px; font-weight: 500; margin-top: 2px; }
+.stat-v small { font-size: 11px; color: var(--muted-2); }
+.pr { margin: 14px 20px 0; background: var(--ink); color: var(--on-dark); border-radius: 4px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+.pr b { font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 1.5px; background: var(--accent); padding: 3px 7px; border-radius: 2px; flex: none; }
+.pr span { font-size: 12px; line-height: 1.4; }
+.daybtns { display: flex; gap: 8px; margin: 14px 20px 0; }
+.dbtn { flex: 1; background: transparent; border: 1px dashed var(--faint); border-radius: 4px; color: var(--muted-2); font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1px; padding: 8px; min-height: 38px; cursor: pointer; }
+.dbtn.strong { border-color: var(--ink); color: var(--ink); }
+.panel { margin: 16px 20px 0; border: 1px solid var(--ink); border-radius: 4px; padding: 12px 14px; }
+.panel-h { font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 8px; }
+.proto { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 3.5px 0; }
+.proto-box { width: 15px; height: 15px; border: 1.5px solid var(--ink); flex: none; display: flex; align-items: center; justify-content: center; color: var(--on-dark); font-size: 10px; font-weight: 700; }
+.proto-box.on { background: var(--ink); }
+.proto span { font-size: 12px; color: var(--ink-soft); }
+.proto.on span { color: var(--muted-2); }
 </style>
 </head>
 <body>
@@ -2137,7 +2158,85 @@ function renderMasthead() {
     <div class="prog-chips">${chips}</div>
     <div class="tabs">${tabs}</div>`;
 }
-function renderScroll()    { document.getElementById('scroll').innerHTML = ''; }
+function fmtClock(ms) {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+function dayStats(dayId) {
+  let done = 0, total = 0, skipped = 0;
+  const day = DAYS.find(d => d.id === dayId);
+  day.exercises.forEach(o => {
+    const ex = resolveExercise(dayId, o);
+    (state[dayId].sets[ex.id] || []).forEach(v => {
+      total++;
+      if (v === true) done++;
+      else if (v === 'skipped') skipped++;
+    });
+  });
+  return { done, total, skipped };
+}
+
+function weekPct() {
+  let done = 0, total = 0;
+  DAYS.forEach(d => d.exercises.forEach(o => {
+    const ex = resolveExercise(d.id, o);
+    (state[d.id].sets[ex.id] || []).forEach(v => { total++; if (v === true) done++; });
+  }));
+  return total ? Math.round(done / total * 100) : 0;
+}
+
+function workoutHeaderHTML(day) {
+  const s = dayStats(day.id);
+  const ids = day.exercises.map(e => resolveExercise(day.id, e).id);
+  const hasPending = ids.some(id => (state[day.id].sets[id] || []).some(v => v === false));
+  const hasSkipped = ids.some(id => (state[day.id].sets[id] || []).some(v => v === 'skipped'));
+  const complete = isDayComplete(day.id);
+
+  const stats = `<div class="stats">
+    <div class="stat"><div class="stat-k">TIME</div><div class="stat-v">${fmtClock(view.now - view.sessionStart)}</div></div>
+    <div class="stat"><div class="stat-k">SETS</div><div class="stat-v">${s.done}<small>/${s.total}</small></div></div>
+    <div class="stat"><div class="stat-k">SKIPPED</div><div class="stat-v">${s.skipped}</div></div>
+    <div class="stat"><div class="stat-k">WEEK</div><div class="stat-v" style="color:var(--accent)">${weekPct()}<small>%</small></div></div>
+  </div>`;
+
+  const pr = view.latestPr
+    ? `<div class="pr"><b>${esc(view.latestPr.type)}</b><span>${esc(view.latestPr.text)}</span></div>` : '';
+
+  let btns = '';
+  if (hasPending) {
+    btns = `<div class="daybtns">
+      <button class="dbtn" data-act="skipday">SKIP DAY</button>
+      <button class="dbtn strong" data-act="completeday">COMPLETE DAY</button></div>`;
+  } else if (complete && hasSkipped) {
+    btns = `<div class="daybtns"><button class="dbtn" data-act="skipday">UNSKIP DAY</button></div>`;
+  }
+
+  let proto = '';
+  if (day.protocol) {
+    const items = (curProg().protocolItems || []).map((t, i) => {
+      const on = (state[day.id].protocol || [])[i];
+      return `<div class="proto${on ? ' on' : ''}" data-act="proto" data-i="${i}">
+        <div class="proto-box${on ? ' on' : ''}">${on ? '✓' : ''}</div><span>${esc(t)}</span></div>`;
+    }).join('');
+    proto = `<div class="panel"><div class="panel-h">SHOULDER PROTOCOL — BEFORE PRESSING</div>${items}</div>`;
+  }
+
+  return stats + pr + btns + proto;
+}
+
+function exercisesHTML() { return ''; }
+function planHTML()      { return ''; }
+function progressHTML()  { return ''; }
+function settingsHTML()  { return ''; }
+
+function renderScroll() {
+  const el = document.getElementById('scroll');
+  if (view.name === 'day') el.innerHTML = workoutHeaderHTML(curDay()) + exercisesHTML(curDay());
+  else if (view.name === 'plan') el.innerHTML = planHTML();
+  else if (view.name === 'progress') el.innerHTML = progressHTML();
+  else el.innerHTML = settingsHTML();
+}
 function renderBottomBar() { document.getElementById('bottombar').innerHTML = ''; }
 function renderOverlays()  { document.getElementById('overlays').innerHTML = ''; }
 
@@ -2157,6 +2256,13 @@ document.addEventListener('click', e => {
   else if (act === 'day') { view.name = 'day'; view.dayId = el.dataset.id; view.pendKey = ''; }
   else if (act === 'view'){ view.name = el.dataset.v; }
   else if (act === 'settings') { view.name = view.name === 'settings' ? 'day' : 'settings'; }
+  else if (act === 'proto') { toggleProtocol(curDay().id, Number(el.dataset.i)); }
+  else if (act === 'skipday') {
+    view.confirm = { title: 'Skip Day?', msg: 'All remaining sets will be marked skipped.', act: 'skipday' };
+  }
+  else if (act === 'completeday') {
+    view.confirm = { title: 'Complete Day?', msg: 'All remaining sets will be marked done.', act: 'completeday' };
+  }
   else return;
   render();
 });
