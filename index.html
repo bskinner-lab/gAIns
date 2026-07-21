@@ -986,6 +986,24 @@ function saveProgram() {
   try { localStorage.setItem('hypertrophy_program', currentProgramIdx); } catch(e) {}
 }
 
+const SEEN_PROGRAMS_KEY = 'hypertrophy_seen_programs';
+
+// Jump to a newly added program the first time it appears. On a fresh install we
+// only record what exists, so we never override a deliberate selection.
+function autoSelectNewProgram() {
+  let seen = null;
+  try { seen = JSON.parse(localStorage.getItem(SEEN_PROGRAMS_KEY)); } catch(e) {}
+  const ids = PROGRAMS.map(p => p.id);
+  if (Array.isArray(seen)) {
+    const unseenIdx = PROGRAMS.findIndex(p => !seen.includes(p.id));
+    if (unseenIdx !== -1) {
+      currentProgramIdx = unseenIdx;
+      saveProgram();
+    }
+  }
+  try { localStorage.setItem(SEEN_PROGRAMS_KEY, JSON.stringify(ids)); } catch(e) {}
+}
+
 function changeWeek(delta) {
   const maxWeeks = PROGRAMS[currentProgramIdx].totalWeeks;
   currentWeek = Math.min(maxWeeks, Math.max(1, currentWeek + delta));
@@ -2451,6 +2469,7 @@ function boot() {
   migrateOldState();
   migrateToMultiProgram();
   loadProgram();
+  autoSelectNewProgram();
   syncProgramGlobals();
   loadWeek();
   initState();
