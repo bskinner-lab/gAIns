@@ -37,7 +37,34 @@
 | `.claude/commands/newplan.md` | Orchestrator prompt |
 | `index.html` | Two additions: `syncProgramGlobals()` and `autoSelectNewProgram()` |
 
-Tests live beside their subject as `tools/<name>.test.js` and run with `node --test tools/`.
+Tests live beside their subject as `tools/<name>.test.js` and run with `node --test tools/*.test.js`.
+
+## Amendments during execution
+
+**A1 — `app-shim.js` needs `withApp(opts, fn)` (affects Tasks 1 and 7).** The plan's
+`loadApp()` restores globals in a `finally` block before returning, but `render()` calls
+`document.getElementById()` fresh on every invocation. Any consumer calling `app.render()`
+after `loadApp()` returns therefore throws `document is not defined` — which blocks
+`smoke-render.js` entirely. This was a design error in the plan, caught by the Task 7
+implementer.
+
+Fix: `loadApp()` keeps its teardown-on-return semantics, which are correct for the
+data-only consumers (`analyze-history.js` and `insert-program.js`'s validation half read
+`PROGRAMS`/`EXERCISE_ALTERNATIVES`, both captured at eval time). Task 1 additionally
+exports `withApp(opts, fn)`, which holds the globals live for the duration of `fn` and
+tears down in `finally` afterward, propagating `fn`'s return value and tearing down
+correctly if `fn` throws. Task 7's `smokeRender()` runs its entire render loop inside one
+`withApp()` callback and still returns `{ok:false, error}` rather than throwing —
+including when `withApp` itself throws on malformed HTML, since Task 9 uses it as a gate
+against candidate files that are sometimes legitimately broken.
+
+**A2 — Task 1 review fixes.** Three defects found in review, all fixed in Task 1:
+`clickHandler` captured `primeAudio` (registered first, `{once:true}`) instead of the
+delegated `data-act` dispatcher; the global-restore path wrote a data descriptor over
+Node's getter-only `global.navigator` accessor, permanently corrupting its descriptor
+shape for the process; and there was no test covering the throw-path restore. Also, Node
+24 required setting globals via `Object.defineProperty` rather than plain assignment,
+since `global.navigator` is a getter-only accessor property.
 
 ---
 
@@ -2097,7 +2124,7 @@ module.exports = {
 - [ ] **Step 4: Run test to verify it passes**
 
 ```bash
-node --test tools/
+node --test tools/*.test.js
 git status --short   # index.html must NOT appear — tests operate on temp copies
 ```
 
@@ -2406,7 +2433,7 @@ Expected: prints a count of at least 1
 - [ ] **Step 3: Run the full suite once more**
 
 ```bash
-node --test tools/
+node --test tools/*.test.js
 ```
 
 Expected: every test passes
@@ -2435,10 +2462,10 @@ git commit -m "feat: /newplan command for on-demand mesocycle generation"
 - [ ] `/newplan` completes end-to-end and prints the approval brief
 - [ ] `node tools/insert-program.js newplan.json` exits 0 and reports `meso3`
 - [ ] `node tools/smoke-render.js index.html 2` exits 0
-- [ ] `node --test tools/` passes with the new program in place
+- [ ] `node --test tools/*.test.js` passes with the new program in place
 - [ ] `git diff --stat index.html` shows additions only — no lines removed from `meso1`/`meso2`
 
-**Verify:** `node --test tools/ && node tools/smoke-render.js index.html 2 && git diff --stat index.html`
+**Verify:** `node --test tools/*.test.js && node tools/smoke-render.js index.html 2 && git diff --stat index.html`
 
 **Steps:**
 
@@ -2467,7 +2494,7 @@ Run `/newplan`. Answer the three questions as the user directs. Review the brief
 ```bash
 node tools/insert-program.js newplan.json
 node tools/smoke-render.js index.html 2
-node --test tools/
+node --test tools/*.test.js
 git diff --stat index.html
 ```
 
@@ -2485,7 +2512,7 @@ git commit -m "feat: add generated mesocycle 3"
 ```
 
 ```json:metadata
-{"files": ["index.html", "data/"], "verifyCommand": "node --test tools/ && node tools/smoke-render.js index.html 2 && git diff --stat index.html", "acceptanceCriteria": ["analyze-history exits 0 on the real export", "/newplan prints the approval brief", "insert-program exits 0 reporting meso3", "smoke-render exits 0 for program index 2", "node --test tools/ passes", "git diff shows additions only, meso1/meso2 untouched"], "userGate": true, "tags": ["user-gate"], "modelTier": "standard"}
+{"files": ["index.html", "data/"], "verifyCommand": "node --test tools/*.test.js && node tools/smoke-render.js index.html 2 && git diff --stat index.html", "acceptanceCriteria": ["analyze-history exits 0 on the real export", "/newplan prints the approval brief", "insert-program exits 0 reporting meso3", "smoke-render exits 0 for program index 2", "node --test tools/*.test.js passes", "git diff shows additions only, meso1/meso2 untouched"], "userGate": true, "tags": ["user-gate"], "modelTier": "standard"}
 ```
 
 ---
