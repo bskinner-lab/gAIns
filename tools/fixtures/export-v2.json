@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "currentWeek": 2,
+  "weeks": {
+    "1": {
+      "day1": {
+        "sets": { "incline_db_press": [true, true, true, true] },
+        "weights": { "incline_db_press": 55 },
+        "effort": { "incline_db_press": "medium" },
+        "protocol": [],
+        "swaps": {}
+      }
+    }
+  }
+}
