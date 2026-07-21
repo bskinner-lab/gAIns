@@ -994,14 +994,22 @@ function autoSelectNewProgram() {
   let seen = null;
   try { seen = JSON.parse(localStorage.getItem(SEEN_PROGRAMS_KEY)); } catch(e) {}
   const ids = PROGRAMS.map(p => p.id);
-  if (Array.isArray(seen)) {
+  // An array sharing no ids with the current programs is suspect data (corrupt,
+  // wiped, or foreign), not proof that every program is new — treat it like a
+  // fresh install rather than let it clobber a deliberate selection.
+  const trustworthy = Array.isArray(seen) && seen.some(id => ids.includes(id));
+  let recorded = false;
+  try { localStorage.setItem(SEEN_PROGRAMS_KEY, JSON.stringify(ids)); recorded = true; } catch(e) {}
+  // Only switch if we could actually record having seen it — otherwise the
+  // stale seen-list would trigger the same "unseen" verdict on every future
+  // load, permanently overriding any manual switch back.
+  if (trustworthy && recorded) {
     const unseenIdx = PROGRAMS.findIndex(p => !seen.includes(p.id));
     if (unseenIdx !== -1) {
       currentProgramIdx = unseenIdx;
       saveProgram();
     }
   }
-  try { localStorage.setItem(SEEN_PROGRAMS_KEY, JSON.stringify(ids)); } catch(e) {}
 }
 
 function changeWeek(delta) {
