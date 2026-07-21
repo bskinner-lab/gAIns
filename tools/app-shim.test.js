@@ -69,6 +69,23 @@ test('withApp keeps globals live for fn, and resolves the real dispatcher', () =
   });
 });
 
+test('reassigned program globals stay live across switchProgram, even under withApp', () => {
+  withApp({}, app => {
+    assert.strictEqual(app.currentProgramIdx, 0);
+    app.switchProgram(1);
+    assert.strictEqual(app.currentProgramIdx, 1);
+    assert.strictEqual(app.DAYS[0].exercises[0].id, 'm2_incline_smith');
+    assert.strictEqual(app.WEEK_PHASES, app.PROGRAMS[1].weekPhases);
+    assert.strictEqual(app.PROTOCOL_ITEMS, app.PROGRAMS[1].protocolItems);
+  });
+});
+
+test('loadApp still returns meso1 data-only (post-teardown getters keep working)', () => {
+  const app = loadApp();
+  assert.strictEqual(app.currentProgramIdx, 0);
+  assert.strictEqual(app.DAYS[0].exercises[0].id, 'incline_db_press');
+});
+
 test('withApp propagates the return value of fn', () => {
   const result = withApp({}, app => app.PROGRAMS.length);
   assert.strictEqual(result, 2);

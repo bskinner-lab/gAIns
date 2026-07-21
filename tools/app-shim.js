@@ -155,11 +155,24 @@ function setupApp({ htmlPath, storage: seed } = {}) {
     // untrusted input), and this is a dev/test harness — the whole point is to
     // execute the app's real code under a DOM shim rather than parse it.
     // The script ends with boot(); the tail expression hands back live bindings.
+    //
+    // DAYS/MESOCYCLE/WEEK_PHASES/PROTOCOL_ITEMS/currentProgramIdx are
+    // *reassigned* (not mutated) by syncProgramGlobals()/switchProgram(), so a
+    // plain destructure would snapshot them at eval time and go stale the
+    // instant either runs. `eval` here is direct-call strict-mode eval, which
+    // scopes the script's `const`/`let` bindings to this eval and does not
+    // leak them into setupApp's own scope — so these getters have to be
+    // written as part of the evaluated string itself, closing over the real
+    // bindings, rather than wrapped on afterward like `clickHandler` below.
     api = eval(
       src +
-      '\n;({ PROGRAMS, EXERCISE_ALTERNATIVES, DAYS, MESOCYCLE, WEEK_PHASES,' +
-      ' PROTOCOL_ITEMS, currentProgramIdx, currentWeek, state, view,' +
-      ' render, switchProgram, boot })'
+      '\n;({ PROGRAMS, EXERCISE_ALTERNATIVES, currentWeek, state, view,' +
+      ' render, switchProgram, boot,' +
+      ' get currentProgramIdx() { return currentProgramIdx; },' +
+      ' get DAYS() { return DAYS; },' +
+      ' get MESOCYCLE() { return MESOCYCLE; },' +
+      ' get WEEK_PHASES() { return WEEK_PHASES; },' +
+      ' get PROTOCOL_ITEMS() { return PROTOCOL_ITEMS; } })'
     );
   } catch (e) {
     // A malformed script (missing <script>, syntax error, throw during boot)
@@ -175,10 +188,19 @@ function setupApp({ htmlPath, storage: seed } = {}) {
 /**
  * Evaluate the app script under a DOM shim and return its live globals.
  * Globals are restored to their pre-call state before this returns, so use
- * this for consumers that only need data captured at eval time (`PROGRAMS`,
- * `EXERCISE_ALTERNATIVES`, …). To keep calling into the app afterward — e.g.
- * `render()` or the click handler, which look up `document` fresh each call —
- * use `withApp` instead.
+ * this for consumers that only need data captured at eval time. To keep
+ * calling into the app afterward — e.g. `render()` or the click handler,
+ * which look up `document` fresh each call — use `withApp` instead.
+ *
+ * Field liveness (matters most under `withApp`, where the app can keep
+ * running after this call returns):
+ * - LIVE getters — always read the current binding, even after
+ *   `syncProgramGlobals()`/`switchProgram()` reassigns them:
+ *   `currentProgramIdx`, `DAYS`, `MESOCYCLE`, `WEEK_PHASES`, `PROTOCOL_ITEMS`.
+ * - Mutated in place, so already reflect changes without needing a getter:
+ *   `state`, `view`.
+ * - Snapshots at eval time — never reassigned by the app, so this is safe:
+ *   `PROGRAMS`, `EXERCISE_ALTERNATIVES`, `currentWeek`.
  * @param {{htmlPath?: string, storage?: Record<string,string>}} opts
  * @returns {{PROGRAMS: any[], EXERCISE_ALTERNATIVES: object, DAYS: any[],
  *            MESOCYCLE: object, WEEK_PHASES: any[], PROTOCOL_ITEMS: any[],
