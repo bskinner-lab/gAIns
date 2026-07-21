@@ -7,7 +7,10 @@ const os = require('os');
 const path = require('path');
 const {
   normalizeExport, findNewestExport, perExercise, slopeOf,
+  resolveMuscles, weeklyVolume, flagExercises, flagVolume, renderReport, analyze,
 } = require('./analyze-history');
+const muscleMap = require('./muscle-map.json');
+const landmarks = require('./volume-landmarks.json');
 
 const v3 = require('./fixtures/export-v3.json');
 const v2 = require('./fixtures/export-v2.json');
@@ -79,4 +82,57 @@ test('findNewestExport picks the newest json', () => {
   fs.writeFileSync(path.join(dir, 'new.json'), '{}');
   fs.utimesSync(path.join(dir, 'old.json'), new Date(1000), new Date(1000));
   assert.strictEqual(path.basename(findNewestExport(dir)), 'new.json');
+});
+
+test('resolveMuscles falls back to the original exercise', () => {
+  // alt_pec_deck has no entry of its own; it stands in for machine_chest_press.
+  assert.deepStrictEqual(
+    resolveMuscles('alt_pec_deck', 'machine_chest_press', muscleMap),
+    muscleMap['machine_chest_press']
+  );
+  assert.deepStrictEqual(
+    resolveMuscles('incline_db_press', 'incline_db_press', muscleMap),
+    muscleMap['incline_db_press']
+  );
+  assert.deepStrictEqual(resolveMuscles('nope', 'also_nope', muscleMap), {});
+});
+
+test('weeklyVolume credits completed sets only', () => {
+  const vol = weeklyVolume(normalizeExport(v3), muscleMap).meso1;
+  // incline_db_press: 4 sets x 3 weeks, chest credit 1.0 -> 4 sets/week
+  // machine_chest_press (and its pec deck swap): 3 sets x 3 weeks -> 3 sets/week
+  assert.ok(Math.abs(vol.chest - 7) < 1e-9);
+  // cable_lat_raise_push was skipped every week, so side delts get nothing.
+  assert.strictEqual(vol.side_delt || 0, 0);
+});
+
+test('flagExercises identifies rejected, stalled and under-stimulating work', () => {
+  const stats = perExercise(normalizeExport(v3)).meso1;
+  const flags = flagExercises(stats);
+  assert.ok(flags.rejected.some(f => f.exId === 'cable_lat_raise_push'));
+  assert.ok(flags.rejected.some(f => f.exId === 'machine_chest_press'));
+  assert.ok(flags.underStimulating.some(f => f.exId === 'rope_pushdown'));
+  assert.ok(!flags.rejected.some(f => f.exId === 'incline_db_press'));
+});
+
+test('flagVolume compares against landmarks', () => {
+  const flags = flagVolume({ chest: 7, side_delt: 0, biceps: 40 }, landmarks);
+  assert.ok(flags.below.some(f => f.muscle === 'side_delt'));
+  assert.ok(flags.below.some(f => f.muscle === 'chest'));
+  assert.ok(flags.above.some(f => f.muscle === 'biceps'));
+});
+
+test('renderReport emits the expected sections', () => {
+  const md = renderReport(analyze(v3, muscleMap, landmarks));
+  for (const heading of ['## Adherence', '## Per exercise', '## Weekly volume by muscle', '## Flags']) {
+    assert.ok(md.includes(heading), `missing ${heading}`);
+  }
+});
+
+test('renderReport flags an in-progress final week', () => {
+  // Week 3 in the fixture has a `false` (not-yet-attempted) slot on
+  // cable_lat_raise_push — the report should call out that the snapshot is
+  // mid-block, since that changes how the skip rates should be read.
+  const md = renderReport(analyze(v3, muscleMap, landmarks));
+  assert.match(md, /Week 3 is in progress; its unattempted sets are excluded from skip rates\./);
 });
