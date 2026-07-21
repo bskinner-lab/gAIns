@@ -90,8 +90,10 @@ the failure point is a simple pin or stop rather than a loss of bar control.
 
 A within-participant RCT randomized 25 trained lifters' upper-body limbs to
 lengthened-partial vs full-ROM training for 8 weeks and found "similar"
-muscle-thickness gains across sites (Bayes factors 0.16–0.39, moderate
-support for no difference) and similar 10RM strength-endurance changes
+muscle-thickness gains across sites (Bayes factors 0.16–0.39 across six
+site-specific outcomes — moderate support for equivalence at the low end of
+that range, but only anecdotal support at the 0.39 end, under the paper's own
+Bayesian evidence categories) and similar 10RM strength-endurance changes
 ([Wolf et al., *PeerJ*, 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC11829627/)).
 That single-exercise result sits alongside four earlier single-exercise
 comparisons: three (Kassiano et al. 2022; Pedrosa et al. 2021; Goto et al.
@@ -142,8 +144,11 @@ weekly volume).
 
 Plotkin et al. randomized 43 trained lifters to progress either load (fixed
 8–12 reps, weight increases) or reps (fixed weight, reps increase) over 8
-weeks and found both viable, with hypertrophy and strength gains "practically
-equivalent" between groups
+weeks and found both approaches viable, with the authors concluding "both
+progressions of repetitions and load appear to be viable strategies for
+enhancing muscular adaptations" — hypertrophy and strength differences
+between groups were small and mostly within wide confidence intervals, not
+identical outcomes
 ([Plotkin et al., *PeerJ*, 2022](https://pmc.ncbi.nlm.nih.gov/articles/PMC9528903/)).
 Separately, Israetel, Feather, Faleiro & Juneau's original *Strength &
 Conditioning Journal* article argues mesocycle progression should prioritize
@@ -187,10 +192,13 @@ effect sizes), but the randomized group reported significantly better
 training motivation, while the fixed group had somewhat better bench-press
 transfer (motor-learning effect)
 ([Baz-Valle et al., *PLOS ONE*, 2019](https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0226989)).
-Broader reviews of exercise variation describe a middle path: "some degree of
-systematic variation seems to enhance regional hypertrophic adaptations…
-whereas excessive, random variation may compromise muscular gains." **Applied
-here:** the generator should retain compound anchor lifts across a
+*Note: broader secondary sources attribute a similar claim — that some
+systematic exercise variation aids regional hypertrophy while excessive,
+random variation may compromise it — to a Schoenfeld-affiliated review, but
+searching turned up only marketing-site paraphrases with no traceable DOI, so
+that broader claim is not included as established here; the Baz-Valle trial
+above is the only exercise-variation result in this section that was
+independently confirmed by direct fetch.* **Applied here:** the generator should retain compound anchor lifts across a
 mesocycle (motor-learning benefit, easy progression tracking) while rotating
 accessory/isolation exercises on a slower cadence (e.g. every 4–8 weeks, at
 mesocycle boundaries) rather than every session — structured variation, not
