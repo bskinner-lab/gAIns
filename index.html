@@ -1017,17 +1017,21 @@ function resolveExercise(dayId, ex) {
   return alts.find(a => a.id === altId) || ex;
 }
 
-let programInitialized = false;
-function switchProgram(idx) {
-  if (programInitialized && idx === currentProgramIdx) return;
-  programInitialized = true;
-  const prog = PROGRAMS[idx];
-  currentProgramIdx = idx;
+function syncProgramGlobals() {
+  const prog = PROGRAMS[currentProgramIdx];
   DAYS = prog.days;
   MESOCYCLE = prog.mesocycle;
   WEEK_PHASES = prog.weekPhases;
   PROTOCOL_ITEMS = prog.protocolItems;
   rebuildLegacyIdMap();
+}
+
+let programInitialized = false;
+function switchProgram(idx) {
+  if (programInitialized && idx === currentProgramIdx) return;
+  programInitialized = true;
+  currentProgramIdx = idx;
+  syncProgramGlobals();
   saveProgram();
   loadWeek();
   initState();
@@ -2447,6 +2451,7 @@ function boot() {
   migrateOldState();
   migrateToMultiProgram();
   loadProgram();
+  syncProgramGlobals();
   loadWeek();
   initState();
   view.dayId = getStartDay();
