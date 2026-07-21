@@ -132,6 +132,51 @@ body {
 .proto-box.on { background: var(--ink); }
 .proto span { font-size: 12px; color: var(--ink-soft); }
 .proto.on span { color: var(--muted-2); }
+
+.ex { padding: 18px 20px 0; }
+.ex-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ex-name { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: .5px; min-width: 0; }
+.ex-name.done { color: var(--muted-2); }
+.ex-right { display: flex; align-items: center; gap: 8px; flex: none; }
+.swap { border: 1px solid var(--border); background: transparent; color: var(--muted-2); border-radius: 3px; width: 26px; height: 26px; cursor: pointer; font-size: 13px; }
+.swap.on { border-color: var(--accent); color: var(--accent); background: rgba(227,79,30,.1); }
+.ex-count { font-family: var(--font-mono); font-size: 9px; color: var(--muted); }
+.tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.tag { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: .5px; padding: 2px 7px; border-radius: 2px; border: 1px solid var(--border); color: var(--muted); }
+.tag.ink { border-color: var(--ink); color: var(--ink); cursor: help; }
+.tag.acc { border-color: var(--accent); color: var(--accent); cursor: help; }
+.ex-note { font-family: var(--font-mono); font-size: 9.5px; color: var(--muted-2); margin-top: 6px; line-height: 1.5; }
+.trend { display: flex; align-items: flex-end; gap: 14px; margin-top: 10px; }
+.bars { display: flex; align-items: flex-end; gap: 6px; height: 46px; }
+.bar-col { display: flex; flex-direction: column; align-items: center; gap: 3px; justify-content: flex-end; height: 46px; }
+.bar-col span { font-family: var(--font-mono); font-size: 7px; color: var(--muted-2); }
+.bar { width: 22px; background: var(--faint); }
+.bar.now { background: var(--accent); }
+.trend-empty { font-family: var(--font-mono); font-size: 9px; color: var(--faint); margin-top: 8px; }
+.grid { margin-top: 12px; border: 1px solid var(--ink); border-radius: 4px; overflow: hidden; }
+.grid-h, .grid-r { display: grid; grid-template-columns: 34px 1fr 1fr 104px; align-items: center; }
+.grid-h { background: var(--ink); color: var(--on-dark); font-family: var(--font-mono); font-size: 8px; letter-spacing: .8px; }
+.grid-h span { padding: 6px 0; }
+.grid-h span:first-child { padding-left: 8px; }
+.grid-h span:last-child { padding-right: 8px; text-align: right; }
+.grid-r { font-family: var(--font-mono); font-size: 11px; border-top: 1px solid var(--border); }
+.grid-r.active { border-top: 2px solid var(--accent); background: var(--surface); }
+.grid-r.done { background: var(--done-bg); }
+.grid-r > span { padding: 8px 0; }
+.grid-r .n { padding-left: 8px; color: var(--faint); }
+.grid-r.active .n { color: var(--accent); font-weight: 600; }
+.grid-r.done .n { color: var(--muted-2); }
+.grid-r .last { color: var(--muted-2); }
+.cell-today { padding: 5px 8px 5px 0; text-align: right; }
+.log-btn { display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: var(--on-dark); font-weight: 600; font-size: 11px; letter-spacing: 1px; min-height: 32px; padding: 0 14px; border-radius: 4px; cursor: pointer; border: none; }
+.t-done { color: var(--ink); font-weight: 600; cursor: pointer; }
+.t-skip { color: var(--faint); text-decoration: line-through; cursor: pointer; }
+.t-pend { color: var(--faint); cursor: pointer; font-size: 10px; }
+.effort { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
+.effort-k { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--muted-2); }
+.eff { font-family: var(--font-mono); font-size: 9px; padding: 4px 11px; min-height: 30px; border-radius: 3px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); }
+.eff.on { border-color: var(--ink); background: var(--ink); color: var(--on-dark); }
+.skipex { margin-top: 8px; background: transparent; border: 1px dashed var(--border); border-radius: 4px; color: var(--faint); font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; padding: 5px 12px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -1097,185 +1142,6 @@ function tip(term) {
   return `<span class="tip" data-tip="${def.replace(/"/g,'&quot;')}">${term}</span>`;
 }
 
-function renderDay(day) {
-  if (day.id === 'info') return renderInfoPanel();
-
-  const phase = WEEK_PHASES[currentWeek - 1];
-  let html = `
-    <div class="day-header">
-      <div class="day-label"><span>${day.label}:</span> ${day.title}</div>
-      <div class="day-desc">${day.subtitle}</div>
-      <div class="day-note">${day.note}</div>
-    </div>
-    <div class="week-context-bar" style="border-color:${phase.color}22;background:${phase.color}08">
-      <span style="color:${phase.color};font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px">WEEK ${currentWeek} · ${phase.label.toUpperCase()}</span>
-      <span style="color:var(--muted);font-size:11px;margin-left:10px">${phase.rpe}${!phase.llp ? ' · No LLP this phase' : ' · LLP active'}</span>
-    </div>
-  `;
-
-  const activeIds = activeExIds(day.id);
-  const dayHasPending = activeIds.some(id => state[day.id].sets[id] && state[day.id].sets[id].some(v => v === false));
-  const dayHasSkipped = activeIds.some(id => state[day.id].sets[id] && state[day.id].sets[id].some(v => v === 'skipped'));
-  if (dayHasPending) {
-    html += `<div style="display:flex;gap:8px;margin-top:10px">
-      <button class="skip-day-btn" onclick="showConfirm('Skip Day?','All remaining sets will be marked as skipped.',()=>skipDay('${day.id}'))">Skip Day</button>
-      <button class="complete-day-btn" onclick="showConfirm('Complete Day?','All remaining sets will be marked as done.',()=>completeDay('${day.id}'))">Complete Day</button>
-    </div>`;
-  } else if (isDayComplete(day.id) && dayHasSkipped) {
-    html += `<button class="skip-day-btn" onclick="skipDay('${day.id}')" style="margin-top:10px">Unskip Day</button>`;
-  }
-
-  // Shoulder protocol — shown at top before exercises
-  if (day.protocol) {
-    html += `
-      <div class="protocol-section">
-        <div class="protocol-title">🩺 Shoulder Protocol</div>
-        <div class="protocol-items">
-    `;
-    PROTOCOL_ITEMS.forEach((item, i) => {
-      const checked = (state[day.id].protocol || [])[i];
-      html += `
-        <div class="protocol-item">
-          <div class="protocol-check${checked ? ' checked' : ''}" onclick="toggleProtocol('${day.id}', ${i})"></div>
-          <span>${item}</span>
-        </div>
-      `;
-    });
-    html += `</div></div>`;
-  }
-
-  day.exercises.forEach((originalEx, ei) => {
-    const ex = resolveExercise(day.id, originalEx);
-    const isSwapped = ex.id !== originalEx.id;
-    const sets = state[day.id].sets[ex.id] || Array(ex.sets).fill(false);
-    const weights = state[day.id].weights || {};
-    const currentWeight = weights[ex.id] || '';
-    const doneSets = sets.filter(v => v === true).length;
-    const skippedSets = sets.filter(v => v === 'skipped').length;
-    const resolvedSets = doneSets + skippedSets;
-    const allDone = resolvedSets === ex.sets;
-    const isOpen = !allDone;
-    const cardId = `card-${day.id}-${ex.id}`;
-
-    const prior = priorWeekEntry(day.id, ex.id);
-    const effortLabel = { low: 'Low', medium: 'Med', high: 'High' };
-    const lastWeekRef = prior ? `
-      <div class="last-week-ref">Last (W${prior.week}):
-        ${prior.weight != null
-          ? `<span class="lwr-weight">${prior.weight} lbs</span>`
-          : `<span class="lwr-none">—</span>`}
-        ${prior.effort
-          ? `<span class="lwr-dot lwr-${prior.effort}"></span><span class="lwr-effort lwr-${prior.effort}">${effortLabel[prior.effort]}</span>`
-          : ''}
-      </div>` : '';
-
-    const hasAlts = EXERCISE_ALTERNATIVES[originalEx.id];
-    const swapBtn = hasAlts
-      ? `<button class="swap-btn${isSwapped ? ' swapped' : ''}" onclick="event.stopPropagation(); showSwapPicker('${day.id}', '${originalEx.id}')" data-tip="Swap exercise">⇄</button>`
-      : '';
-
-    const llpTag = ex.llp ? `<span class="tag tag-llp tip" data-tip="${GLOSSARY['LLP'].replace(/"/g,'&quot;')}">LLP</span>` : '';
-    const compTag = ex.compound ? `<span class="tag tag-compound tip" data-tip="${GLOSSARY['compounds'].replace(/"/g,'&quot;')}">Compound</span>` : '';
-    const rpeTag = `<span class="tag tag-rpe tip" data-tip="${GLOSSARY['RPE'].replace(/"/g,'&quot;')}">RPE ${ex.rpe}</span>`;
-    const restTag = ex.restLabel ? `<span class="tag tag-rest tip" data-tip="Recommended rest between sets for this exercise">⏱ ${ex.restLabel}</span>` : '';
-
-    html += `
-      <div class="exercise-card${allDone ? ' all-done' : ''}${isOpen ? ' open' : ''}" id="${cardId}">
-        <div class="exercise-header" onclick="toggleCard('${cardId}', event)">
-          <div class="exercise-info">
-            <div class="exercise-name">${ex.name}</div>
-            <div class="exercise-meta">
-              <div class="exercise-tag"><span>${ex.sets}</span> sets</div>
-              <div class="exercise-tag"><span>${ex.reps}</span> reps</div>
-              ${currentWeight ? `<div class="exercise-tag"><span>${currentWeight}</span> lbs</div>` : ''}
-            </div>
-            <div class="ex-tags">${rpeTag}${restTag}${llpTag}${compTag}</div>
-            ${ex.note ? `<div class="exercise-note-small">${ex.note}</div>` : ''}
-          </div>
-          <div class="exercise-status">
-            ${swapBtn}
-            <div class="sets-badge${allDone ? ' done' : ''}">${resolvedSets}/${ex.sets}</div>
-            <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-        </div>
-        <div class="sets-container">
-          <div class="sets-grid">
-    `;
-
-    for (let si = 0; si < ex.sets; si++) {
-      const val = sets[si];
-      const done = val === true;
-      const skipped = val === 'skipped';
-      const setWeight = (weights[`${ex.id}_${si}`] || currentWeight) || '';
-      const stateClass = done ? ' done' : skipped ? ' skipped' : '';
-      let label;
-      if (done) {
-        label = `<div class="set-complete-label" id="scl-${day.id}-${ex.id}-${si}">✓ Done</div>`;
-      } else if (skipped) {
-        label = `<div class="set-skipped-label">— Skipped</div>`;
-      } else {
-        label = `<div class="set-action-label">Tap to complete</div>`;
-      }
-      html += `
-        <div class="set-btn-wrapper">
-          <button class="set-btn${stateClass}" id="set-${day.id}-${ex.id}-${si}" onclick="toggleSet('${day.id}', '${ex.id}', ${si})">
-            <div class="set-num">Set ${si + 1}</div>
-            <div class="set-reps">${ex.reps.split('–')[0].replace(/[^0-9]/g,'') || '—'}</div>
-            ${label}
-            ${setWeight ? `<div class="set-weight">${setWeight} lbs</div>` : ''}
-          </button>
-          ${!done ? `<div class="skip-set-link" onclick="event.stopPropagation(); skipSet('${day.id}', '${ex.id}', ${si})">${skipped ? 'Unskip' : 'Skip'}</div>` : ''}
-        </div>
-      `;
-    }
-
-    html += `
-          </div>
-          ${lastWeekRef}
-          <div class="weight-row">
-            <span class="weight-label">Weight:</span>
-            <input
-              class="weight-input"
-              type="number"
-              inputmode="decimal"
-              placeholder="0"
-              value="${currentWeight}"
-              id="weight-${day.id}-${ex.id}"
-              oninput="saveWeight('${day.id}', '${ex.id}')"
-              onkeydown="if(event.key==='Enter') this.blur();"
-            />
-            <span class="weight-unit">lbs</span>
-          </div>
-          <div class="effort-row">
-            <span class="effort-label">Effort:</span>
-            <div class="effort-toggles">
-              ${['low','medium','high'].map(lvl => {
-                const currentEffort = (state[day.id].effort || {})[ex.id] || '';
-                const activeClass = currentEffort === lvl ? ` active-${lvl}` : '';
-                const label = lvl.charAt(0).toUpperCase() + lvl.slice(1);
-                return `<button class="effort-btn${activeClass}" id="effort-${day.id}-${ex.id}-${lvl}" data-level="${lvl}" onclick="event.stopPropagation(); saveEffort('${day.id}', '${ex.id}', '${lvl}')">${label}</button>`;
-              }).join('')}
-            </div>
-          </div>
-          ${sets.some(v => v === false)
-            ? `<div style="text-align:center;padding:4px 0 8px"><button class="skip-exercise-btn" onclick="skipExercise('${day.id}', '${ex.id}')">Skip Exercise</button></div>`
-            : sets.every(v => v === 'skipped')
-              ? `<div style="text-align:center;padding:4px 0 8px"><button class="skip-exercise-btn" onclick="skipExercise('${day.id}', '${ex.id}')">Unskip Exercise</button></div>`
-              : ''
-          }
-        </div>
-      </div>
-    `;
-  });
-
-  html += `<div class="day-complete-banner${isDayComplete(day.id) ? ' visible' : ''}" id="banner-${day.id}">
-    <div class="big">DAY COMPLETE 🔥</div>
-    <p>Great work. Rest up and recover strong.</p>
-  </div>`;
-
-  return html;
-}
-
 function renderInfoPanel() {
   let html = `<div class="meso-section">
     <div class="meso-title">${PROGRAMS[currentProgramIdx].totalWeeks}-WEEK MESOCYCLE — ${PROGRAMS[currentProgramIdx].name.toUpperCase()}</div>
@@ -1337,88 +1203,6 @@ function renderInfoPanel() {
   return html;
 }
 
-function sparklineSVG(hist) {
-  const pts = hist.filter(h => h.weight != null);
-  if (pts.length < 2) return '<div class="prog-spark-empty">Need 2+ weeks of weight for a trend</div>';
-
-  const W = 240, H = 40, pad = 6;
-  const weeks = pts.map(p => p.week);
-  const vals = pts.map(p => p.weight);
-  const minW = Math.min(...weeks), maxW = Math.max(...weeks);
-  const minV = Math.min(...vals), maxV = Math.max(...vals);
-  const spanW = (maxW - minW) || 1;
-  const spanV = (maxV - minV) || 1;
-  const x = wk => pad + ((wk - minW) / spanW) * (W - 2 * pad);
-  const y = v => (H - pad) - ((v - minV) / spanV) * (H - 2 * pad);
-
-  const linePts = pts.map(p => `${x(p.week).toFixed(1)},${y(p.weight).toFixed(1)}`).join(' ');
-  const effColor = { low: 'var(--green)', medium: 'var(--accent)', high: 'var(--accent2)' };
-  const dots = pts.map(p => {
-    const c = p.effort ? effColor[p.effort] : 'var(--muted)';
-    return `<circle cx="${x(p.week).toFixed(1)}" cy="${y(p.weight).toFixed(1)}" r="3" fill="${c}"/>`;
-  }).join('');
-
-  return `<svg class="prog-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-      <polyline points="${linePts}" fill="none" stroke="var(--border)" stroke-width="1.5"/>
-      ${dots}
-    </svg>`;
-}
-
-function renderProgressPanel() {
-  const maxWeeks = PROGRAMS[currentProgramIdx].totalWeeks;
-  let html = `<div class="meso-section">
-    <div class="meso-title">PROGRESSION</div>
-    <div class="meso-subtitle">${PROGRAMS[currentProgramIdx].name} · weight & effort by week</div>`;
-
-  let anyData = false;
-
-  DAYS.forEach(day => {
-    let dayRows = '';
-    day.exercises.forEach(originalEx => {
-      const ex = resolveExercise(day.id, originalEx);
-      const hist = getExerciseHistory(day.id, ex.id);
-      if (!hist.length) return;
-      anyData = true;
-
-      const byWeek = {};
-      hist.forEach(h => { byWeek[h.week] = h; });
-
-      const cells = [];
-      for (let w = 1; w <= maxWeeks; w++) {
-        const h = byWeek[w];
-        if (!h) {
-          cells.push(`<div class="prog-cell empty"><div class="prog-wk">W${w}</div><div class="prog-val">·</div></div>`);
-        } else {
-          const dot = h.effort ? `<span class="prog-dot lwr-${h.effort}"></span>` : '';
-          const val = h.weight != null ? h.weight : '—';
-          cells.push(`<div class="prog-cell"><div class="prog-wk">W${w}</div><div class="prog-val">${val}${dot}</div></div>`);
-        }
-      }
-
-      dayRows += `
-        <div class="prog-ex">
-          <div class="prog-ex-name">${ex.name}</div>
-          ${sparklineSVG(hist)}
-          <div class="prog-grid">${cells.join('')}</div>
-        </div>`;
-    });
-
-    if (dayRows) {
-      html += `<div class="prog-day">
-        <div class="prog-day-label">${day.label} · ${day.title}</div>
-        ${dayRows}
-      </div>`;
-    }
-  });
-
-  if (!anyData) {
-    html += `<div class="prog-empty">No weights or effort logged yet. Track a few sessions and your progression will appear here.</div>`;
-  }
-
-  html += `</div>`;
-  return html;
-}
-
 function toggleMeso(i) {
   document.getElementById(`meso-${i}`).classList.toggle('open');
 }
@@ -1427,12 +1211,6 @@ function toggleMeso(i) {
 function switchDay(dayId) { if (dayId) view.dayId = dayId; render(); }
 
 let currentDayId = DAYS[0].id;
-
-function toggleCard(cardId, e) {
-  if (e && e.target.closest('.tip')) return;
-  const card = document.getElementById(cardId);
-  card.classList.toggle('open');
-}
 
 function toggleSet(dayId, exId, setIdx) {
   const wasDone = state[dayId].sets[exId][setIdx] === true;
@@ -2225,7 +2003,103 @@ function workoutHeaderHTML(day) {
   return stats + pr + btns + proto;
 }
 
-function exercisesHTML() { return ''; }
+function activeSet(day) {
+  for (const o of day.exercises) {
+    const ex = resolveExercise(day.id, o);
+    const arr = state[day.id].sets[ex.id] || [];
+    const i = arr.findIndex(v => v === false);
+    if (i !== -1) return { ex, orig: o, i };
+  }
+  return null;
+}
+
+function undoSet(dayId, exId, i) {
+  state[dayId].sets[exId][i] = false;
+  saveState();
+  view.pendKey = '';
+}
+
+function logActiveSet() { /* implemented in Task 7 */ }
+
+const EFF_LABEL = { low: 'LOW', medium: 'MED', high: 'HIGH' };
+
+function exercisesHTML(day) {
+  const act = activeSet(day);
+  return day.exercises.map((orig, xi) => {
+    const ex = resolveExercise(day.id, orig);
+    const swapped = ex.id !== orig.id;
+    const arr = state[day.id].sets[ex.id] || [];
+    const dh = arr.filter(v => v === true).length;
+    const sk = arr.filter(v => v === 'skipped').length;
+    const allDone = (dh + sk) === ex.sets;
+    const prior = priorWeekEntry(day.id, ex.id);
+    const curW = state[day.id].weights[ex.id];
+
+    let tags = `<span class="tag">${ex.sets}×${esc(ex.reps)}</span>`
+      + `<span class="tag ink" data-act="tip" data-t="RPE">RPE ${esc(ex.rpe)}</span>`;
+    if (ex.restLabel) tags += `<span class="tag">⏱ ${esc(ex.restLabel)}</span>`;
+    if (ex.llp) tags += `<span class="tag acc" data-act="tip" data-t="LLP">LLP</span>`;
+    if (ex.compound) tags += `<span class="tag" data-act="tip" data-t="compounds" style="cursor:help">COMPOUND</span>`;
+
+    const hist = getExerciseHistory(day.id, ex.id).filter(h => h.weight != null);
+    let trend = `<div class="trend-empty">▂ LOG 2+ WEEKS TO SEE A TREND</div>`;
+    if (hist.length >= 2) {
+      const vals = hist.map(h => h.weight), mn = Math.min(...vals), mx = Math.max(...vals);
+      const bars = hist.slice(-5).map(h =>
+        `<div class="bar-col"><span>W${h.week}</span><div class="bar${h.week === currentWeek ? ' now' : ''}" style="height:${Math.round(12 + (mx === mn ? 22 : (h.weight - mn) / (mx - mn) * 28))}px"></div></div>`
+      ).join('');
+      const diff = vals[vals.length - 1] - hist[0].weight;
+      trend = `<div class="trend"><div class="bars">${bars}</div>
+        <div style="flex:1"><div class="effort-k">TREND</div>
+        <div style="font-size:11.5px;line-height:1.4;margin-top:2px">${diff >= 0 ? '+' : ''}${diff % 1 ? diff.toFixed(1) : diff} lb over ${hist.length} logged wks.</div></div></div>`;
+    }
+
+    const activeI = act && act.ex.id === ex.id ? act.i : -1;
+    const rows = arr.map((v, i) => {
+      const isActive = i === activeI;
+      const setW = state[day.id].weights[`${ex.id}_${i}`];
+      const shown = setW != null ? setW : (curW != null ? curW : '');
+      let cell;
+      if (isActive) cell = `<button class="log-btn" data-act="log">LOG</button>`;
+      else if (v === true) cell = `<span class="t-done" data-act="undo" data-ex="${ex.id}" data-i="${i}">${esc(shown)} ●</span>`;
+      else if (v === 'skipped') cell = `<span class="t-skip" data-act="skipset" data-ex="${ex.id}" data-i="${i}">SKIP</span>`;
+      else cell = `<span class="t-pend" data-act="skipset" data-ex="${ex.id}" data-i="${i}">skip →</span>`;
+      const reps = ex.reps + (ex.llp && i === arr.length - 1 && !/LLP/.test(ex.reps) ? ' +LLP' : '');
+      return `<div class="grid-r${isActive ? ' active' : ''}${v === true ? ' done' : ''}">
+        <span class="n">${i + 1}</span>
+        <span class="last">${prior && prior.weight != null ? esc(prior.weight) : '—'}</span>
+        <span>${esc(reps)}</span>
+        <div class="cell-today">${cell}</div></div>`;
+    }).join('');
+
+    const effort = ['low', 'medium', 'high'].map(l => {
+      const on = (state[day.id].effort[ex.id] || '') === l;
+      return `<button class="eff${on ? ' on' : ''}" data-act="eff" data-ex="${ex.id}" data-l="${l}">${EFF_LABEL[l]}</button>`;
+    }).join('');
+
+    const lastCol = prior
+      ? `W${prior.week}${prior.effort ? ' · ' + EFF_LABEL[prior.effort] : ''}` : 'LAST';
+
+    return `<div class="ex">
+      <div class="ex-top">
+        <div class="ex-name${allDone ? ' done' : ''}">${String(xi + 1).padStart(2, '0')} ${esc(ex.name)}</div>
+        <div class="ex-right">
+          ${EXERCISE_ALTERNATIVES[orig.id] ? `<button class="swap${swapped ? ' on' : ''}" data-act="swap" data-orig="${orig.id}" aria-label="Swap exercise">⇄</button>` : ''}
+          <div class="ex-count">${dh + sk}/${ex.sets}</div>
+        </div>
+      </div>
+      <div class="tags">${tags}</div>
+      ${ex.note ? `<div class="ex-note">${esc(ex.note)}${swapped ? '  ·  swapped' : ''}</div>` : ''}
+      ${trend}
+      <div class="grid">
+        <div class="grid-h"><span>SET</span><span>${esc(lastCol)}</span><span>REPS</span><span>TODAY</span></div>
+        ${rows}
+      </div>
+      <div class="effort"><span class="effort-k">EFFORT</span><div style="display:flex;gap:5px">${effort}</div></div>
+      <button class="skipex" data-act="skipex" data-ex="${ex.id}">${arr.every(v => v === 'skipped') ? 'UNSKIP EXERCISE' : 'SKIP EXERCISE'}</button>
+    </div>`;
+  }).join('') + `<div style="height:20px"></div>`;
+}
 function planHTML()      { return ''; }
 function progressHTML()  { return ''; }
 function settingsHTML()  { return ''; }
@@ -2263,6 +2137,13 @@ document.addEventListener('click', e => {
   else if (act === 'completeday') {
     view.confirm = { title: 'Complete Day?', msg: 'All remaining sets will be marked done.', act: 'completeday' };
   }
+  else if (act === 'tip')     { view.tip = el.dataset.t; }
+  else if (act === 'undo')    { undoSet(curDay().id, el.dataset.ex, Number(el.dataset.i)); }
+  else if (act === 'skipset') { skipSet(curDay().id, el.dataset.ex, Number(el.dataset.i)); }
+  else if (act === 'skipex')  { skipExercise(curDay().id, el.dataset.ex); }
+  else if (act === 'eff')     { saveEffort(curDay().id, el.dataset.ex, el.dataset.l); }
+  else if (act === 'swap')    { view.swap = { dayId: curDay().id, origId: el.dataset.orig }; }
+  else if (act === 'log')     { logActiveSet(); }
   else return;
   render();
 });
