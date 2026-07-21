@@ -18,6 +18,40 @@ test('extractScript returns the app script block', () => {
   assert.ok(!src.includes('<script>'));
 });
 
+test('extractScript is unchanged for a normal single-block file', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-shim-'));
+  const htmlPath = path.join(dir, 'normal.html');
+  fs.writeFileSync(htmlPath, '<html><body></body><script>const x = 1;\nconst y = 2;</script></html>');
+
+  assert.strictEqual(extractScript(htmlPath), 'const x = 1;\nconst y = 2;');
+});
+
+test('extractScript stops at the FIRST </script>, matching browser parsing — not the last', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-shim-'));
+  const htmlPath = path.join(dir, 'injected.html');
+  // A generated note containing a literal `</script>` inside a JS string
+  // would terminate the real <script> block early in a browser, even though
+  // Node's own tokenizer (lastIndexOf) would happily read past it to the
+  // true trailing tag. The gates must see what the browser sees.
+  fs.writeFileSync(
+    htmlPath,
+    '<script>const note = "malicious </script><script>alert(1)</script>";\n' +
+      'const shouldBeUnreachable = true;</script>'
+  );
+
+  const src = extractScript(htmlPath);
+  assert.strictEqual(src, 'const note = "malicious ');
+  assert.ok(!src.includes('shouldBeUnreachable'));
+});
+
+test('extractScript matches </script> case-insensitively', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-shim-'));
+  const htmlPath = path.join(dir, 'mixed-case.html');
+  fs.writeFileSync(htmlPath, '<script>const z = 3;</ScRiPt>');
+
+  assert.strictEqual(extractScript(htmlPath), 'const z = 3;');
+});
+
 test('loadApp exposes real program data', () => {
   const app = loadApp();
   assert.strictEqual(app.PROGRAMS.length, 2);

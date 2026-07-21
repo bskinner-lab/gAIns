@@ -7,11 +7,22 @@ const APP_HTML = path.join(__dirname, '..', 'index.html');
 function extractScript(htmlPath = APP_HTML) {
   const html = fs.readFileSync(htmlPath, 'utf8');
   const open = html.indexOf('<script>');
-  const close = html.lastIndexOf('</script>');
-  if (open === -1 || close === -1 || close < open) {
+  if (open === -1) {
     throw new Error(`no <script> block found in ${htmlPath}`);
   }
-  return html.slice(open + '<script>'.length, close);
+  const bodyStart = open + '<script>'.length;
+  // A browser's HTML tokenizer ends the block at the FIRST `</script` it sees
+  // after the opening tag — case-insensitively, and on the bare prefix, not
+  // just the exact `</script>` spelling — even if that occurrence is inside a
+  // JS string literal. lastIndexOf would happily eval past it and hide a
+  // `</script>` injection that truncates the real, browser-rendered script to
+  // whatever precedes the first match. Match that same, stricter rule so what
+  // gets eval'd here is what a browser would actually execute.
+  const closeMatch = /<\/script/i.exec(html.slice(bodyStart));
+  if (!closeMatch) {
+    throw new Error(`no <script> block found in ${htmlPath}`);
+  }
+  return html.slice(bodyStart, bodyStart + closeMatch.index);
 }
 
 function makeStorage(seed = {}) {
