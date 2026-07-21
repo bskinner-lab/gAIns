@@ -43,7 +43,7 @@
   "m2_weighted_pullup":     { "lats": 1.0, "upper_back": 0.5, "biceps": 0.5 },
   "m2_chest_row_d2":        { "upper_back": 1.0, "lats": 1.0, "biceps": 0.5 },
   "m2_single_pulldown":     { "lats": 1.0, "biceps": 0.5 },
-  "m2_rear_delt_row":       { "rear_delt": 1.0, "upper_back": 0.5 },
+  "m2_rear_delt_row":       { "rear_delt": 1.0, "upper_back": 0.5, "biceps": 0.5 },
   "m2_face_pull":           { "rear_delt": 1.0, "upper_back": 0.5, "traps": 0.5 },
   "m2_bayesian_curl":       { "biceps": 1.0 },
   "m2_hammer_curl":         { "biceps": 1.0, "forearms": 0.5 },
