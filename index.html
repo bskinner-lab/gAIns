@@ -177,6 +177,31 @@ body {
 .eff { font-family: var(--font-mono); font-size: 9px; padding: 4px 11px; min-height: 30px; border-radius: 3px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); }
 .eff.on { border-color: var(--ink); background: var(--ink); color: var(--on-dark); }
 .skipex { margin-top: 8px; background: transparent; border: 1px dashed var(--border); border-radius: 4px; color: var(--faint); font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; padding: 5px 12px; cursor: pointer; }
+
+#bottombar:empty { display: none; }
+.bar { background: var(--bar-dark); color: var(--on-dark); padding: 0 16px; flex: none; }
+.pill { display: flex; align-items: center; justify-content: space-between; padding: 10px 2px; border-bottom: 1px solid var(--bar-line); }
+.pill-l { display: flex; align-items: center; gap: 9px; cursor: pointer; min-width: 0; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.dot.urgent { background: var(--danger); }
+.pill-k { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: rgba(242,239,232,.5); }
+.pill-t { font-family: var(--font-mono); font-size: 17px; font-weight: 600; color: var(--accent); }
+.pill-t.urgent { color: var(--danger); }
+.pill-b { background: none; border: 1px solid var(--bar-edge); border-radius: 8px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; min-height: 44px; padding: 0 16px; cursor: pointer; }
+.log-row { padding: 11px 0 14px; }
+.log-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.log-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-set { font-family: var(--font-mono); font-size: 8px; letter-spacing: 1px; color: rgba(242,239,232,.45); flex: none; }
+.log-ctl { display: flex; align-items: stretch; gap: 10px; }
+.stepper { display: flex; align-items: center; gap: 6px; flex: none; }
+.step-b { width: 44px; height: 52px; background: var(--bar-btn); border: 1px solid var(--bar-edge); border-radius: 8px; color: var(--on-dark); font-size: 20px; cursor: pointer; }
+.step-v { text-align: center; min-width: 50px; }
+.step-v div:first-child { font-family: var(--font-mono); font-size: 16px; font-weight: 600; }
+.step-v div:last-child { font-family: var(--font-mono); font-size: 7px; color: rgba(242,239,232,.4); }
+.log-go { flex: 1; min-width: 0; background: var(--accent); border: none; border-radius: 8px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 1px; height: 52px; cursor: pointer; }
+.done-row { display: flex; align-items: center; justify-content: space-between; padding: 15px 2px 17px; }
+.done-t { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: 1.5px; color: var(--accent); }
+.done-s { font-family: var(--font-mono); font-size: 11px; color: rgba(242,239,232,.6); }
 </style>
 </head>
 <body>
@@ -2019,7 +2044,46 @@ function undoSet(dayId, exId, i) {
   view.pendKey = '';
 }
 
-function logActiveSet() { /* implemented in Task 7 */ }
+function logActiveSet() {
+  const day = curDay(), act = activeSet(day);
+  if (!act) return;
+  const { ex, i } = act, w = view.pendW;
+
+  const hist = getExerciseHistory(day.id, ex.id).filter(h => h.week < currentWeek && h.weight != null);
+  const maxPrior = hist.length ? Math.max(...hist.map(h => h.weight)) : 0;
+
+  state[day.id].sets[ex.id][i] = true;
+  state[day.id].weights[ex.id] = w;
+  state[day.id].weights[`${ex.id}_${i}`] = w;
+  saveState();
+
+  view.latestPr = (maxPrior > 0 && w > maxPrior)
+    ? { type: 'WEIGHT PR', text: `${ex.name} — ${w} lb beats your W${hist.find(h => h.weight === maxPrior).week} best of ${maxPrior} lb` }
+    : null;
+  view.pendKey = '';
+
+  if (!isDayComplete(day.id)) {
+    view.restEnd = Date.now() + ex.rest * 1000;
+    view.restTotal = ex.rest;
+    view.restMinimized = false;
+    view.restInfo = `${ex.name} — SET ${i + 1} DONE`;
+    view.restRec = ex.restLabel ? `RECOMMENDED ${ex.restLabel}` : '';
+    const nxt = activeSet(day);
+    view.restNext = nxt
+      ? (nxt.ex.id === ex.id ? `Next: ${ex.name} — Set ${nxt.i + 1}` : `Next: ${nxt.ex.name}`)
+      : 'Last set of the day!';
+  }
+}
+
+function setRest(sec) { view.restTotal = sec; view.restEnd = Date.now() + sec * 1000; }
+
+function addRest(delta) {
+  if (!view.restEnd) return;
+  let end = view.restEnd + delta * 1000;
+  if (end - Date.now() < 5000) end = Date.now() + 5000;
+  view.restTotal = Math.max(view.restTotal, Math.ceil((end - Date.now()) / 1000));
+  view.restEnd = end;
+}
 
 const EFF_LABEL = { low: 'LOW', medium: 'MED', high: 'HIGH' };
 
@@ -2111,7 +2175,62 @@ function renderScroll() {
   else if (view.name === 'progress') el.innerHTML = progressHTML();
   else el.innerHTML = settingsHTML();
 }
-function renderBottomBar() { document.getElementById('bottombar').innerHTML = ''; }
+function syncPending(day, act) {
+  const key = `${curProg().id}:${currentWeek}:${day.id}:${act.ex.id}:${act.i}`;
+  if (view.pendKey === key) return;
+  view.pendKey = key;
+  const stored = state[day.id].weights[act.ex.id];
+  const prev = act.i > 0 ? state[day.id].weights[`${act.ex.id}_${act.i - 1}`] : null;
+  const prior = priorWeekEntry(day.id, act.ex.id);
+  view.pendW = Number(prev != null ? prev : stored != null ? stored : (prior && prior.weight) || 0) || 0;
+}
+
+function renderBottomBar() {
+  const el = document.getElementById('bottombar');
+  if (view.name !== 'day') { el.innerHTML = ''; return; }
+  const day = curDay(), act = activeSet(day), s = dayStats(day.id);
+
+  let pill = '';
+  const restMs = view.restEnd ? Math.max(0, view.restEnd - view.now) : 0;
+  if (view.restEnd && view.restMinimized) {
+    const urgent = restMs / 1000 <= 10;
+    pill = `<div class="pill">
+      <div class="pill-l" data-act="restexpand">
+        <span class="dot${urgent ? ' urgent' : ''}"></span>
+        <span class="pill-k">REST</span>
+        <span class="pill-t${urgent ? ' urgent' : ''}">${fmtClock(restMs)}</span>
+      </div>
+      <div style="display:flex;gap:8px;flex:none">
+        <button class="pill-b" data-act="rest+">+30</button>
+        <button class="pill-b" data-act="restskip">SKIP</button>
+      </div></div>`;
+  }
+
+  let body;
+  if (act) {
+    syncPending(day, act);
+    body = `<div class="log-row">
+      <div class="log-top">
+        <div class="log-name">${esc(act.ex.name)}</div>
+        <div class="log-set">SET ${act.i + 1}/${act.ex.sets} · ${esc(act.ex.reps)} REPS</div>
+      </div>
+      <div class="log-ctl">
+        <div class="stepper">
+          <button class="step-b" data-act="w-">−</button>
+          <div class="step-v"><div>${view.pendW % 1 ? view.pendW.toFixed(1) : view.pendW}</div><div>LB</div></div>
+          <button class="step-b" data-act="w+">+</button>
+        </div>
+        <button class="log-go" data-act="log">LOG SET</button>
+      </div></div>`;
+  } else {
+    body = `<div class="done-row">
+      <div class="done-t">DAY COMPLETE</div>
+      <div class="done-s">${fmtClock(view.now - view.sessionStart)} · ${s.done}/${s.total} · ${s.skipped} skip</div>
+    </div>`;
+  }
+
+  el.innerHTML = `<div class="bar">${pill}${body}</div>`;
+}
 function renderOverlays()  { document.getElementById('overlays').innerHTML = ''; }
 
 function render() {
@@ -2144,6 +2263,12 @@ document.addEventListener('click', e => {
   else if (act === 'eff')     { saveEffort(curDay().id, el.dataset.ex, el.dataset.l); }
   else if (act === 'swap')    { view.swap = { dayId: curDay().id, origId: el.dataset.orig }; }
   else if (act === 'log')     { logActiveSet(); }
+  else if (act === 'w-') { view.pendW = Math.max(0, view.pendW - 2.5); }
+  else if (act === 'w+') { view.pendW = view.pendW + 2.5; }
+  else if (act === 'restexpand') { view.restMinimized = false; }
+  else if (act === 'restskip')   { view.restEnd = null; view.restMinimized = false; }
+  else if (act === 'rest+')      { addRest(30); }
+  else if (act === 'rest-')      { addRest(-15); }
   else return;
   render();
 });
