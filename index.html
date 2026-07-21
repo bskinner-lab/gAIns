@@ -246,6 +246,43 @@ body {
 .theme-row { display: flex; gap: 6px; margin-top: 8px; }
 .theme-b { flex: 1; padding: 9px; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; }
 .theme-b.on { border-color: var(--ink); background: var(--ink); color: var(--on-dark); }
+.ov { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 28px; }
+.ov.rest { background: var(--bg); flex-direction: column; }
+.ov.scrim { background: rgba(25,24,19,.55); }
+.ov.sheet { align-items: flex-end; padding: 0; }
+.mini { position: absolute; top: 16px; right: 16px; border: 1px solid var(--border); background: none; color: var(--muted-2); font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; padding: 7px 12px; border-radius: 6px; cursor: pointer; }
+.rest-k { font-family: var(--font-mono); font-size: 10px; letter-spacing: 3px; color: var(--muted-2); text-transform: uppercase; }
+.rest-i { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: var(--accent); margin-top: 8px; text-align: center; }
+.rest-r { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--muted-2); margin-top: 4px; }
+.ring-wrap { position: relative; width: 190px; height: 190px; margin: 22px 0; }
+.ring-mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring-t { font-family: var(--font-display); font-size: 58px; font-weight: 600; line-height: 1; }
+.ring-t.urgent { color: var(--danger); }
+.ring-s { font-family: var(--font-mono); font-size: 8px; letter-spacing: 2px; color: var(--muted-2); text-transform: uppercase; }
+.preset { font-family: var(--font-mono); font-size: 10px; padding: 6px 12px; border-radius: 3px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); }
+.preset.on { border-color: var(--ink); color: var(--ink); }
+.rest-actions { display: flex; gap: 10px; margin-top: 16px; }
+.ra { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1px; padding: 11px 22px; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); }
+.ra.ink { border-color: var(--ink); color: var(--ink); }
+.ra.solid { border: none; background: var(--ink); color: var(--on-dark); }
+.rest-next { margin-top: 20px; font-size: 12px; color: var(--muted); text-align: center; }
+.sheet-in { background: var(--bg); width: 100%; border-radius: 16px 16px 0 0; max-height: 88%; overflow-y: auto; padding: 18px 18px 22px; }
+.sheet-h { font-family: var(--font-display); font-size: 22px; font-weight: 600; }
+.sheet-s { font-family: var(--font-mono); font-size: 10px; color: var(--muted-2); margin: 4px 0 14px; }
+.opt { border: 1px solid var(--border); background: var(--surface); border-radius: 6px; padding: 11px 12px; margin-bottom: 8px; cursor: pointer; }
+.opt.on { border-color: var(--accent); background: rgba(227,79,30,.06); }
+.opt-n { font-size: 13.5px; font-weight: 600; }
+.opt.on .opt-n { color: var(--accent); }
+.opt-m { font-family: var(--font-mono); font-size: 9.5px; color: var(--muted-2); margin-top: 3px; }
+.opt-d { font-size: 11px; color: var(--muted); line-height: 1.4; margin-top: 3px; }
+.modal { background: var(--bg); border-radius: 8px; padding: 20px; max-width: 300px; text-align: center; }
+.modal.dark { background: var(--ink); color: var(--on-dark); text-align: left; padding: 18px 18px 20px; }
+.modal-t { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
+.modal-m { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 8px 0 18px; }
+.modal-row { display: flex; gap: 10px; }
+.tip-t { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; color: var(--accent); }
+.tip-d { font-size: 12.5px; line-height: 1.55; margin-top: 8px; }
+.tip-c { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: rgba(242,239,232,.45); margin-top: 12px; text-align: right; }
 </style>
 </head>
 <body>
@@ -1206,11 +1243,6 @@ function isDayComplete(dayId) {
 // Compatibility shim — the preserved logic layer calls this; it now just re-renders.
 function updateOverallProgress(){ render(); }
 
-function tip(term) {
-  const def = GLOSSARY[term] || '';
-  return `<span class="tip" data-tip="${def.replace(/"/g,'&quot;')}">${term}</span>`;
-}
-
 // Compatibility shim — the preserved logic layer calls this; it now just re-renders.
 function switchDay(dayId) { if (dayId) view.dayId = dayId; render(); }
 
@@ -1383,52 +1415,7 @@ function completeDay(dayId) {
   refreshCurrentDay(dayId);
 }
 
-// CONFIRMATION MODAL
-let confirmAction = null;
-
-function showConfirm(title, msg, onConfirm) {
-  document.getElementById('confirmTitle').textContent = title;
-  document.getElementById('confirmMsg').textContent = msg;
-  confirmAction = onConfirm;
-  document.getElementById('confirmOk').onclick = () => { const fn = confirmAction; closeConfirm(); if (fn) fn(); };
-  document.getElementById('confirmOverlay').classList.add('visible');
-}
-
-function closeConfirm() {
-  document.getElementById('confirmOverlay').classList.remove('visible');
-  confirmAction = null;
-}
-
 // EXERCISE SWAP
-function showSwapPicker(dayId, originalExId) {
-  const alts = EXERCISE_ALTERNATIVES[originalExId];
-  if (!alts) return;
-  const day = DAYS.find(d => d.id === dayId);
-  const originalEx = day.exercises.find(e => e.id === originalExId);
-  const currentSwap = (state[dayId].swaps || {})[originalExId];
-
-  document.getElementById('swapCurrent').textContent = `Current: ${resolveExercise(dayId, originalEx).name}`;
-
-  let listHtml = '';
-  if (currentSwap) {
-    listHtml += `<div class="swap-option swap-option-revert" onclick="performSwap('${dayId}', '${originalExId}', '${originalExId}')">
-      <div class="swap-option-name">↩ ${originalEx.name}</div>
-      <div class="swap-option-meta">${originalEx.sets} sets · ${originalEx.reps} reps · RPE ${originalEx.rpe}</div>
-      <div class="swap-option-note">Revert to original exercise</div>
-    </div>`;
-  }
-  alts.forEach(alt => {
-    const isActive = currentSwap === alt.id;
-    listHtml += `<div class="swap-option${isActive ? ' active' : ''}" onclick="performSwap('${dayId}', '${originalExId}', '${alt.id}')">
-      <div class="swap-option-name">${alt.name}</div>
-      <div class="swap-option-meta">${alt.sets} sets · ${alt.reps} reps · RPE ${alt.rpe} · ⏱ ${alt.restLabel}</div>
-      <div class="swap-option-note">${alt.note}</div>
-    </div>`;
-  });
-  document.getElementById('swapList').innerHTML = listHtml;
-  document.getElementById('swapOverlay').classList.add('visible');
-}
-
 function performSwap(dayId, originalExId, newExId) {
   if (!state[dayId].swaps) state[dayId].swaps = {};
   if (newExId === originalExId) {
@@ -1443,13 +1430,8 @@ function performSwap(dayId, originalExId, newExId) {
     state[dayId].sets[ex.id] = Array(ex.sets).fill(false);
   }
   saveState();
-  closeSwapPicker();
   switchDay(dayId);
   updateOverallProgress();
-}
-
-function closeSwapPicker() {
-  document.getElementById('swapOverlay').classList.remove('visible');
 }
 
 // NOTIFICATIONS
@@ -1615,55 +1597,10 @@ function updateTimerDisplayValue(remaining) {
   pillRing.style.strokeDashoffset = pillCirc * (1 - progress);
 }
 
-function skipTimer() {
-  clearInterval(timerInterval);
-  timerInterval = null;
-  timerEndTime = null;
-  timerMinimized = false;
-  closeTimer();
-  if (pendingCallback) pendingCallback();
-}
-
 function closeTimer() {
   timerEndTime = null;
   timerMinimized = false;
   stopAudioKeepAlive();
-  document.getElementById('timerOverlay').classList.remove('visible');
-  document.getElementById('timerPill').classList.remove('visible');
-}
-
-function minimizeTimer() {
-  timerMinimized = true;
-  document.getElementById('timerOverlay').classList.remove('visible');
-  document.getElementById('timerPill').classList.add('visible');
-}
-
-function expandTimer() {
-  timerMinimized = false;
-  document.getElementById('timerPill').classList.remove('visible');
-  document.getElementById('timerOverlay').classList.add('visible');
-}
-
-function addTime(s) {
-  if (timerEndTime) {
-    timerEndTime += s * 1000;
-    const remaining = Math.ceil((timerEndTime - Date.now()) / 1000);
-    if (remaining < 5) timerEndTime = Date.now() + 5000; // floor at 5s
-    timerTotal = Math.max(timerTotal, Math.ceil((timerEndTime - Date.now()) / 1000));
-    updateTimerDisplay();
-  }
-}
-
-function setRestTime(s) {
-  currentRestTime = s;
-  updatePresetButtons(s);
-  if (document.getElementById('timerOverlay').classList.contains('visible')) {
-    clearInterval(timerInterval);
-    timerTotal = s;
-    timerEndTime = Date.now() + s * 1000;
-    updateTimerDisplay();
-    timerInterval = setInterval(timerTick, 250);
-  }
 }
 
 function updatePresetButtons(active) {
@@ -2336,7 +2273,109 @@ function renderBottomBar() {
 
   el.innerHTML = `<div class="bar">${pill}${body}</div>`;
 }
-function renderOverlays()  { document.getElementById('overlays').innerHTML = ''; }
+const REST_PRESETS = [60, 90, 120, 180];
+const RING_C = 527.8;
+
+function renderOverlays() {
+  const el = document.getElementById('overlays');
+
+  if (view.confirm) {
+    el.innerHTML = `<div class="ov scrim"><div class="modal">
+      <div class="modal-t">${esc(view.confirm.title)}</div>
+      <div class="modal-m">${esc(view.confirm.msg)}</div>
+      <div class="modal-row">
+        <button class="ra" style="flex:1" data-act="cfx">CANCEL</button>
+        <button class="ra solid" style="flex:1" data-act="cfok">CONFIRM</button>
+      </div></div></div>`;
+    return;
+  }
+
+  if (view.tip) {
+    el.innerHTML = `<div class="ov scrim" data-act="tipx"><div class="modal dark">
+      <div class="tip-t">${esc(view.tip)}</div>
+      <div class="tip-d">${esc(GLOSSARY[view.tip] || '')}</div>
+      <div class="tip-c">TAP TO CLOSE</div></div></div>`;
+    return;
+  }
+
+  if (view.swap) {
+    const { dayId, origId } = view.swap;
+    const day = DAYS.find(d => d.id === dayId);
+    const orig = day.exercises.find(e => e.id === origId);
+    const curSwap = (state[dayId].swaps || {})[origId];
+    const cur = resolveExercise(dayId, orig);
+    let opts = '';
+    if (curSwap) {
+      opts += `<div class="opt" data-act="doswap" data-orig="${origId}" data-new="${origId}">
+        <div class="opt-n">↩ ${esc(orig.name)}</div>
+        <div class="opt-m">${orig.sets} sets · ${esc(orig.reps)} · RPE ${esc(orig.rpe)}</div>
+        <div class="opt-d">Revert to original exercise</div></div>`;
+    }
+    (EXERCISE_ALTERNATIVES[origId] || []).forEach(a => {
+      opts += `<div class="opt${curSwap === a.id ? ' on' : ''}" data-act="doswap" data-orig="${origId}" data-new="${a.id}">
+        <div class="opt-n">${esc(a.name)}</div>
+        <div class="opt-m">${a.sets} sets · ${esc(a.reps)} · RPE ${esc(a.rpe)} · ⏱ ${esc(a.restLabel)}</div>
+        <div class="opt-d">${esc(a.note)}</div></div>`;
+    });
+    el.innerHTML = `<div class="ov scrim sheet"><div class="sheet-in">
+      <div class="sheet-h">Swap Exercise</div>
+      <div class="sheet-s">Current: ${esc(cur.name)}</div>
+      ${opts}
+      <button class="ra" style="width:100%;margin-top:4px" data-act="swapx">CANCEL</button>
+    </div></div>`;
+    return;
+  }
+
+  if (view.restEnd && !view.restMinimized) {
+    const ms = Math.max(0, view.restEnd - view.now);
+    const urgent = ms / 1000 <= 10;
+    const pct = view.restTotal ? Math.max(0, ms / 1000 / view.restTotal) : 0;
+    const presets = REST_PRESETS.map(s =>
+      `<button class="preset${view.restTotal === s ? ' on' : ''}" data-act="preset" data-s="${s}">${fmtClock(s * 1000)}</button>`).join('');
+    el.innerHTML = `<div class="ov rest">
+      <button class="mini" data-act="restmin">MINIMIZE ↓</button>
+      <div class="rest-k">Rest Period</div>
+      <div class="rest-i">${esc(view.restInfo)}</div>
+      <div class="rest-r">${esc(view.restRec)}</div>
+      <div class="ring-wrap">
+        <svg width="190" height="190" viewBox="0 0 190 190" style="transform:rotate(-90deg)">
+          <circle cx="95" cy="95" r="84" fill="none" stroke="var(--border)" stroke-width="6"></circle>
+          <circle cx="95" cy="95" r="84" fill="none" stroke="${urgent ? 'var(--danger)' : 'var(--accent)'}"
+                  stroke-width="6" stroke-linecap="round" stroke-dasharray="${RING_C}"
+                  stroke-dashoffset="${(RING_C * (1 - pct)).toFixed(1)}"></circle>
+        </svg>
+        <div class="ring-mid">
+          <div class="ring-t${urgent ? ' urgent' : ''}">${fmtClock(ms)}</div>
+          <div class="ring-s">remaining</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:7px">${presets}</div>
+      <div class="rest-actions">
+        <button class="ra" data-act="rest-">−15s</button>
+        <button class="ra ink" data-act="rest+">+30s</button>
+        <button class="ra solid" data-act="restskip">SKIP</button>
+      </div>
+      <div class="rest-next">${esc(view.restNext)}</div></div>`;
+    return;
+  }
+
+  el.innerHTML = '';
+}
+
+function resetWeek() {
+  DAYS.forEach(day => {
+    state[day.id].protocol = [];
+    state[day.id].weights = {};
+    state[day.id].effort = {};
+    day.exercises.forEach(o => {
+      const ex = resolveExercise(day.id, o);
+      state[day.id].sets[ex.id] = Array(ex.sets).fill(false);
+    });
+  });
+  saveState();
+  view.latestPr = null;
+  view.pendKey = '';
+}
 
 function render() {
   renderMasthead();
@@ -2381,6 +2420,18 @@ document.addEventListener('click', e => {
   else if (act === 'clearweek') {
     view.confirm = { title: 'Clear Week?', msg: "This week's logged sets, weights and effort will be reset.", act: 'clearweek' };
   }
+  else if (act === 'restmin') { view.restMinimized = true; }
+  else if (act === 'preset')  { setRest(Number(el.dataset.s)); }
+  else if (act === 'tipx')    { view.tip = null; }
+  else if (act === 'swapx')   { view.swap = null; }
+  else if (act === 'doswap')  { performSwap(view.swap.dayId, el.dataset.orig, el.dataset.new); view.swap = null; view.pendKey = ''; }
+  else if (act === 'cfok')    {
+    const c = view.confirm; view.confirm = null;
+    if (c.act === 'skipday') skipDay(curDay().id);
+    else if (c.act === 'completeday') completeDay(curDay().id);
+    else if (c.act === 'clearweek') { resetWeek(); view.importMsg = "This week's log cleared."; view.importOk = true; }
+  }
+  else if (act === 'cfx')     { view.confirm = null; }
   else return;
   render();
 });
