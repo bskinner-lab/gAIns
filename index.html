@@ -2264,7 +2264,7 @@ function migrateDayState(dayId, sd) {
   const hasStringKeys = Object.keys(sd.sets).some(k => isNaN(k));
   if (hasStringKeys) return sd;
   const map = LEGACY_ID_MAP[dayId];
-  const m = { sets: {}, weights: {}, effort: {}, protocol: sd.protocol || [] };
+  const m = { sets: {}, weights: {}, effort: {}, protocol: sd.protocol || [], swaps: sd.swaps || {} };
   Object.keys(sd.sets).forEach(k => {
     const exId = map[k];
     if (exId) m.sets[exId] = sd.sets[k];
