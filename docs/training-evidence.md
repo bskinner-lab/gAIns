@@ -23,10 +23,11 @@ traps, forearms, abs) tolerate disproportionately more volume per week because
 each set costs less systemic fatigue and they receive constant indirect
 exposure from compound work.
 
-An umbrella review of 137 systematic reviews found that, per Schoenfeld et al.
-(2017), "at least 10 weekly sets per muscle group is necessary to maximize
-increases in muscle mass," with a graded dose-response below that
-([Grgic & Ruzic, umbrella review, 2022](https://pmc.ncbi.nlm.nih.gov/articles/PMC9302196/)).
+An umbrella review that screened 57 meta-analyses and included 14 found that,
+per Schoenfeld et al. (2017), "at least 10 weekly sets per muscle group is
+necessary to maximize increases in muscle mass," with a graded dose-response
+below that
+([Bernárdez-Vázquez, Raya-González, Castillo & Beato, umbrella review, 2022](https://pmc.ncbi.nlm.nih.gov/articles/PMC9302196/)).
 That floor is the anchor for every "large muscle" `mavLow` value below
 (chest, lats, upper_back, quads, hamstrings, glutes all sit at or above it).
 
@@ -44,7 +45,7 @@ That floor is the anchor for every "large muscle" `mavLow` value below
 | `forearms` | 0 | 4–10 | 15 | Almost entirely indirect (grip) stimulus; rarely a growth bottleneck. |
 | `quads` | 8 | 12–18 | 20 | Large, directly-trained; anchored to the ≥10-set/week floor. |
 | `hamstrings` | 6 | 10–16 | 20 | Large, directly-trained; anchored to the ≥10-set/week floor. |
-| `glutes` | 6 | 10–18 | 22 | Raised from earlier placeholder values: glutes are a prime hip-extensor mover in squat/RDL/leg press/lunge/pull-through work and belong in the same "large muscle, ≥10-set floor" bucket as quads and hamstrings, not below it. |
+| `glutes` | 6 | 10–18 | 22 | Raised from earlier placeholder values by reasoning-by-analogy, not a glute-specific trial: glutes are a prime hip-extensor mover in squat/RDL/leg press/lunge/pull-through work, so the same logic that puts quads/hamstrings above the ≥10-set floor plausibly applies here too — but as with `abs` below, no dedicated meta-analysis isolates glute-specific MRV, so treat this as an informed extrapolation. |
 | `calves` | 8 | 12–18 | 20 | Trains well at high frequency but per-set fatigue is nontrivial (ankle/Achilles loading). |
 | `abs` | 4 | 8–16 | 24 | MRV raised from the earlier placeholder: abs recover unusually fast and are commonly trained near-daily in applied practice without volume-tolerance breakdown; no dedicated meta-analysis isolates abs MRV, so this is a practice-consensus extrapolation rather than a cited number. |
 | `spinal_erectors` | 0 | 4–10 | 12 | Deliberately conservative MRV — heavy axial/spinal loading has the highest per-set injury and fatigue cost of any muscle group, so this app keeps direct erector volume low regardless of recoverability arguments. |
@@ -60,7 +61,7 @@ growth"
 Once weekly volume is equated, however, a later synthesis found "resistance
 training frequency does not significantly or meaningfully impact muscle
 hypertrophy"
-([Schoenfeld et al. 2019, cited in Grgic & Ruzic umbrella review, 2022](https://pmc.ncbi.nlm.nih.gov/articles/PMC9302196/)).
+([Schoenfeld et al. 2019, cited in Bernárdez-Vázquez et al. umbrella review, 2022](https://pmc.ncbi.nlm.nih.gov/articles/PMC9302196/)).
 **Bottom line applied here:** frequency is a container for volume, not an
 independent lever — hit ≥2×/week per muscle so weekly sets can be spread
 across sessions without any single session becoming excessive, but don't
@@ -74,7 +75,7 @@ training was **not** significantly superior to non-failure training for
 hypertrophy (ES 0.12, 95% CI −0.13–0.37, *p* = 0.343); across all definitions
 of "training to failure" the pooled advantage was trivial (ES 0.19, 95% CI
 0.00–0.37, *p* = 0.045)
-([Refalo et al., *Sports Medicine*, 2022](https://pmc.ncbi.nlm.nih.gov/pmc/articles/PMC9935748/)).
+([Refalo, Helms, Trexler, Hamilton & Fyfe, *Sports Medicine*, 2022](https://pubmed.ncbi.nlm.nih.gov/36334240/)).
 A more recent 8-week trial in resistance-trained individuals likewise found
 "similar muscle hypertrophy" comparing training to momentary failure against
 training with a fixed reps-in-reserve target
@@ -92,12 +93,20 @@ lengthened-partial vs full-ROM training for 8 weeks and found "similar"
 muscle-thickness gains across sites (Bayes factors 0.16–0.39, moderate
 support for no difference) and similar 10RM strength-endurance changes
 ([Wolf et al., *PeerJ*, 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC11829627/)).
-That single-exercise result sits alongside earlier single-exercise
-comparisons: three trials found lengthened-partial or long-length-biased
-training matched or exceeded full-ROM hypertrophy, while final-range partials
-(short muscle length) consistently lagged
-(Kassiano et al. 2022; Pedrosa et al. 2021; Goto et al. 2019 — summarized in
-[Stronger by Science's review of the lengthened-partials literature](https://www.strongerbyscience.com/stretch-mediated-hypertrophy/)).
+That single-exercise result sits alongside four earlier single-exercise
+comparisons: three (Kassiano et al. 2022; Pedrosa et al. 2021; Goto et al.
+2019) found lengthened-partial or long-length-biased training matched or
+exceeded full-ROM hypertrophy, while Werkhausen et al.'s concentric-only,
+9°-range leg-press protocol found similar (not superior) hypertrophy from
+partials
+([Werkhausen, Solberg, Paulsen, Bojsen-Møller & Seynnes, *Scandinavian Journal of Medicine & Science in Sports*, 2021](https://onlinelibrary.wiley.com/doi/abs/10.1111/sms.13921)) —
+a divergent result plausibly explained by that study's unusually short, purely
+concentric range rather than a genuine disagreement about lengthened-position
+training. *Note: this paragraph's study list is drawn from a secondary
+summary — [Stronger by Science's review of the lengthened-partials literature](https://www.strongerbyscience.com/stretch-mediated-hypertrophy/)
+returned HTTP 403 to automated fetching on every attempt, so its specific
+characterizations could not be independently re-verified here; the Wolf et
+al. 2025 numbers above were confirmed directly against the primary paper.*
 **Applied here:** the evidence does not support replacing full-ROM work with
 partials, but it does support biasing exercise selection toward movements
 that load the target muscle in a lengthened position (e.g. incline curls
@@ -107,21 +116,27 @@ rep.
 
 ## Rep ranges
 
-A meta-analysis of 21 studies (41 effect sizes) found no statistically
-significant difference in hypertrophy across loads from roughly 30–100% of
-1RM (~5–35 reps) when sets were taken close to failure and volume was
-equated (*p* = 0.56)
-([summarized in Stronger by Science's "hypertrophy rep range" review](https://www.strongerbyscience.com/hypertrophy-range-fact-fiction/),
-citing Schoenfeld et al.'s dose-response work also referenced in the
-[umbrella review](https://pmc.ncbi.nlm.nih.gov/articles/PMC9302196/), which
-separately notes loads ≤60% 1RM "can promote substantial increases in muscle
-hypertrophy" while flagging a trend favoring heavier loads and cautioning
-against very slow (10s/rep) tempos as inferior for hypertrophy). **Applied
-here:** rep range is a fatigue-management and joint-comfort tool, not a
-growth lever — moderate ranges (6–15) are the default for shoulder-cautious
-compound work because they let RIR be judged accurately without needing
-near-failure sets at very low reps (higher injury/technique risk per rep) or
-very high reps (higher cumulative joint stress at a given weekly volume).
+Schoenfeld, Grgic, Ogborn & Krieger's meta-analysis of 21 studies found
+maximal strength gains favor heavy loads, but hypertrophy can be "equally
+achieved" across a spectrum of loads from low to high
+([Schoenfeld, Grgic, Ogborn & Krieger, *Journal of Strength and Conditioning Research*, 2017](https://journals.lww.com/nsca-jscr/fulltext/2017/12000/strength_and_hypertrophy_adaptations_between_low_.31.aspx)).
+*Note: the JSCR full text sits behind a paywall that blocked automated
+fetching here (HTTP 402), so the specific study count and conclusion above
+are drawn from consistent search-result summaries and the paper's own
+abstract snippet, not a direct read of the full methods/results — treat the
+21-study count as reported-by-secondary-source rather than independently
+confirmed.* The umbrella review (verified above) separately corroborates the
+direction of this finding, noting loads ≤60% 1RM "can promote substantial
+increases in muscle hypertrophy" while flagging a trend favoring heavier
+loads and cautioning against very slow (10s/rep) tempos as inferior for
+hypertrophy
+([Bernárdez-Vázquez et al. umbrella review, 2022](https://pmc.ncbi.nlm.nih.gov/articles/PMC9302196/)).
+**Applied here:** rep range is a fatigue-management and joint-comfort tool,
+not a growth lever — moderate ranges (6–15) are the default for
+shoulder-cautious compound work because they let RIR be judged accurately
+without needing near-failure sets at very low reps (higher injury/technique
+risk per rep) or very high reps (higher cumulative joint stress at a given
+weekly volume).
 
 ## Progression models
 
@@ -130,11 +145,21 @@ Plotkin et al. randomized 43 trained lifters to progress either load (fixed
 weeks and found both viable, with hypertrophy and strength gains "practically
 equivalent" between groups
 ([Plotkin et al., *PeerJ*, 2022](https://pmc.ncbi.nlm.nih.gov/articles/PMC9528903/)).
-Separately, an NSCA commentary argues mesocycle progression should prioritize
-weekly increases in **sets** over increases in %1RM, since volume is the
-variable with the clearest dose-response signal
-([*Strength & Conditioning Journal*, 2020](https://journals.lww.com/nsca-scj/fulltext/2020/10000/re__mesocycle_progression_in_hypertrophy__volume.15.aspx)).
-**Applied here:** the generator should progress mesocycles primarily by
+Separately, Israetel, Feather, Faleiro & Juneau's original *Strength &
+Conditioning Journal* article argues mesocycle progression should prioritize
+weekly increases in **sets** over increases in %1RM, since a volume
+dose-response relationship for hypertrophy is well established while no
+comparable relationship has been shown for relative intensity
+([Israetel, Feather, Faleiro & Juneau, *Strength & Conditioning Journal*, 2020](https://journals.lww.com/nsca-scj/fulltext/2020/10000/mesocycle_progression_in_hypertrophy__volume.2.aspx)).
+*Note: this article drew a published critical letter from Minor, Helms &
+Schepis (2020, same journal) pushing back on the strength of that claim; both
+the original article and the rebuttal sit behind an NSCA paywall (HTTP 402)
+that blocked direct verification here, so the summary above is drawn from
+consistent secondary-source descriptions of the original article's argument,
+not a direct read — it is not the rebuttal, which takes a more skeptical
+position on volume-first progression.* The applied guidance below leans on
+the already-verified dose-response literature (umbrella review, above) rather
+than resolving that debate. **Applied here:** the generator should progress mesocycles primarily by
 adding sets (moving a muscle from MEV toward MAV/MRV across the block) and
 secondarily by adding reps or load within a session — never by chasing all
 three simultaneously, which produces fatigue faster than growth.
@@ -174,14 +199,20 @@ random variation.
 ## Shoulder-cautious constraints
 
 Rules that survive regardless of what the data suggests, unless the user's
-run-time shoulder answer explicitly relaxes them:
+run-time shoulder answer explicitly relaxes them (i.e. the user directly
+states they have no current shoulder pain/impingement history and want full
+range-of-motion or overhead-barbell variations back in — a generic "feeling
+fine" answer with no explicit request does not relax anything below):
 - No behind-the-neck presses or pulldowns (extreme external rotation +
   overhead load is the classic impingement mechanism).
 - Overhead and horizontal pressing defaults to neutral or semi-pronated grip
-  (palms facing each other), not a fixed pronated bar grip — a neutral hand
-  path avoids the internal-rotation-plus-elevation combination most linked
-  to subacromial impingement pain
-  ([overview of neutral-grip pressing and impingement risk](https://www.zing.coach/fitness-library/overhead-press-alternative)).
+  (palms facing each other), not a fixed pronated bar grip. An in-vivo study
+  measured subacromial compression force directly and found it rises sharply
+  when abduction is combined with internal rotation (21.3N at 90° abduction
+  plus maximal internal rotation, and 18.3N in the Hawkins-test position,
+  versus ≤3N with neutral or external rotation) — a neutral grip keeps the
+  humerus out of that internally-rotated position during the press
+  ([Yanai, Fuss & Fukunaga, *Clinical Biomechanics*, 2006](https://pubmed.ncbi.nlm.nih.gov/16632128/)).
 - Every push/pull/upper day keeps the prehab protocol (band pull-aparts,
   face pulls, external rotations) regardless of what volume the generator
   otherwise assigns — an EMG study found band pull-aparts and external
@@ -203,15 +234,17 @@ run-time shoulder answer explicitly relaxes them:
 
 ## Sources
 
-- [Grgic & Ruzic (umbrella review), 2022 — Resistance Training Variables for Optimization of Muscle Hypertrophy](https://pmc.ncbi.nlm.nih.gov/articles/PMC9302196/)
+- [Bernárdez-Vázquez, Raya-González, Castillo & Beato (umbrella review), 2022 — Resistance Training Variables for Optimization of Muscle Hypertrophy](https://pmc.ncbi.nlm.nih.gov/articles/PMC9302196/)
 - [Schoenfeld, Ogborn & Krieger, *Sports Medicine*, 2016 — Effects of Resistance Training Frequency on Muscle Hypertrophy](https://pubmed.ncbi.nlm.nih.gov/27102172/)
-- [Refalo et al., *Sports Medicine*, 2022 — Influence of Resistance Training Proximity-to-Failure on Skeletal Muscle Hypertrophy](https://pmc.ncbi.nlm.nih.gov/pmc/articles/PMC9935748/)
+- [Refalo, Helms, Trexler, Hamilton & Fyfe, *Sports Medicine*, 2022 — Influence of Resistance Training Proximity-to-Failure on Skeletal Muscle Hypertrophy](https://pubmed.ncbi.nlm.nih.gov/36334240/)
 - [Refalo, Helms et al., *Journal of Sports Sciences*, 2024 — Similar hypertrophy following training to failure or with RIR](https://www.tandfonline.com/doi/full/10.1080/02640414.2024.2321021)
 - [Wolf et al., *PeerJ*, 2025 — Lengthened partial repetitions elicit similar muscular adaptations as full ROM](https://pmc.ncbi.nlm.nih.gov/articles/PMC11829627/)
-- [Stronger by Science — Do Lengthened Partials Really Stimulate Stretch-Mediated Hypertrophy?](https://www.strongerbyscience.com/stretch-mediated-hypertrophy/)
-- [Stronger by Science — The "Hypertrophy Rep Range": Fact or Fiction?](https://www.strongerbyscience.com/hypertrophy-range-fact-fiction/)
+- [Werkhausen, Solberg, Paulsen, Bojsen-Møller & Seynnes, *Scandinavian Journal of Medicine & Science in Sports*, 2021 — Adaptations to explosive resistance training with partial range of motion](https://onlinelibrary.wiley.com/doi/abs/10.1111/sms.13921)
+- [Stronger by Science — Do Lengthened Partials Really Stimulate Stretch-Mediated Hypertrophy? (returned HTTP 403 to automated fetch; cited as secondary summary, not independently verified)](https://www.strongerbyscience.com/stretch-mediated-hypertrophy/)
+- [Schoenfeld, Grgic, Ogborn & Krieger, *Journal of Strength and Conditioning Research*, 2017 — Strength and Hypertrophy Adaptations Between Low- vs. High-Load Resistance Training (full text paywalled, HTTP 402; cited from consistent secondary summaries)](https://journals.lww.com/nsca-jscr/fulltext/2017/12000/strength_and_hypertrophy_adaptations_between_low_.31.aspx)
 - [Plotkin et al., *PeerJ*, 2022 — Progressive overload without progressing load](https://pmc.ncbi.nlm.nih.gov/articles/PMC9528903/)
-- [*Strength & Conditioning Journal*, 2020 — RE: Mesocycle Progression in Hypertrophy: Volume Versus Intensity](https://journals.lww.com/nsca-scj/fulltext/2020/10000/re__mesocycle_progression_in_hypertrophy__volume.15.aspx)
+- [Israetel, Feather, Faleiro & Juneau, *Strength & Conditioning Journal*, 2020 — Mesocycle Progression in Hypertrophy: Volume Versus Intensity (paywalled, HTTP 402; cited from consistent secondary summaries — see note in Progression models above)](https://journals.lww.com/nsca-scj/fulltext/2020/10000/mesocycle_progression_in_hypertrophy__volume.2.aspx)
 - [Rogerson et al., *Sports Medicine – Open*, 2024 — Deloading Practices in Strength and Physique Sports](https://pmc.ncbi.nlm.nih.gov/articles/PMC10948666/)
 - [Baz-Valle et al., *PLOS ONE*, 2019 — Effects of exercise variation on muscle thickness, maximal strength and motivation](https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0226989)
+- [Yanai, Fuss & Fukunaga, *Clinical Biomechanics*, 2006 — In vivo measurements of subacromial impingement force under abduction with internal rotation](https://pubmed.ncbi.nlm.nih.gov/16632128/)
 - [Band Pull-Apart Exercise: Effects of Movement Direction and Hand Position on Shoulder Muscle Activity, *IJSPT*](https://ijspt.scholasticahq.com/article/33026-band-pull-apart-exercise-effects-of-movement-direction-and-hand-position-on-shoulder-muscle-activity)
