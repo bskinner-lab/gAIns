@@ -1,6 +1,9 @@
 // tools/insert-program.js
 'use strict';
-const { loadApp } = require('./app-shim');
+const fs = require('fs');
+const { execFileSync } = require('child_process');
+const { loadApp, extractScript, APP_HTML } = require('./app-shim');
+const { smokeRender } = require('./smoke-render');
 const VOLUME_LANDMARKS = require('./volume-landmarks.json');
 
 const REQUIRED_TOP = ['name', 'subtitle', 'totalWeeks', 'days', 'protocolItems', 'mesocycle', 'weekPhases'];
@@ -183,4 +186,180 @@ function validateProgram(prog, existingIds = new Set()) {
   return errors;
 }
 
-module.exports = { validateProgram, collectExistingIds, REQUIRED_TOP, REQUIRED_EX };
+// Splice anchors. Both were verified unique in index.html; uniqueness is
+// re-asserted at run time so a future edit cannot silently corrupt the file.
+const PROGRAMS_ANCHOR = '\n];\n\nconst EXERCISE_ALTERNATIVES = {';
+const ALTS_ANCHOR = '\n};\n\nlet DAYS = PROGRAMS[0].days;';
+
+function countOccurrences(haystack, needle) {
+  let count = 0, i = 0;
+  while ((i = haystack.indexOf(needle, i)) !== -1) { count++; i++; }
+  return count;
+}
+
+/** Next free mesoN id given the ids already present. */
+function nextProgramId(existingIds) {
+  let max = 0;
+  for (const id of existingIds) {
+    const m = /^meso(\d+)$/.exec(id);
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return `meso${max + 1}`;
+}
+
+function quote(str) {
+  return `'${String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n')}'`;
+}
+
+/**
+ * Serialize to a JS object literal in the file's hand-authored style:
+ * unquoted identifier keys, single-quoted strings, unicode left intact.
+ */
+function toJsLiteral(value, indent = 0) {
+  const pad = '  '.repeat(indent);
+  const padIn = '  '.repeat(indent + 1);
+
+  if (value === null) return 'null';
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'string') return quote(value);
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '[]';
+    const items = value.map(v => padIn + toJsLiteral(v, indent + 1));
+    return `[\n${items.join(',\n')},\n${pad}]`;
+  }
+  const entries = Object.entries(value).filter(([, v]) => v !== undefined);
+  if (entries.length === 0) return '{}';
+  const body = entries.map(([k, v]) => {
+    const key = /^[A-Za-z_$][\w$]*$/.test(k) ? k : quote(k);
+    return `${padIn}${key}: ${toJsLiteral(v, indent + 1)}`;
+  });
+  return `{\n${body.join(',\n')},\n${pad}}`;
+}
+
+/**
+ * Return the new file contents with the program spliced in.
+ * @throws when an anchor is missing or ambiguous
+ */
+function spliceProgram(html, programWithId, alternatives) {
+  for (const [name, anchor] of [['PROGRAMS', PROGRAMS_ANCHOR], ['EXERCISE_ALTERNATIVES', ALTS_ANCHOR]]) {
+    const n = countOccurrences(html, anchor);
+    if (n !== 1) {
+      throw new Error(`${name} splice anchor found ${n} times (expected exactly 1) — index.html structure changed`);
+    }
+  }
+
+  const literal = toJsLiteral(programWithId, 1);
+  let out = html.replace(PROGRAMS_ANCHOR, `\n  ${literal},${PROGRAMS_ANCHOR}`);
+
+  const altEntries = Object.entries(alternatives || {});
+  if (altEntries.length) {
+    const block = altEntries
+      .map(([origId, alts]) => `  ${/^[A-Za-z_$][\w$]*$/.test(origId) ? origId : quote(origId)}: ${toJsLiteral(alts, 1)},`)
+      .join('\n');
+    out = out.replace(ALTS_ANCHOR, `\n\n  // ── ${programWithId.name} ──\n${block}${ALTS_ANCHOR}`);
+  }
+  return out;
+}
+
+/**
+ * Validate, splice, and write — but only if all four gates pass.
+ * @returns {{ok: boolean, programId?: string, error?: string}}
+ */
+function insertProgram(rawProgram, { htmlPath = APP_HTML } = {}) {
+  // Gate 0: the file must still have the shape spliceProgram() depends on.
+  // Checked up front — a structurally broken index.html can fail to even
+  // define its globals, so loadApp()'s error wouldn't mention the anchor.
+  let html;
+  try {
+    html = fs.readFileSync(htmlPath, 'utf8');
+  } catch (e) {
+    return { ok: false, error: `could not read ${htmlPath}: ${e.message}` };
+  }
+  for (const [name, anchor] of [['PROGRAMS', PROGRAMS_ANCHOR], ['EXERCISE_ALTERNATIVES', ALTS_ANCHOR]]) {
+    const n = countOccurrences(html, anchor);
+    if (n !== 1) {
+      return { ok: false, error: `${name} splice anchor found ${n} times (expected exactly 1) — index.html structure changed` };
+    }
+  }
+
+  // Gate 1 + 2: schema and id uniqueness.
+  let existingIds, programs;
+  try {
+    const app = loadApp({ htmlPath });
+    programs = app.PROGRAMS;
+    existingIds = collectExistingIds(htmlPath);
+  } catch (e) {
+    return { ok: false, error: `could not load ${htmlPath}: ${e.message}` };
+  }
+  const errors = validateProgram(rawProgram, existingIds);
+  if (errors.length) return { ok: false, error: `validation failed:\n  - ${errors.join('\n  - ')}` };
+
+  const programId = nextProgramId(programs.map(p => p.id));
+  const { alternatives, ...programFields } = rawProgram;
+  const programWithId = { id: programId, ...programFields };
+
+  let candidate;
+  try {
+    candidate = spliceProgram(html, programWithId, alternatives);
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+
+  const tmp = `${htmlPath}.candidate.tmp.html`;
+  try {
+    fs.writeFileSync(tmp, candidate, 'utf8');
+
+    // Gate 3: the script block must parse.
+    const scriptFile = `${tmp}.js`;
+    fs.writeFileSync(scriptFile, extractScript(tmp), 'utf8');
+    try {
+      execFileSync(process.execPath, ['--check', scriptFile], { stdio: 'pipe' });
+    } catch (e) {
+      return { ok: false, error: `node --check failed:\n${e.stderr ? e.stderr.toString() : e.message}` };
+    } finally {
+      fs.rmSync(scriptFile, { force: true });
+    }
+
+    // Gate 4: the new program must render.
+    const newIdx = programs.length;
+    const smoke = smokeRender(tmp, newIdx);
+    if (!smoke.ok) return { ok: false, error: `smoke render failed: ${smoke.error}` };
+
+    fs.renameSync(tmp, htmlPath);
+    return { ok: true, programId, views: smoke.rendered };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  } finally {
+    fs.rmSync(tmp, { force: true });
+  }
+}
+
+function main(argv) {
+  const file = argv[2];
+  if (!file) {
+    console.error('usage: node tools/insert-program.js <program.json>');
+    process.exit(1);
+  }
+  let raw;
+  try {
+    raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (e) {
+    console.error(`could not read ${file}: ${e.message}`);
+    process.exit(1);
+  }
+  const result = insertProgram(raw);
+  if (!result.ok) {
+    console.error(`insert FAILED — index.html unchanged.\n${result.error}`);
+    process.exit(1);
+  }
+  console.log(`Inserted ${result.programId} into index.html (${result.views.length} views rendered clean).`);
+  process.exit(0);
+}
+
+if (require.main === module) main(process.argv);
+
+module.exports = {
+  validateProgram, collectExistingIds, nextProgramId, toJsLiteral,
+  spliceProgram, insertProgram, REQUIRED_TOP, REQUIRED_EX,
+};

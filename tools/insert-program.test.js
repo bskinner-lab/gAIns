@@ -2,10 +2,25 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert');
-const { validateProgram, collectExistingIds } = require('./insert-program');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const {
+  validateProgram, collectExistingIds, nextProgramId, toJsLiteral,
+  spliceProgram, insertProgram,
+} = require('./insert-program');
+const { loadApp } = require('./app-shim');
+const { smokeRender } = require('./smoke-render');
 const valid = require('./fixtures/program-valid.json');
 
 const clone = o => JSON.parse(JSON.stringify(o));
+
+function tempCopy() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gains-insert-'));
+  const dest = path.join(dir, 'index.html');
+  fs.copyFileSync(path.join(__dirname, '..', 'index.html'), dest);
+  return dest;
+}
 
 test('the fixture validates cleanly', () => {
   const errors = validateProgram(valid, collectExistingIds());
@@ -156,4 +171,90 @@ test('fix10: alternatives referencing a non-existent exercise id are rejected', 
   bad.alternatives = { 'm3_no_such_exercise': [{ id: 'm3_alt_ghost', name: 'Ghost', note: 'x' }] };
   const errors = validateProgram(bad, new Set());
   assert.ok(errors.some(e => /no exercise with id 'm3_no_such_exercise' exists/.test(e)));
+});
+
+// --- Splice, gate, write -----------------------------------------------
+
+test('nextProgramId follows the mesoN sequence', () => {
+  assert.strictEqual(nextProgramId(['meso1', 'meso2']), 'meso3');
+  assert.strictEqual(nextProgramId(['meso1', 'meso2', 'meso3']), 'meso4');
+  assert.strictEqual(nextProgramId([]), 'meso1');
+});
+
+test('toJsLiteral unquotes identifier keys and keeps unicode', () => {
+  const js = toJsLiteral({ id: 'x', reps: '6–10', note: 'elbows ~60°' });
+  assert.match(js, /^\s*\{/);
+  assert.match(js, /\bid: 'x'/);
+  assert.match(js, /reps: '6–10'/);
+  assert.match(js, /note: 'elbows ~60°'/);
+  assert.ok(!js.includes('"id"'));
+});
+
+test('toJsLiteral escapes embedded quotes', () => {
+  const js = toJsLiteral({ note: "don't flare" });
+  assert.match(js, /note: 'don\\'t flare'/);
+});
+
+test('insertProgram appends a renderable program', () => {
+  const file = tempCopy();
+  const result = insertProgram(valid, { htmlPath: file });
+  assert.strictEqual(result.ok, true, result.error);
+  assert.strictEqual(result.programId, 'meso3');
+
+  const app = loadApp({ htmlPath: file });
+  assert.strictEqual(app.PROGRAMS.length, 3);
+  assert.strictEqual(app.PROGRAMS[2].id, 'meso3');
+  assert.strictEqual(app.PROGRAMS[2].days.length, 2);
+  assert.ok(app.EXERCISE_ALTERNATIVES['m3_rope_pushdown']);
+  assert.strictEqual(smokeRender(file, 2).ok, true);
+});
+
+test('a second insert becomes meso4', () => {
+  const file = tempCopy();
+  assert.strictEqual(insertProgram(valid, { htmlPath: file }).ok, true);
+  const second = JSON.parse(JSON.stringify(valid));
+  for (const day of second.days) for (const ex of day.exercises) ex.id = ex.id.replace('m3_', 'm4_');
+  second.alternatives = {
+    'm4_rope_pushdown': [{ id: 'm4_alt_vbar', name: 'V-Bar Pushdown', note: 'Straighter wrists' }],
+  };
+  const result = insertProgram(second, { htmlPath: file });
+  assert.strictEqual(result.ok, true, result.error);
+  assert.strictEqual(result.programId, 'meso4');
+  assert.strictEqual(loadApp({ htmlPath: file }).PROGRAMS.length, 4);
+});
+
+test('an invalid program leaves the file untouched', () => {
+  const file = tempCopy();
+  const before = fs.readFileSync(file, 'utf8');
+  const bad = clone(valid);
+  delete bad.mesocycle;
+  const result = insertProgram(bad, { htmlPath: file });
+  assert.strictEqual(result.ok, false);
+  assert.match(result.error, /mesocycle/);
+  assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
+});
+
+test('a missing splice anchor is a hard error', () => {
+  const file = tempCopy();
+  fs.writeFileSync(file, '<script>const PROGRAMS = [];</script>');
+  const result = insertProgram(valid, { htmlPath: file });
+  assert.strictEqual(result.ok, false);
+  assert.match(result.error, /anchor/i);
+});
+
+test('a program that passes validation but breaks rendering leaves the file byte-identical', () => {
+  const file = tempCopy();
+  const before = fs.readFileSync(file, 'utf8');
+  // validateProgram only checks that weekPhases[i].rpe is PRESENT, not that
+  // it's a string — renderMasthead() does `phase.rpe.replace(...)`
+  // unconditionally on every view, so a number here sails through
+  // validation and throws at render time. This is exactly the gate-ordering
+  // the tool exists to enforce: schema-valid but render-broken must still
+  // leave index.html untouched.
+  const bad = clone(valid);
+  bad.weekPhases[0].rpe = 7;
+  assert.deepStrictEqual(validateProgram(bad, collectExistingIds(file)), []);
+  const result = insertProgram(bad, { htmlPath: file });
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
 });
