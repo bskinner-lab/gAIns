@@ -442,12 +442,12 @@ function curDay()  { return DAYS.find(d => d.id === view.dayId) || DAYS[0]; }
 
 function renderMasthead() {
   const prog = curProg(), day = curDay(), isW = view.name === 'day';
-  const phase = prog.weekPhases[week - 1];
+  const phase = prog.weekPhases[currentWeek - 1];
   const title = isW ? day.title
     : view.name === 'plan' ? 'Plan' : view.name === 'progress' ? 'Progress' : 'Settings';
   const sub = isW ? `${day.label} · ${prog.name} · ${day.subtitle}`
     : view.name === 'plan' ? `${prog.name} · ${prog.subtitle}`
-    : view.name === 'progress' ? `${prog.name} · weight & effort by week`
+    : view.name === 'progress' ? `${prog.name} · weight & effort by currentWeek`
     : 'Your data stays on this device';
 
   const chips = PROGRAMS.map((p, i) =>
@@ -474,9 +474,9 @@ function renderMasthead() {
       <div class="mh-right">
         <div>
           <div class="wk-row">
-            <button class="wk-btn" data-act="wk" data-d="-1" aria-label="Previous week">‹</button>
-            <div class="wk-lbl">W${week}/${prog.totalWeeks}</div>
-            <button class="wk-btn" data-act="wk" data-d="1" aria-label="Next week">›</button>
+            <button class="wk-btn" data-act="wk" data-d="-1" aria-label="Previous currentWeek">‹</button>
+            <div class="wk-lbl">W${currentWeek}/${prog.totalWeeks}</div>
+            <button class="wk-btn" data-act="wk" data-d="1" aria-label="Next currentWeek">›</button>
           </div>
           <div class="phase-line">${esc(phase.label.toUpperCase())} · ${esc(phase.rpe.replace('RPE ', ''))}${phase.llp ? ' · LLP' : ''}</div>
         </div>
@@ -507,9 +507,28 @@ document.addEventListener('click', e => {
 });
 ```
 
-- [ ] **Step 4: Delete the obsolete `renderTabs()`**
+- [ ] **Step 4: Replace old render entry points with compatibility shims**
 
-Remove the old `renderTabs()` function (was `index.html:2477`) and any remaining calls to it.
+**Do not simply delete these.** The preserved logic functions call them internally:
+`skipSet`/`skipExercise`/`skipDay`/`completeDay` → `refreshCurrentDay()`;
+`toggleProtocol`/`performSwap`/`changeWeek`/`switchProgram` → `switchDay()`;
+`performSwap`/`changeWeek`/`switchProgram` → `updateOverallProgress()`;
+`changeWeek`/`switchProgram` → `updateWeekDisplay()`; `switchProgram` → `updateProgramSelector()`.
+
+Deleting them outright throws `ReferenceError` on every skip, swap, week change and program switch.
+Instead, **delete each old function body and replace it with a one-line shim** that delegates to the
+new render pipeline:
+
+```javascript
+// Compatibility shims — the preserved logic layer calls these; they now just re-render.
+function refreshCurrentDay()    { render(); }
+function switchDay(dayId)       { if (dayId) view.dayId = dayId; render(); }
+function updateOverallProgress(){ render(); }
+function updateWeekDisplay()    {}
+function updateProgramSelector(){}
+```
+
+Delete `renderTabs()` outright — nothing calls it.
 
 - [ ] **Step 5: Verify**
 
@@ -519,7 +538,7 @@ Run the syntax gate. Then open `index.html`: click `›` (week increments, phase
 
 ```bash
 git add index.html
-git commit -m "feat: editorial masthead with week selector, program chips, tabs"
+git commit -m "feat: editorial masthead with currentWeek selector, program chips, tabs"
 ```
 
 ---
@@ -801,7 +820,7 @@ function exercisesHTML(day) {
     if (hist.length >= 2) {
       const vals = hist.map(h => h.weight), mn = Math.min(...vals), mx = Math.max(...vals);
       const bars = hist.slice(-5).map(h =>
-        `<div class="bar-col"><span>W${h.week}</span><div class="bar${h.week === week ? ' now' : ''}" style="height:${Math.round(12 + (mx === mn ? 22 : (h.weight - mn) / (mx - mn) * 28))}px"></div></div>`
+        `<div class="bar-col"><span>W${h.week}</span><div class="bar${h.week === currentWeek ? ' now' : ''}" style="height:${Math.round(12 + (mx === mn ? 22 : (h.weight - mn) / (mx - mn) * 28))}px"></div></div>`
       ).join('');
       const diff = vals[vals.length - 1] - hist[0].weight;
       trend = `<div class="trend"><div class="bars">${bars}</div>
@@ -881,7 +900,8 @@ function undoSet(dayId, exId, i) {
 
 - [ ] **Step 6: Delete obsolete render code**
 
-Remove the old `renderDay()`, `sparklineSVG()`, `toggleCard()`, and `refreshCurrentDay()` functions and any calls to them.
+Remove the old `renderDay()`, `sparklineSVG()`, and `toggleCard()` functions and any calls to them.
+**Leave the `refreshCurrentDay()` shim from Task 4 in place** — the preserved skip/complete logic calls it.
 
 - [ ] **Step 7: Verify**
 
@@ -949,7 +969,7 @@ git commit -m "feat: editorial exercise cards with set grid, trend bars, effort"
 
 ```javascript
 function syncPending(day, act) {
-  const key = `${curProg().id}:${week}:${day.id}:${act.ex.id}:${act.i}`;
+  const key = `${curProg().id}:${currentWeek}:${day.id}:${act.ex.id}:${act.i}`;
   if (view.pendKey === key) return;
   view.pendKey = key;
   const stored = state[day.id].weights[act.ex.id];
@@ -1014,7 +1034,7 @@ function logActiveSet() {
   if (!act) return;
   const { ex, i } = act, w = view.pendW;
 
-  const hist = getExerciseHistory(day.id, ex.id).filter(h => h.week < week && h.weight != null);
+  const hist = getExerciseHistory(day.id, ex.id).filter(h => h.week < currentWeek && h.weight != null);
   const maxPrior = hist.length ? Math.max(...hist.map(h => h.weight)) : 0;
 
   state[day.id].sets[ex.id][i] = true;
@@ -1164,7 +1184,7 @@ const PROG_RULES = [
 ];
 
 function phaseIndexForWeek() {
-  const label = curProg().weekPhases[week - 1].label;
+  const label = curProg().weekPhases[currentWeek - 1].label;
   return curProg().mesocycle.findIndex(m => m.label === label);
 }
 
@@ -1221,7 +1241,7 @@ function progressHTML() {
       hist.forEach(h => { byWeek[h.week] = h; });
       let cells = '';
       for (let w = 1; w <= max; w++) {
-        const h = byWeek[w], now = w === week;
+        const h = byWeek[w], now = w === currentWeek;
         const val = h && h.weight != null ? (h.weight % 1 ? h.weight.toFixed(1) : h.weight) : '·';
         cells += `<div class="cell${now && h ? ' now' : ''}${h ? '' : ' empty'}">
           <div class="cell-w">W${w}</div><div class="cell-v">${val}</div>
@@ -1275,7 +1295,7 @@ function settingsHTML() {
     </div>
 
     <div class="panel" style="margin-left:0;margin-right:0;border-color:var(--border)">
-      <div class="panel-h" style="color:var(--muted-2)">THIS WEEK · WEEK ${week}/${prog.totalWeeks}</div>
+      <div class="panel-h" style="color:var(--muted-2)">THIS WEEK · WEEK ${currentWeek}/${prog.totalWeeks}</div>
       <div class="kv"><span>Sets done</span><span>${s.done}/${s.total}</span></div>
       <div class="kv"><span>Skipped</span><span>${s.skipped}</span></div>
       <div class="kv"><span>Program</span><span>${esc(prog.name)}</span></div>
@@ -1294,7 +1314,7 @@ function settingsHTML() {
   else if (act === 'export') { exportData(); }
   else if (act === 'import') { document.getElementById('importFile').click(); return; }
   else if (act === 'clearweek') {
-    view.confirm = { title: 'Clear Week?', msg: "This week's logged sets, weights and effort will be reset.", act: 'clearweek' };
+    view.confirm = { title: 'Clear Week?', msg: "This currentWeek's logged sets, weights and effort will be reset.", act: 'clearweek' };
   }
 ```
 
@@ -1302,12 +1322,15 @@ Wire the file input after each render (append to the end of `renderScroll()`):
 
 ```javascript
   const fi = document.getElementById('importFile');
-  if (fi) fi.onchange = importDataFile;
+  if (fi) fi.onchange = importData;
 ```
 
 - [ ] **Step 6: Delete obsolete render code**
 
-Remove `renderInfoPanel()`, `renderProgressPanel()`, and `toggleMeso()`; keep `exportData()` and rename the existing import handler to `importDataFile(e)` if its name differs.
+Remove `renderInfoPanel()`, `renderProgressPanel()`, and `toggleMeso()`; keep `exportData()` and the
+existing `importData(event)` handler as-is. **Leave the `switchDay()` / `updateOverallProgress()` /
+`updateWeekDisplay()` / `updateProgramSelector()` shims from Task 4 in place** — the preserved
+week/program/swap logic calls them.
 
 - [ ] **Step 7: Verify**
 
@@ -1489,7 +1512,7 @@ function renderOverlays() {
     const c = view.confirm; view.confirm = null;
     if (c.act === 'skipday') skipDay(curDay().id);
     else if (c.act === 'completeday') completeDay(curDay().id);
-    else if (c.act === 'clearweek') { resetWeek(); view.importMsg = "This week's log cleared."; view.importOk = true; }
+    else if (c.act === 'clearweek') { resetWeek(); view.importMsg = "This currentWeek's log cleared."; view.importOk = true; }
   }
 ```
 
@@ -1553,9 +1576,16 @@ git commit -m "feat: rest, swap, tip and confirm overlays"
 ```bash
 sed -n "$(grep -n '<script>' index.html | cut -d: -f1),$(grep -n '</script>' index.html | cut -d: -f1)p" index.html | sed '1d;$d' > /tmp/gains-check.js
 node --check /tmp/gains-check.js && echo "SYNTAX OK"
-grep -nE "renderTabs|renderDay\(|renderInfoPanel|renderProgressPanel|sparklineSVG|toggleCard|refreshCurrentDay|showSwapPicker|showConfirm|closeConfirm|toggleMeso" index.html
+grep -nE "renderTabs|renderDay\(|renderInfoPanel|renderProgressPanel|sparklineSVG|toggleCard|showSwapPicker|showConfirm|closeConfirm|toggleMeso" index.html
 ```
 Expected: `SYNTAX OK`, and the `grep` returns **no matches**.
+
+Then confirm the compatibility shims survive and are one-liners (the preserved logic layer calls them):
+
+```bash
+grep -nE "^function (refreshCurrentDay|switchDay|updateOverallProgress|updateWeekDisplay|updateProgramSelector)\(" index.html
+```
+Expected: exactly 5 matches, each a single-line function body.
 
 - [ ] **Step 2: Data-integrity diff**
 
