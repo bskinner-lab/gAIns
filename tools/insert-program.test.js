@@ -258,3 +258,99 @@ test('a program that passes validation but breaks rendering leaves the file byte
   assert.strictEqual(result.ok, false);
   assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
 });
+
+// --- </script> injection (adversarial review, critical) ----------------
+//
+// A generated `note` (or any other string field) containing a literal
+// `</script>` is written verbatim into index.html by toJsLiteral()/quote().
+// Both Gate 3 (`node --check`) and Gate 4 (smoke render) extract the script
+// via `extractScript()`, which locates the block with `lastIndexOf` and so
+// always finds the file's REAL trailing `</script>` — the injected one
+// inside the string is invisible to it. Both gates therefore report success
+// on a candidate that a BROWSER'S HTML PARSER — which closes a <script>
+// block at the FIRST literal `</script`, wherever it appears, including
+// inside a JS string literal — truncates to a fraction of its real size.
+// quote() must neutralize `</script` (any case, with or without a
+// following `>`) for the HTML parser while leaving the JS string's runtime
+// VALUE byte-for-byte unchanged.
+
+function countAll(haystack, needle) {
+  let count = 0, i = 0;
+  while ((i = haystack.indexOf(needle, i)) !== -1) { count++; i++; }
+  return count;
+}
+
+function programWithNote(note) {
+  const bad = clone(valid);
+  bad.days[0].exercises[0].note = note;
+  return bad;
+}
+
+test('a note containing </script> does not truncate the script block', () => {
+  const file = tempCopy();
+  const note = 'careful of </script> here';
+  const result = insertProgram(programWithNote(note), { htmlPath: file });
+  assert.strictEqual(result.ok, true, result.error);
+
+  const html = fs.readFileSync(file, 'utf8');
+  assert.strictEqual(countAll(html, '</script>'), 1, 'exactly one real closing tag should survive');
+
+  const app = loadApp({ htmlPath: file });
+  const ex = app.PROGRAMS[2].days[0].exercises[0];
+  assert.strictEqual(ex.note, note, 'the round-tripped string must equal the original input exactly');
+});
+
+test('a note containing </SCRIPT > (mixed case, trailing space) is neutralized', () => {
+  const file = tempCopy();
+  const note = 'weird case: </SCRIPT > should not break anything';
+  const result = insertProgram(programWithNote(note), { htmlPath: file });
+  assert.strictEqual(result.ok, true, result.error);
+
+  const html = fs.readFileSync(file, 'utf8');
+  assert.strictEqual(countAll(html, '</script>'), 1);
+
+  const app = loadApp({ htmlPath: file });
+  assert.strictEqual(app.PROGRAMS[2].days[0].exercises[0].note, note);
+});
+
+test('a note containing a full injected script tag is neutralized end to end', () => {
+  const file = tempCopy();
+  const note = 'evil</script><script>alert(1)</script>';
+  const result = insertProgram(programWithNote(note), { htmlPath: file });
+  assert.strictEqual(result.ok, true, result.error);
+
+  const html = fs.readFileSync(file, 'utf8');
+  assert.strictEqual(countAll(html, '</script>'), 1, 'only the real trailing tag may remain');
+
+  const app = loadApp({ htmlPath: file });
+  assert.strictEqual(app.PROGRAMS[2].days[0].exercises[0].note, note);
+});
+
+// --- Hardening fixes (second adversarial review) ------------------------
+
+test('a program with no alternatives anywhere is rejected at validation', () => {
+  const bad = clone(valid);
+  delete bad.alternatives;
+  const errors = validateProgram(bad, new Set());
+  assert.ok(errors.some(e => /must define at least one exercise alternative/.test(e)));
+});
+
+test('a program whose alternatives are all empty arrays is rejected at validation', () => {
+  const bad = clone(valid);
+  bad.alternatives = { m3_rope_pushdown: [] };
+  const errors = validateProgram(bad, new Set());
+  assert.ok(errors.some(e => /must define at least one exercise alternative/.test(e)));
+});
+
+test('non-string day label/title/subtitle are named at validation', () => {
+  const bad = clone(valid);
+  bad.days[0].label = 42;
+  bad.days[0].title = '';
+  bad.days[1].subtitle = null;
+  const errors = validateProgram(bad, new Set());
+  assert.ok(errors.some(e => /days\[0\]: label must be a non-empty string/.test(e)));
+  assert.ok(errors.some(e => /days\[0\]: title must be a non-empty string/.test(e)));
+  // subtitle is `null`, which missingKeys() already reports as "missing" —
+  // it isn't a second, redundant type error.
+  assert.ok(errors.some(e => /days\[1\] missing subtitle/.test(e)));
+});

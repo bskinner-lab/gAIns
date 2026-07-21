@@ -122,6 +122,16 @@ function validateProgram(prog, existingIds = new Set()) {
         }
       }
 
+      // renderMasthead()/workoutHeaderHTML() call .toUpperCase()/.replace()
+      // on these unconditionally on every view — a non-string here is a Gate
+      // 4 render crash instead of a Gate 1 message naming the field.
+      for (const field of ['label', 'title', 'subtitle']) {
+        if (day[field] !== undefined && day[field] !== null &&
+            !(typeof day[field] === 'string' && day[field].length > 0)) {
+          errors.push(`days[${di}]: ${field} must be a non-empty string (got ${JSON.stringify(day[field])})`);
+        }
+      }
+
       if (!Array.isArray(day.exercises) || day.exercises.length === 0) {
         errors.push(`day ${day.id || di} has no exercises`);
         return;
@@ -166,6 +176,7 @@ function validateProgram(prog, existingIds = new Set()) {
     });
   }
 
+  let hasAlternative = false;
   if (prog.alternatives !== undefined && prog.alternatives !== null) {
     if (typeof prog.alternatives !== 'object') errors.push('alternatives must be an object');
     else {
@@ -174,6 +185,7 @@ function validateProgram(prog, existingIds = new Set()) {
           errors.push(`alternatives['${origId}']: no exercise with id '${origId}' exists in this program`);
         }
         if (!Array.isArray(alts)) { errors.push(`alternatives['${origId}'] must be an array`); continue; }
+        if (alts.length > 0) hasAlternative = true;
         alts.forEach((alt, ai) => {
           const where = `alternatives['${origId}'][${ai}]`;
           if (!alt || typeof alt !== 'object') { errors.push(`${where} must be an object`); return; }
@@ -182,6 +194,13 @@ function validateProgram(prog, existingIds = new Set()) {
         });
       }
     }
+  }
+  // Product policy, not an incidental render quirk: a program where every
+  // exercise lacks a substitute means the swap feature is dead app-wide for
+  // this program. Caught here, by name, rather than as a render-probe
+  // failure at Gate 4.
+  if (!hasAlternative) {
+    errors.push('program must define at least one exercise alternative in `alternatives` — a program with no substitutes anywhere disables the swap feature for this program');
   }
   return errors;
 }
@@ -207,8 +226,23 @@ function nextProgramId(existingIds) {
   return `meso${max + 1}`;
 }
 
+// Escaping `\`/`'`/`\n` alone lets a JS-string-valid `</script>` (in any
+// case, with or without a trailing `>`) slip through untouched: Node's
+// `--check` and `extractScript()` both find the file's real trailing
+// `</script>` via string search and are happy, but a BROWSER's HTML parser
+// closes the <script> block at the first literal `</script` substring —
+// including one sitting inside a JS string literal — silently truncating
+// the app. Inserting a backslash before the `/` (`<\/script`) neutralizes
+// it for the HTML parser while leaving the JS string's runtime VALUE
+// unchanged (`\/` in a JS string literal is just `/`), so round-tripping
+// through the app still yields the original text byte-for-byte.
+function escapeScriptClose(str) {
+  return str.replace(/<\/(script)/gi, '<\\/$1');
+}
+
 function quote(str) {
-  return `'${String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n')}'`;
+  const escaped = String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+  return `'${escapeScriptClose(escaped)}'`;
 }
 
 /**
