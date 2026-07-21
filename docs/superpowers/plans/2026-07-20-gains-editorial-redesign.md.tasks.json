@@ -1,0 +1,93 @@
+{
+  "planPath": "docs/superpowers/plans/2026-07-20-gains-editorial-redesign.md",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Task 1: Preserve swaps through legacy migration",
+      "status": "completed",
+      "description": "**Goal:** Fix `migrateDayState()` so `swaps` survives the legacy numeric-key migration path, matching the export's behavior.\n\n**Files:**\n- Modify: `index.html:2267`\n\n**Acceptance Criteria:**\n- `migrateDayState()` returns an object containing a `swaps` key on the legacy path\n- Existing (non-legacy) data paths are untouched \u2014 the early `return sd` for string keys still fires first\n- Script block parses cleanly\n\n**Verify:** `sed -n '1533,3539p' index.html > /tmp/gains-check.js && node --check /tmp/gains-check.js` \u2192 `SYNTAX OK`\n\n**Steps:**\nAdd `swaps: sd.swaps || {}` to the object literal at index.html:2267; run syntax gate; commit.\n\n```json:metadata\n{\"files\": [\"index.html\"], \"verifyCommand\": \"sed -n '1533,3539p' index.html > /tmp/gains-check.js && node --check /tmp/gains-check.js && echo SYNTAX OK\", \"acceptanceCriteria\": [\"migrateDayState returns swaps key on legacy path\", \"string-key early return unchanged\", \"script parses\"], \"modelTier\": \"mechanical\"}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: Editorial theme system (CSS custom properties, light + dark)",
+      "status": "completed",
+      "blockedBy": [
+        1
+      ],
+      "description": "**Goal:** Replace the entire `<style>` block with the editorial design system, defining both palettes as CSS custom properties driven by a `data-theme` attribute.\n\n**Files:**\n- Modify: `index.html:5-11` (font `<link>` tags)\n- Modify: `index.html:12-1421` (replace whole `<style>` block)\n\n**Acceptance Criteria:**\n- Google Fonts link loads Oswald (400-700), IBM Plex Mono (400-600), Archivo (400-700)\n- `:root` defines light palette; `:root[data-theme=\"dark\"]` overrides with dark palette\n- `@media (prefers-color-scheme: dark)` supplies dark palette when no `data-theme` set\n- No hard-coded hex colors outside the two palette blocks\n- Page renders cream with no console errors\n\n**Verify:** Open index.html; in console `getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()` \u2192 `#e34f1e`\n\n**Steps:**\nReplace font links; replace style block with palette foundation (see plan for full CSS); verify; commit.\n\n```json:metadata\n{\"files\": [\"index.html\"], \"verifyCommand\": \"open index.html and check --accent resolves to #e34f1e\", \"acceptanceCriteria\": [\"fonts load\", \"light palette on :root\", \"dark palette on data-theme=dark\", \"prefers-color-scheme fallback\", \"no stray hex\"], \"modelTier\": \"standard\"}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: HTML scaffold, app shell, and theme bootstrap",
+      "status": "completed",
+      "blockedBy": [
+        2
+      ],
+      "description": "**Goal:** Replace the `<body>` scaffold with the editorial shell (app root, scroll container, overlay mounts) and wire theme persistence.\n\n**Files:**\n- Modify: `index.html:1423-1531` (replace body scaffold)\n- Modify: `index.html` `<script>` \u2014 theme helpers, `view` state, `render()` entry point, `getStartDay()`\n\n**Acceptance Criteria:**\n- `<body>` contains only `#app` (with `#masthead`, `#scroll`, `#bottombar`) and `#overlays`\n- `applyTheme()` sets `data-theme` on `<html>` and persists to `localStorage.gains_theme`\n- With no stored preference, no `data-theme` attribute is set\n- Stored preference of light/dark is reapplied on reload\n\n**Verify:** In console `setTheme('dark')` \u2192 dark, `localStorage.gains_theme === 'dark'`; reload \u2192 still dark\n\n**Steps:**\nReplace body; add THEME_KEY/storedTheme/applyTheme/setTheme/effectiveTheme; add `view` object, `render()`, `boot()` with 500ms tick and visibilitychange; add `getStartDay()`; stub four render fns; verify; commit.\n\n```json:metadata\n{\"files\": [\"index.html\"], \"verifyCommand\": \"node --check on extracted script block; browser: setTheme('dark') persists across reload\", \"acceptanceCriteria\": [\"body scaffold replaced\", \"theme persists to gains_theme\", \"no data-theme when unset\", \"reload reapplies stored theme\"], \"modelTier\": \"standard\"}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: Masthead \u2014 title, week selector, program chips, tabs",
+      "status": "completed",
+      "blockedBy": [
+        3
+      ],
+      "description": "**Goal:** Render the sticky masthead: day/view title, week selector with phase line, settings gear, program chips, and the day/PLAN/PROGRESS tab bar.\n\n**Files:**\n- Modify: `index.html` \u2014 implement `renderMasthead()`, append masthead CSS, add delegated click handler\n- Replace: existing `renderTabs()` (`index.html:2477`)\n\n**Acceptance Criteria:**\n- Title shows active day title on workout view, else Plan/Progress/Settings\n- Subline shows `<day.label> \u00b7 <program.name> \u00b7 <day.subtitle>` on workout view\n- Week arrows clamp to 1..totalWeeks and persist via `saveWeek()`\n- Phase line shows uppercase label, RPE, and `\u00b7 LLP` when phase has LLP\n- Program chips switch via existing `switchProgram()`\n- Day tabs show \u2713 when complete with a logged set, \u2014 when complete but all skipped\n- Active tab dark, inactive transparent\n\n**Verify:** Click \u203a \u2192 week increments and phase line updates; click PLAN \u2192 title `Plan`; reload \u2192 week persisted\n\n**Steps:**\nAppend masthead CSS; implement esc/curProg/curDay/renderMasthead; add single delegated click handler; delete old renderTabs; verify; commit.\n\n```json:metadata\n{\"files\": [\"index.html\"], \"verifyCommand\": \"node --check on extracted script; browser: week arrows, tabs, chips, gear all switch correctly\", \"acceptanceCriteria\": [\"title/subline correct per view\", \"week clamps and persists\", \"phase line correct\", \"program chips switch\", \"tab marks correct\", \"active tab styled\"], \"modelTier\": \"standard\"}\n```"
+    },
+    {
+      "id": 5,
+      "subject": "Task 5: Workout view \u2014 stats row, PR banner, day controls, protocol",
+      "status": "completed",
+      "blockedBy": [
+        4
+      ],
+      "description": "**Goal:** Render the top of the workout view: four-cell stats row, PR banner, Skip/Complete-Day controls, and the shoulder-protocol checklist.\n\n**Files:**\n- Modify: `index.html` \u2014 implement `renderScroll()` workout branch, `fmtClock()`, `dayStats()`, `weekPct()`, `workoutHeaderHTML()`; append CSS\n\n**Acceptance Criteria:**\n- Stats row shows TIME (m:ss elapsed), SETS done/total for the day, SKIPPED, WEEK % across all days\n- PR banner appears only when `view.latestPr` set\n- Skip/Complete-Day show only when day has pending sets; Unskip-Day when complete with skipped sets\n- Both open a confirm modal, reusing existing `skipDay()`/`completeDay()`\n- Protocol checklist renders only for `protocol: true` days, toggling via `toggleProtocol()`\n\n**Verify:** Open push day; TIME increments each second; check a protocol box \u2192 fills and persists across reload\n\n**Steps:**\nAppend CSS; add fmtClock/dayStats/weekPct; implement workoutHeaderHTML; extend delegated handler (proto/skipday/completeday); wire renderScroll with stubs for later views; verify; commit.\n\n```json:metadata\n{\"files\": [\"index.html\"], \"verifyCommand\": \"node --check on extracted script; browser: stats accurate, protocol persists\", \"acceptanceCriteria\": [\"stats row values correct\", \"PR banner conditional\", \"day buttons conditional\", \"confirm modal gating\", \"protocol toggles and persists\"], \"modelTier\": \"standard\"}\n```"
+    },
+    {
+      "id": 6,
+      "subject": "Task 6: Exercise cards and set grid",
+      "status": "completed",
+      "blockedBy": [
+        5
+      ],
+      "description": "**Goal:** Render each exercise as an editorial card: numbered title, swap button, meta tags, note, trend bars, SET/LAST/REPS/TODAY grid, effort buttons, skip-exercise.\n\n**Files:**\n- Modify: `index.html` \u2014 implement `activeSet()`, `exercisesHTML()`, `undoSet()`; append CSS\n- Replace: old `renderDay()` (`index.html:2509`), `sparklineSVG()` (`index.html:2749`), `toggleCard()`, `refreshCurrentDay()`\n\n**Acceptance Criteria:**\n- Card shows zero-padded index, name, n/total count; name greyed when all sets resolved\n- Tags render sets\u00d7reps, RPE, \u23f1 restLabel, plus LLP and COMPOUND; RPE/LLP/COMPOUND open tip modal\n- Trend bars only with \u22652 logged weeks, else the LOG 2+ WEEKS hint\n- Set rows show LAST (prior week weight + effort), REPS, TODAY with LOG/done/skip/pending states\n- Active row highlighted with accent top border\n- Effort toggles via `saveEffort()`; skip-exercise via `skipExercise()`\n\n**Verify:** Tap RPE tag \u2192 tip state set; tap `skip \u2192` \u2192 row struck through; reload \u2192 persisted\n\n**Steps:**\nAppend CSS; add activeSet; implement exercisesHTML with EFF_LABEL; extend delegated handler (tip/undo/skipset/skipex/eff/swap/log); add undoSet; delete obsolete render code; verify; commit.\n\n```json:metadata\n{\"files\": [\"index.html\"], \"verifyCommand\": \"node --check on extracted script; browser: cards, tags, set-row states, effort, skip all behave and persist\", \"acceptanceCriteria\": [\"card header correct\", \"tags incl conditional LLP/COMPOUND\", \"trend gating at 2 weeks\", \"row states correct\", \"active row highlighted\", \"effort and skip persist\"], \"modelTier\": \"standard\"}\n```"
+    },
+    {
+      "id": 7,
+      "subject": "Task 7: Sticky bottom bar \u2014 weight stepper, LOG SET, rest pill",
+      "status": "completed",
+      "blockedBy": [
+        6
+      ],
+      "description": "**Goal:** Build the dark sticky bottom bar: active exercise + stepper, LOG SET, minimized rest pill, and DAY COMPLETE state.\n\n**Files:**\n- Modify: `index.html` \u2014 implement `syncPending()`, `renderBottomBar()`, `logActiveSet()`, `setRest()`, `addRest()`; append CSS\n\n**Acceptance Criteria:**\n- Bar shows only on workout view\n- Stepper adjusts by 2.5 lb, floored at 0\n- Pending weight auto-fills: previous set \u2192 stored exercise weight \u2192 prior week \u2192 0; recomputed when active set changes\n- LOG SET marks set done, saves `weights[exId]` and `weights[exId_i]`, starts rest\n- Weight beating best prior week sets `view.latestPr`\n- Day complete \u2192 DAY COMPLETE + elapsed/sets/skips\n- Minimized rest shows pill with remaining time, +30, SKIP\n\n**Verify:** Log a set \u2192 weight persists to row, rest starts; minimize \u2192 pill counts down; +30 adds 30s\n\n**Steps:**\nAppend CSS; implement syncPending/renderBottomBar/logActiveSet; extend delegated handler (w-/w+/restexpand/restskip/rest+/rest-); add setRest/addRest; verify; commit.\n\n```json:metadata\n{\"files\": [\"index.html\"], \"verifyCommand\": \"node --check on extracted script; browser: stepper \u00b12.5, LOG SET writes both weight keys and starts rest, PR fires\", \"acceptanceCriteria\": [\"bar only on workout view\", \"stepper 2.5 floored at 0\", \"pendW fallback chain correct\", \"log writes both weight keys\", \"PR detection\", \"DAY COMPLETE state\", \"rest pill controls\"], \"modelTier\": \"standard\"}\n```"
+    },
+    {
+      "id": 8,
+      "subject": "Task 8: Plan, Progress, and Settings views",
+      "status": "completed",
+      "blockedBy": [
+        7
+      ],
+      "description": "**Goal:** Render the three non-workout views, including the new theme toggle in Settings.\n\n**Files:**\n- Modify: `index.html` \u2014 implement `planHTML()`, `progressHTML()`, `settingsHTML()`, `phaseIndexForWeek()`; append CSS\n- Replace: old `renderInfoPanel()` (`index.html:2688`), `renderProgressPanel()` (`index.html:2776`), `toggleMeso()`\n\n**Acceptance Criteria:**\n- Plan shows expandable phase table (WEEKS/PHASE/RPE) with \u2190 NOW on current phase, RIR and bullets on expand\n- Plan shows Execution Rules, Progression Rules, Glossary\n- Progress shows per-day per-exercise weekly cells with effort dots and delta; empty state when nothing logged\n- Settings shows Export/Import, this-week stats, Clear-week, and Light/Dark/Auto theme toggle\n- Theme toggle reflects active choice and switches immediately\n\n**Verify:** PLAN expands phases; PROGRESS shows weekly grid; Settings \u2192 Dark turns UI dark, reload \u2192 still dark\n\n**Steps:**\nAppend CSS; add EXEC_RULES/PROG_RULES/phaseIndexForWeek; implement planHTML/progressHTML/settingsHTML; extend handler (phase/theme/export/import/clearweek); wire file input onchange; delete obsolete render code; verify; commit.\n\n```json:metadata\n{\"files\": [\"index.html\"], \"verifyCommand\": \"node --check on extracted script; browser: plan expands, progress grid renders, theme toggle persists\", \"acceptanceCriteria\": [\"phase table expand + NOW tag\", \"rules and glossary render\", \"progress cells with dots and delta\", \"empty state\", \"settings panels\", \"theme toggle immediate + persistent\"], \"modelTier\": \"standard\"}\n```"
+    },
+    {
+      "id": 9,
+      "subject": "Task 9: Overlays \u2014 rest, swap, tip, confirm",
+      "status": "completed",
+      "blockedBy": [
+        8
+      ],
+      "description": "**Goal:** Render the four overlays: full-screen rest ring, swap bottom-sheet, tip modal, confirm modal.\n\n**Files:**\n- Modify: `index.html` \u2014 implement `renderOverlays()`, `resetWeek()`; append CSS\n- Replace: existing `showConfirm()`/`closeConfirm()`/`showSwapPicker()`/`tip()` (`index.html:3035+`)\n\n**Acceptance Criteria:**\n- Rest overlay shows when running and not minimized: SVG ring, remaining time, set info, next-up, presets 60/90/120/180, \u221215s/+30s/SKIP, MINIMIZE\n- Ring turns red at \u226410s\n- Swap sheet lists alternatives from EXERCISE_ALTERNATIVES plus revert when swapped, applying via `performSwap()`\n- Tip modal shows glossary term/definition, closes on tap\n- Confirm modal runs pending action on CONFIRM, dismisses on CANCEL\n- Only one overlay at a time, priority confirm > tip > swap > rest\n\n**Verify:** Log a set \u2192 rest overlay with counting ring; MINIMIZE \u2192 pill; \u21c4 \u2192 swap sheet; pick alternative \u2192 name changes and persists\n\n**Steps:**\nAppend CSS; add REST_PRESETS/RING_C; implement renderOverlays with priority order; extend handler (restmin/preset/tipx/swapx/doswap/cfx/cfok); add resetWeek; delete obsolete overlay code; verify; commit.\n\n```json:metadata\n{\"files\": [\"index.html\"], \"verifyCommand\": \"node --check on extracted script; browser: all four overlays render, priority order respected, swap persists\", \"acceptanceCriteria\": [\"rest overlay full controls\", \"urgent red at 10s\", \"swap sheet with revert\", \"tip modal\", \"confirm runs action\", \"single overlay priority order\"], \"modelTier\": \"standard\"}\n```"
+    },
+    {
+      "id": 10,
+      "subject": "Task 10: Full-app verification and data-integrity check",
+      "status": "completed",
+      "blockedBy": [
+        9
+      ],
+      "description": "**Goal:** Confirm the redesigned app works end to end and that no logged data was lost or altered.\n\n**Files:**\n- Modify: `index.html` (only if defects found)\n- Modify: `CLAUDE.md` (update architecture description)\n\n**Acceptance Criteria:**\n- Script block parses cleanly\n- No dead references remain to deleted functions\n- localStorage after redesign is byte-identical to the pre-work snapshot for all `hypertrophy_*` keys apart from intentional edits\n- Every view and interaction behaves correctly in both light and dark themes\n- CLAUDE.md reflects the new architecture\n\n**Verify:** Syntax gate passes, dead-reference grep returns no matches, localStorage diff shows `DATA IDENTICAL`, full manual walkthrough passes in both themes\n\n**Steps:**\nRun node --check and dead-reference grep; diff localStorage before/after with jq; run the full manual walkthrough checklist twice (light and dark); update CLAUDE.md; commit.\n\n```json:metadata\n{\"files\": [\"index.html\", \"CLAUDE.md\"], \"verifyCommand\": \"node --check on extracted script; grep -nE 'renderTabs|renderDay\\\\(|renderInfoPanel|renderProgressPanel|sparklineSVG|toggleCard|refreshCurrentDay|showSwapPicker|showConfirm|closeConfirm|toggleMeso' index.html (expect no matches); jq diff of hypertrophy_* localStorage keys\", \"acceptanceCriteria\": [\"script parses\", \"no dead references\", \"localStorage data identical\", \"full walkthrough passes in light and dark\", \"CLAUDE.md updated\"], \"modelTier\": \"standard\"}\n```"
+    }
+  ],
+  "lastUpdated": "2026-07-21T08:27:55.420971+00:00"
+}
