@@ -4,21 +4,11 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { loadApp, withApp, extractScript } = require('./app-shim');
-
-// Mirrors app-shim.js's GLOBAL_KEYS — the set of globals the shim stubs and
-// must restore. Kept local since GLOBAL_KEYS isn't (and shouldn't need to be)
-// part of the public surface.
-const SHIMMED_GLOBAL_KEYS = [
-  'window', 'document', 'localStorage', 'navigator', 'Notification',
-  'AudioContext', 'webkitAudioContext', 'Blob', 'URL',
-  'setInterval', 'setTimeout', 'clearInterval', 'clearTimeout',
-  'requestAnimationFrame', 'alert',
-];
+const { loadApp, withApp, extractScript, GLOBAL_KEYS } = require('./app-shim');
 
 function snapshotGlobals() {
   const snap = {};
-  for (const k of SHIMMED_GLOBAL_KEYS) snap[k] = Object.getOwnPropertyDescriptor(global, k);
+  for (const k of GLOBAL_KEYS) snap[k] = Object.getOwnPropertyDescriptor(global, k);
   return snap;
 }
 
@@ -96,6 +86,18 @@ test('withApp tears down globals even when fn throws', () => {
   assert.strictEqual(typeof global.document, 'undefined');
 });
 
+test('withApp rejects an async fn instead of hanging', () => {
+  // An async function always returns a promise, so this throws synchronously
+  // — it must never reach the `await`, which would hang forever since
+  // setTimeout is stubbed to a no-op for the duration of the callback.
+  assert.throws(
+    () => withApp({}, async () => { await new Promise(r => setTimeout(r, 0)); }),
+    /withApp\(fn\): fn must be synchronous/
+  );
+  // Teardown still ran despite the throw.
+  assert.strictEqual(typeof global.document, 'undefined');
+});
+
 test('loadApp fully restores globals when the script block is missing', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-shim-'));
   const htmlPath = path.join(dir, 'no-script.html');
@@ -104,7 +106,7 @@ test('loadApp fully restores globals when the script block is missing', () => {
   const before = snapshotGlobals();
   assert.throws(() => loadApp({ htmlPath }), /no <script> block found/);
   const after = snapshotGlobals();
-  for (const k of SHIMMED_GLOBAL_KEYS) {
+  for (const k of GLOBAL_KEYS) {
     assert.deepStrictEqual(after[k], before[k], `global.${k} not restored`);
   }
 });
@@ -117,7 +119,7 @@ test('loadApp fully restores globals when the script has a syntax error', () => 
   const before = snapshotGlobals();
   assert.throws(() => loadApp({ htmlPath }));
   const after = snapshotGlobals();
-  for (const k of SHIMMED_GLOBAL_KEYS) {
+  for (const k of GLOBAL_KEYS) {
     assert.deepStrictEqual(after[k], before[k], `global.${k} not restored`);
   }
 });

@@ -219,8 +219,18 @@ function loadApp(opts) {
  * Like `loadApp`, but keeps the shimmed globals live for the duration of
  * `fn(api)` — teardown happens only after `fn` returns or throws — so `fn`
  * can call back into the app (`api.render()`, `api.clickHandler(evt)`, …)
- * without hitting `document is not defined`. `fn` is expected to be
- * synchronous; its return value is propagated, and teardown still runs (via
+ * without hitting `document is not defined`.
+ *
+ * `fn` MUST be synchronous. `setInterval`/`setTimeout`/`clearInterval`/
+ * `clearTimeout`/`requestAnimationFrame` are stubbed to no-ops for the whole
+ * duration of the call — not just while the app's own code runs, but for
+ * `fn`'s own code too, since they're real globals and `fn` shares this
+ * process. An `async fn` that awaits a timer-based operation (`setTimeout`,
+ * a library that polls, …) would therefore hang forever: the timer that's
+ * supposed to resolve it never fires. To catch this early rather than as a
+ * mysterious hang, a thenable return value throws immediately instead.
+ *
+ * `fn`'s return value is propagated on success, and teardown still runs (via
  * `finally`) if it throws.
  * @param {{htmlPath?: string, storage?: Record<string,string>}} opts
  * @param {(api: ReturnType<typeof loadApp>) => any} fn
@@ -229,10 +239,17 @@ function withApp(opts, fn) {
   if (typeof opts === 'function') { fn = opts; opts = {}; }
   const { api, teardown } = setupApp(opts);
   try {
-    return fn(api);
+    const result = fn(api);
+    if (result && typeof result.then === 'function') {
+      throw new Error(
+        'withApp(fn): fn must be synchronous; timers are stubbed for the ' +
+        'duration of the callback, so awaiting a timer-based operation will hang'
+      );
+    }
+    return result;
   } finally {
     teardown();
   }
 }
 
-module.exports = { loadApp, withApp, extractScript, makeStorage, APP_HTML };
+module.exports = { loadApp, withApp, extractScript, makeStorage, APP_HTML, GLOBAL_KEYS };
