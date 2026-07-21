@@ -70,17 +70,26 @@ function setGlobal(k, v) {
 }
 
 /**
- * Evaluate the app script under a DOM shim.
- * @param {{htmlPath?: string, storage?: Record<string,string>}} opts
- * @returns {{PROGRAMS: any[], EXERCISE_ALTERNATIVES: object, DAYS: any[],
- *            currentProgramIdx: number, currentWeek: number, view: object,
- *            render: Function, switchProgram: Function,
- *            storage: object, elements: Map<string, object>,
- *            clickHandler: Function|null}}
+ * Set up the DOM shim, eval the app script under it, and hand back both the
+ * live API and a `teardown()` that restores globals. Shared by `loadApp`
+ * (tears down immediately, for consumers that only read data captured at eval
+ * time) and `withApp` (tears down after the caller is done, for consumers
+ * that need to keep calling into the app afterward).
  */
-function loadApp({ htmlPath, storage: seed } = {}) {
+function setupApp({ htmlPath, storage: seed } = {}) {
+  // Full descriptors, not just values — `navigator` etc. are accessor
+  // properties on this Node, and restoring with a plain value would silently
+  // turn them into (frozen-shape) data properties for the rest of the process.
   const saved = {};
-  for (const k of GLOBAL_KEYS) saved[k] = global[k];
+  for (const k of GLOBAL_KEYS) saved[k] = Object.getOwnPropertyDescriptor(global, k);
+
+  function teardown() {
+    for (const k of GLOBAL_KEYS) {
+      const desc = saved[k];
+      if (desc === undefined) delete global[k];
+      else Object.defineProperty(global, k, desc);
+    }
+  }
 
   const elements = new Map();
   const getElementById = id => {
@@ -99,7 +108,12 @@ function loadApp({ htmlPath, storage: seed } = {}) {
     querySelector: () => null,
     querySelectorAll: () => [],
     createElement: tag => makeElement(tag),
-    addEventListener: (type, fn) => { if (type === 'click' && !clickHandler) clickHandler = fn; },
+    // The app registers two click listeners: `primeAudio` (one-shot, unlocks
+    // audio) and the real `data-act` dispatcher (persistent). We want the
+    // dispatcher, so a `{once: true}` listener never wins the slot.
+    addEventListener: (type, fn, options) => {
+      if (type === 'click' && !(options && options.once)) clickHandler = fn;
+    },
     removeEventListener() {},
   };
 
@@ -134,25 +148,69 @@ function loadApp({ htmlPath, storage: seed } = {}) {
   setGlobal('requestAnimationFrame', () => 0);
   setGlobal('alert', () => {});
 
+  let api;
   try {
     const src = extractScript(htmlPath);
     // eval is safe/needed here: src is our own trusted index.html script (not
     // untrusted input), and this is a dev/test harness — the whole point is to
     // execute the app's real code under a DOM shim rather than parse it.
     // The script ends with boot(); the tail expression hands back live bindings.
-    const api = eval(
+    api = eval(
       src +
       '\n;({ PROGRAMS, EXERCISE_ALTERNATIVES, DAYS, MESOCYCLE, WEEK_PHASES,' +
       ' PROTOCOL_ITEMS, currentProgramIdx, currentWeek, state, view,' +
       ' render, switchProgram, boot })'
     );
-    return Object.assign(api, { storage, elements, get clickHandler() { return clickHandler; } });
+  } catch (e) {
+    // A malformed script (missing <script>, syntax error, throw during boot)
+    // must not leave the shimmed globals in place for whatever runs next.
+    teardown();
+    throw e;
+  }
+
+  Object.assign(api, { storage, elements, get clickHandler() { return clickHandler; } });
+  return { api, teardown };
+}
+
+/**
+ * Evaluate the app script under a DOM shim and return its live globals.
+ * Globals are restored to their pre-call state before this returns, so use
+ * this for consumers that only need data captured at eval time (`PROGRAMS`,
+ * `EXERCISE_ALTERNATIVES`, …). To keep calling into the app afterward — e.g.
+ * `render()` or the click handler, which look up `document` fresh each call —
+ * use `withApp` instead.
+ * @param {{htmlPath?: string, storage?: Record<string,string>}} opts
+ * @returns {{PROGRAMS: any[], EXERCISE_ALTERNATIVES: object, DAYS: any[],
+ *            MESOCYCLE: object, WEEK_PHASES: any[], PROTOCOL_ITEMS: any[],
+ *            currentProgramIdx: number, currentWeek: number, state: object,
+ *            view: object, render: Function, switchProgram: Function,
+ *            boot: Function, storage: object, elements: Map<string, object>,
+ *            clickHandler: Function|null}}
+ */
+function loadApp(opts) {
+  const { api, teardown } = setupApp(opts);
+  teardown();
+  return api;
+}
+
+/**
+ * Like `loadApp`, but keeps the shimmed globals live for the duration of
+ * `fn(api)` — teardown happens only after `fn` returns or throws — so `fn`
+ * can call back into the app (`api.render()`, `api.clickHandler(evt)`, …)
+ * without hitting `document is not defined`. `fn` is expected to be
+ * synchronous; its return value is propagated, and teardown still runs (via
+ * `finally`) if it throws.
+ * @param {{htmlPath?: string, storage?: Record<string,string>}} opts
+ * @param {(api: ReturnType<typeof loadApp>) => any} fn
+ */
+function withApp(opts, fn) {
+  if (typeof opts === 'function') { fn = opts; opts = {}; }
+  const { api, teardown } = setupApp(opts);
+  try {
+    return fn(api);
   } finally {
-    for (const k of GLOBAL_KEYS) {
-      if (saved[k] === undefined) delete global[k];
-      else setGlobal(k, saved[k]);
-    }
+    teardown();
   }
 }
 
-module.exports = { loadApp, extractScript, makeStorage, APP_HTML };
+module.exports = { loadApp, withApp, extractScript, makeStorage, APP_HTML };
