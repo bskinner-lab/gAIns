@@ -11,8 +11,8 @@
   "forearms":        { "mev": 0,  "mavLow": 4,  "mavHigh": 10, "mrv": 15 },
   "quads":           { "mev": 8,  "mavLow": 12, "mavHigh": 18, "mrv": 20 },
   "hamstrings":      { "mev": 6,  "mavLow": 10, "mavHigh": 16, "mrv": 20 },
-  "glutes":          { "mev": 4,  "mavLow": 8,  "mavHigh": 16, "mrv": 20 },
+  "glutes":          { "mev": 6,  "mavLow": 10, "mavHigh": 18, "mrv": 22 },
   "calves":          { "mev": 8,  "mavLow": 12, "mavHigh": 18, "mrv": 20 },
-  "abs":             { "mev": 4,  "mavLow": 8,  "mavHigh": 16, "mrv": 20 },
+  "abs":             { "mev": 4,  "mavLow": 8,  "mavHigh": 16, "mrv": 24 },
   "spinal_erectors": { "mev": 0,  "mavLow": 4,  "mavHigh": 10, "mrv": 12 }
 }
