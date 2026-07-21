@@ -94,115 +94,42 @@ body {
 </style>
 </head>
 <body>
-
-<!-- GLOBAL TOOLTIP -->
-<div id="tooltip"></div>
-
-<!-- TIMER OVERLAY -->
-<div class="timer-overlay" id="timerOverlay">
-  <button class="timer-minimize" onclick="minimizeTimer()">Minimize ↓</button>
-  <div class="timer-label">Rest Period</div>
-  <div class="timer-set-info" id="timerSetInfo"></div>
-  <div class="timer-rest-rec" id="timerRestRec" style="display:none"></div>
-  <div class="timer-ring-wrap">
-    <svg class="timer-svg" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
-      <circle class="timer-ring-bg" cx="110" cy="110" r="90"/>
-      <circle class="timer-ring-fill" id="timerRingFill" cx="110" cy="110" r="90"/>
-    </svg>
-    <div class="timer-display">
-      <div class="timer-time" id="timerDisplay">1:30</div>
-      <div class="timer-sublabel">seconds remaining</div>
-    </div>
-  </div>
-  <div class="rest-presets">
-    <button class="rest-preset-btn" onclick="setRestTime(60)">1:00</button>
-    <button class="rest-preset-btn active" onclick="setRestTime(90)">1:30</button>
-    <button class="rest-preset-btn" onclick="setRestTime(120)">2:00</button>
-    <button class="rest-preset-btn" onclick="setRestTime(180)">3:00</button>
-  </div>
-  <div class="timer-actions" style="margin-top:20px">
-    <button class="timer-btn subtract" onclick="addTime(-15)">−15s</button>
-    <button class="timer-btn add" onclick="addTime(30)">+30s</button>
-    <button class="timer-btn skip" onclick="skipTimer()">Skip Rest</button>
-  </div>
-  <div class="timer-next" id="timerNext"></div>
+<div id="app">
+  <div id="masthead"></div>
+  <div id="scroll"></div>
+  <div id="bottombar"></div>
 </div>
-
-<!-- MINIMIZED TIMER PILL -->
-<div class="timer-pill" id="timerPill" onclick="expandTimer()">
-  <svg class="timer-pill-ring" viewBox="0 0 28 28">
-    <circle class="timer-pill-ring-bg" cx="14" cy="14" r="12"/>
-    <circle class="timer-pill-ring-fill" id="pillRingFill" cx="14" cy="14" r="12"/>
-  </svg>
-  <div class="timer-pill-time" id="pillTimerDisplay">1:30</div>
-  <button class="timer-pill-skip" onclick="event.stopPropagation(); skipTimer()">Skip</button>
-</div>
-
-<!-- CONFIRMATION MODAL -->
-<div class="confirm-overlay" id="confirmOverlay">
-  <div class="confirm-box">
-    <div class="confirm-title" id="confirmTitle"></div>
-    <div class="confirm-msg" id="confirmMsg"></div>
-    <div class="confirm-actions">
-      <button class="confirm-btn cancel" onclick="closeConfirm()">Cancel</button>
-      <button class="confirm-btn ok" id="confirmOk">Confirm</button>
-    </div>
-  </div>
-</div>
-
-<div class="swap-overlay" id="swapOverlay">
-  <div class="swap-box">
-    <div class="swap-title">SWAP EXERCISE</div>
-    <div class="swap-current" id="swapCurrent"></div>
-    <div id="swapList"></div>
-    <button class="swap-cancel" onclick="closeSwapPicker()">Cancel</button>
-  </div>
-</div>
-
-<!-- HEADER -->
-<div class="header">
-  <div>
-    <div class="header-title">g<span style="color:var(--green)">AI</span>ns <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1px;vertical-align:middle">v1.14</span></div>
-    <div class="header-subtitle" id="headerSubtitle">32M · Full Gym · Shoulder-Cautious</div>
-    <div class="program-selector" id="programSelector">
-      <button class="program-btn active" onclick="switchProgram(0)">Meso 1</button>
-      <button class="program-btn" onclick="switchProgram(1)">Meso 2</button>
-    </div>
-    <div class="week-selector">
-      <span class="week-selector-label">Week</span>
-      <button class="week-btn" onclick="changeWeek(-1)">&#8249;</button>
-      <div class="week-display" id="weekDisplay">1 / —</div>
-      <button class="week-btn" onclick="changeWeek(1)">&#8250;</button>
-      <span class="week-phase" id="weekPhase">Foundation · RPE 6.5–7.5</span>
-    </div>
-    <div class="data-actions">
-      <button class="data-btn" onclick="exportData()">↓ Export</button>
-      <button class="data-btn" onclick="document.getElementById('importFile').click()">↑ Import</button>
-      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-    </div>
-  </div>
-  <div class="overall-progress">
-    <div style="text-align:right">
-      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Total Progress</div>
-      <div style="font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px" id="overallLabel">0 / 0 sets</div>
-    </div>
-    <div class="progress-ring-wrap">
-      <svg class="progress-ring" width="52" height="52" viewBox="0 0 52 52">
-        <circle class="progress-ring-bg" cx="26" cy="26" r="22"/>
-        <circle class="progress-ring-fill" id="overallRing" cx="26" cy="26" r="22"/>
-      </svg>
-      <div class="progress-pct" id="overallPct">0%</div>
-    </div>
-  </div>
-</div>
-
-<!-- DAY TABS -->
-<div class="day-tabs" id="dayTabs"></div>
-
-<!-- MAIN -->
-<div class="main" id="mainContent"></div>
+<div id="overlays"></div>
 
 <script>
+const THEME_KEY = 'gains_theme';
+
+function storedTheme() {
+  try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; }
+}
+
+function applyTheme(t) {
+  if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+  else document.documentElement.removeAttribute('data-theme');
+}
+
+function setTheme(t) {
+  try {
+    if (t) localStorage.setItem(THEME_KEY, t);
+    else localStorage.removeItem(THEME_KEY);
+  } catch (e) {}
+  applyTheme(t);
+  render();
+}
+
+function effectiveTheme() {
+  const s = storedTheme();
+  if (s) return s;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+applyTheme(storedTheme());
+
 // GLOSSARY for hover tooltips
 const GLOSSARY = {
   'LLP': 'Length-Limited Partials: bottom-half reps in the fully stretched position (last set only). For isolation exercises only — never on compounds. Maximizes tension where the muscle is longest — high stimulus, low joint stress.',
@@ -2130,16 +2057,12 @@ function isWeekComplete() {
 
 function getStartDay() {
   for (const day of DAYS) {
-    const ids = activeExIds(day.id);
-    const hasSomeDone = ids.some(id => state[day.id].sets[id] && state[day.id].sets[id].some(v => isResolved(v)));
-    const allDone = ids.every(id => state[day.id].sets[id] && state[day.id].sets[id].every(v => isResolved(v)));
-    if (hasSomeDone && !allDone) return day.id;
+    const ids = day.exercises.map(e => resolveExercise(day.id, e).id);
+    const some = ids.some(id => state[day.id].sets[id] && state[day.id].sets[id].some(isResolved));
+    const all  = ids.every(id => state[day.id].sets[id] && state[day.id].sets[id].every(isResolved));
+    if (some && !all) return day.id;
   }
-  // No in-progress day — find first incomplete day
-  for (const day of DAYS) {
-    if (!isDayComplete(day.id)) return day.id;
-  }
-  // All days complete
+  for (const day of DAYS) if (!isDayComplete(day.id)) return day.id;
   return DAYS[0].id;
 }
 
@@ -2205,11 +2128,40 @@ function advanceToCurrentWeek() {
   document.head.appendChild(link);
 })();
 
-// INIT
-migrateOldState();
-migrateToMultiProgram();
-loadProgram();
-switchProgram(currentProgramIdx);
+const view = { name: 'day', dayId: null, openPhase: 2, tip: null, confirm: null, swap: null,
+               importMsg: '', importOk: true, sessionStart: Date.now(), now: Date.now(),
+               pendW: 0, pendKey: '', latestPr: null,
+               restEnd: null, restTotal: 0, restInfo: '', restNext: '', restRec: '', restMinimized: false };
+
+function renderMasthead()  { document.getElementById('masthead').innerHTML = ''; }
+function renderScroll()    { document.getElementById('scroll').innerHTML = ''; }
+function renderBottomBar() { document.getElementById('bottombar').innerHTML = ''; }
+function renderOverlays()  { document.getElementById('overlays').innerHTML = ''; }
+
+function render() {
+  renderMasthead();
+  renderScroll();
+  renderBottomBar();
+  renderOverlays();
+}
+
+function boot() {
+  migrateOldState();
+  migrateToMultiProgram();
+  loadProgram();
+  loadWeek();
+  initState();
+  view.dayId = getStartDay();
+  render();
+  setInterval(() => {
+    view.now = Date.now();
+    if (view.restEnd && view.restEnd <= view.now) { view.restEnd = null; view.restMinimized = false; }
+    render();
+  }, 500);
+  document.addEventListener('visibilitychange', () => { view.now = Date.now(); render(); });
+}
+
+boot();
 </script>
 </body>
 </html>
