@@ -202,6 +202,50 @@ body {
 .done-row { display: flex; align-items: center; justify-content: space-between; padding: 15px 2px 17px; }
 .done-t { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: 1.5px; color: var(--accent); }
 .done-s { font-family: var(--font-mono); font-size: 11px; color: rgba(242,239,232,.6); }
+.vw { padding: 16px 20px 24px; }
+.vw-sub { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.5px; color: var(--muted-2); }
+.tbl { margin-top: 12px; border: 1px solid var(--ink); border-radius: 4px; overflow: hidden; }
+.tbl-h { display: grid; grid-template-columns: 78px 1fr 78px; background: var(--ink); color: var(--on-dark); font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 1px; }
+.tbl-h span { padding: 6px 0; }
+.tbl-h span:first-child { padding-left: 10px; }
+.tbl-h span:last-child { padding-right: 10px; text-align: right; }
+.ph { border-top: 1px solid var(--border); }
+.ph.now { background: var(--surface); }
+.ph-r { display: grid; grid-template-columns: 78px 1fr 78px; align-items: center; font-family: var(--font-mono); font-size: 10.5px; cursor: pointer; }
+.ph-r > span { padding: 9px 0; }
+.ph-r .w { padding-left: 10px; color: var(--muted-2); }
+.ph-r .l { font-family: var(--font-body); font-weight: 500; color: var(--muted); }
+.ph.now .ph-r .l { font-weight: 700; color: var(--ink); }
+.ph-r .r { padding-right: 10px; text-align: right; color: var(--muted-2); }
+.ph.now .ph-r .r { color: var(--accent); }
+.ph-body { padding: 0 10px 10px; }
+.ph-rir { font-size: 11px; font-style: italic; color: var(--muted); margin: 2px 0 5px; }
+.bullet { display: flex; gap: 7px; font-size: 11.5px; color: var(--ink-soft); line-height: 1.5; }
+.bullet i { color: var(--accent); flex: none; font-style: normal; }
+.rule { display: flex; gap: 8px; font-size: 12px; color: var(--ink-soft); line-height: 1.55; padding: 3px 0; }
+.rule i { color: var(--accent); flex: none; font-style: normal; }
+.gl { padding: 5px 0; border-top: 1px solid var(--border-lt); }
+.gl-t { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 1px; }
+.gl-d { font-size: 11.5px; color: var(--muted); line-height: 1.5; margin-top: 2px; }
+.pd-h { font-family: var(--font-display); font-size: 15px; font-weight: 600; letter-spacing: 1px; border-bottom: 2px solid var(--ink); padding-bottom: 5px; margin-top: 16px; }
+.pe { padding: 12px 0 4px; border-bottom: 1px solid var(--border); }
+.pe-top { display: flex; align-items: baseline; justify-content: space-between; }
+.pe-n { font-size: 13px; font-weight: 600; }
+.pe-d { font-family: var(--font-mono); font-size: 9.5px; color: var(--accent); }
+.cells { display: flex; gap: 4px; margin-top: 8px; }
+.cell { flex: 1; text-align: center; border: 1px solid var(--border); border-radius: 3px; padding: 4px 0; }
+.cell.now { border-color: var(--accent); background: var(--surface); }
+.cell-w { font-family: var(--font-mono); font-size: 7px; color: var(--muted-2); }
+.cell-v { font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--ink-soft); }
+.cell.now .cell-v { color: var(--accent); }
+.cell.empty .cell-v { color: var(--faint); }
+.cell-dot { height: 4px; width: 4px; border-radius: 50%; margin: 2px auto 0; background: transparent; }
+.big-btn { width: 100%; min-height: 48px; background: var(--ink); border: none; border-radius: 4px; color: var(--on-dark); font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; cursor: pointer; }
+.big-btn.ghost { background: transparent; border: 1.5px solid var(--ink); color: var(--ink); }
+.kv { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); padding: 3px 0; }
+.theme-row { display: flex; gap: 6px; margin-top: 8px; }
+.theme-b { flex: 1; padding: 9px; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; }
+.theme-b.on { border-color: var(--ink); background: var(--ink); color: var(--on-dark); }
 </style>
 </head>
 <body>
@@ -1167,71 +1211,6 @@ function tip(term) {
   return `<span class="tip" data-tip="${def.replace(/"/g,'&quot;')}">${term}</span>`;
 }
 
-function renderInfoPanel() {
-  let html = `<div class="meso-section">
-    <div class="meso-title">${PROGRAMS[currentProgramIdx].totalWeeks}-WEEK MESOCYCLE — ${PROGRAMS[currentProgramIdx].name.toUpperCase()}</div>
-    <div class="meso-subtitle">Progressive overload structured in phases</div>
-    <div class="meso-cards">
-  `;
-
-  MESOCYCLE.forEach((phase, i) => {
-    html += `
-      <div class="meso-card" id="meso-${i}">
-        <div class="meso-card-header" onclick="toggleMeso(${i})">
-          <div class="meso-dot" style="background:${phase.color}"></div>
-          <div class="meso-weeks">${phase.weeks}</div>
-          <div class="meso-label">${phase.label}</div>
-          <div class="meso-rpe" style="color:${phase.color};border-color:${phase.color}40">RPE ${phase.rpe}</div>
-        </div>
-        <div class="meso-body">
-          <div class="meso-rir">${phase.rir}</div>
-          <div class="meso-points">
-            ${phase.points.map(p => `<div class="meso-point">${p}</div>`).join('')}
-          </div>
-        </div>
-      </div>
-    `;
-  });
-
-  html += `</div>
-
-  <div class="rules-section">
-    <div class="rules-title">⚙️ Execution Rules</div>
-    <div class="rules-list">
-      <div class="rule-item">First set of each exercise → 3–4 sec <span class="tip" data-tip="${GLOSSARY['eccentric'].replace(/"/g,'&quot;')}">eccentric</span></div>
-      <div class="rule-item"><span class="tip" data-tip="${GLOSSARY['LLP'].replace(/"/g,'&quot;')}">LLP</span> = bottom-half partials on last set only — isolations only, never compounds</div>
-      <div class="rule-item">No failure on <span class="tip" data-tip="${GLOSSARY['compounds'].replace(/"/g,'&quot;')}">compounds</span> — RPE &lt;10 always</div>
-      <div class="rule-item">Exercise RPE = allowed range. Weekly phase determines how deep to push into that range</div>
-      <div class="rule-item">Rest: compounds 2–3.5 min · machine compounds 2–2.5 min · isolations 1–1.5 min</div>
-    </div>
-  </div>
-
-  <div class="rules-section">
-    <div class="rules-title">📈 Progression Rules</div>
-    <div class="rules-list">
-      <div class="rule-item"><span class="tip" data-tip="${GLOSSARY['double progression'].replace(/"/g,'&quot;')}">Double progression</span>: hit top reps → increase weight next session. Miss reps → repeat weight.</div>
-      <div class="rule-item">Performance drops 2 sessions in a row → reduce volume by 20%</div>
-      <div class="rule-item"><span class="tip" data-tip="${GLOSSARY['MRV'].replace(/"/g,'&quot;')}">MRV</span> warning: if recovery suffers, cut 1 set per exercise before adding more</div>
-    </div>
-  </div>
-
-  <div class="rules-section">
-    <div class="rules-title">📖 Glossary</div>
-    <div class="rules-list">
-      ${Object.entries(GLOSSARY).map(([term, def]) => `
-        <div class="rule-item"><strong style="color:var(--text);min-width:100px;display:inline-block">${term}</strong> ${def}</div>
-      `).join('')}
-    </div>
-  </div>
-
-  </div>`;
-  return html;
-}
-
-function toggleMeso(i) {
-  document.getElementById(`meso-${i}`).classList.toggle('open');
-}
-
 // Compatibility shim — the preserved logic layer calls this; it now just re-renders.
 function switchDay(dayId) { if (dayId) view.dayId = dayId; render(); }
 
@@ -2164,9 +2143,133 @@ function exercisesHTML(day) {
     </div>`;
   }).join('') + `<div style="height:20px"></div>`;
 }
-function planHTML()      { return ''; }
-function progressHTML()  { return ''; }
-function settingsHTML()  { return ''; }
+const EXEC_RULES = [
+  'First set of each exercise → 3–4 sec eccentric',
+  'LLP = bottom-half partials on last set only — isolations only, never compounds',
+  'No failure on compounds — RPE <10 always',
+  'Exercise RPE = allowed range; weekly phase sets how deep to push',
+  'Rest: compounds 2–3.5 min · machines 2–2.5 min · isolations 1–1.5 min',
+];
+
+const PROG_RULES = [
+  'Double progression: hit top reps → increase weight next session. Miss → repeat weight.',
+  'Performance drops 2 sessions in a row → reduce volume 20%',
+  'If recovery suffers, cut 1 set per exercise before adding more',
+];
+
+function phaseIndexForWeek() {
+  const label = curProg().weekPhases[currentWeek - 1].label;
+  return curProg().mesocycle.findIndex(m => m.label === label);
+}
+
+function planHTML() {
+  const prog = curProg(), nowIdx = phaseIndexForWeek();
+  const phases = prog.mesocycle.map((ph, i) => {
+    const open = view.openPhase === i;
+    const body = open ? `<div class="ph-body">
+      <div class="ph-rir">${esc(ph.rir)}</div>
+      ${ph.points.map(p => `<div class="bullet"><i>—</i><span>${esc(p)}</span></div>`).join('')}
+    </div>` : '';
+    return `<div class="ph${i === nowIdx ? ' now' : ''}">
+      <div class="ph-r" data-act="phase" data-i="${i}">
+        <span class="w">${esc(ph.weeks)}</span>
+        <span class="l">${esc(ph.label)}${i === nowIdx ? '  ← NOW' : ''}</span>
+        <span class="r">${esc(ph.rpe)}</span>
+      </div>${body}</div>`;
+  }).join('');
+
+  const panel = (title, items) =>
+    `<div class="panel" style="margin-left:0;margin-right:0"><div class="panel-h">${title}</div>${
+      items.map(t => `<div class="rule"><i>→</i><span>${esc(t)}</span></div>`).join('')}</div>`;
+
+  const gloss = Object.entries(GLOSSARY).map(([t, d]) =>
+    `<div class="gl"><div class="gl-t">${esc(t)}</div><div class="gl-d">${esc(d)}</div></div>`).join('');
+
+  return `<div class="vw">
+    <div class="vw-sub">${prog.totalWeeks}-WEEK MESOCYCLE · PROGRESSIVE OVERLOAD IN PHASES</div>
+    <div class="tbl"><div class="tbl-h"><span>WEEKS</span><span>PHASE</span><span>RPE</span></div>${phases}</div>
+    ${panel('EXECUTION RULES', EXEC_RULES)}
+    ${panel('PROGRESSION RULES', PROG_RULES)}
+    <div class="panel" style="margin-left:0;margin-right:0"><div class="panel-h">GLOSSARY</div>${gloss}</div>
+  </div>`;
+}
+
+const DOT_COLOR = { low: 'var(--muted-2)', medium: 'var(--accent)', high: 'var(--ink)' };
+
+function progressHTML() {
+  const prog = curProg(), max = prog.totalWeeks;
+  let out = '', any = false;
+
+  DAYS.forEach(d => {
+    let rows = '';
+    d.exercises.forEach(o => {
+      const ex = resolveExercise(d.id, o);
+      const hist = getExerciseHistory(d.id, ex.id);
+      if (!hist.length) return;
+      any = true;
+      const byWeek = {};
+      hist.forEach(h => { byWeek[h.week] = h; });
+      let cells = '';
+      for (let w = 1; w <= max; w++) {
+        const h = byWeek[w], now = w === currentWeek;
+        const val = h && h.weight != null ? (h.weight % 1 ? h.weight.toFixed(1) : h.weight) : '·';
+        cells += `<div class="cell${now && h ? ' now' : ''}${h ? '' : ' empty'}">
+          <div class="cell-w">W${w}</div><div class="cell-v">${val}</div>
+          <div class="cell-dot" style="background:${h && h.effort ? DOT_COLOR[h.effort] : 'transparent'}"></div></div>`;
+      }
+      const ws = hist.filter(h => h.weight != null).map(h => h.weight);
+      const diff = ws.length >= 2 ? ws[ws.length - 1] - ws[0] : null;
+      const delta = diff == null ? '—' : `${diff >= 0 ? '+' : ''}${diff % 1 ? diff.toFixed(1) : diff} lb`;
+      rows += `<div class="pe"><div class="pe-top"><div class="pe-n">${esc(ex.name)}</div>
+        <div class="pe-d">${delta}</div></div><div class="cells">${cells}</div></div>`;
+    });
+    if (rows) out += `<div class="pd-h">${esc(d.label)} · ${esc(d.title)}</div>${rows}`;
+  });
+
+  const empty = `<div style="text-align:center;padding:48px 20px;font-size:12px;color:var(--muted-2);line-height:1.6">
+    No weights or effort logged yet.<br>Track a few sessions and your progression appears here.</div>`;
+
+  return `<div class="vw"><div class="vw-sub">${esc(prog.name.toUpperCase())} · ● EFFORT · ▮ = THIS WEEK</div>
+    ${any ? out : empty}</div>`;
+}
+
+function settingsHTML() {
+  const prog = curProg(), s = dayStats(curDay().id);
+  const cur = storedTheme() || 'auto';
+  const tb = (v, l) => `<button class="theme-b${cur === v ? ' on' : ''}" data-act="theme" data-v="${v}">${l}</button>`;
+
+  return `<div class="vw">
+    <div class="vw-sub">BACKUP &amp; RESTORE · v3 · ALL PROGRAMS &amp; WEEKS</div>
+
+    <div class="panel" style="margin-left:0;margin-right:0">
+      <div class="panel-h">APPEARANCE</div>
+      <div class="theme-row">${tb('light', 'LIGHT')}${tb('dark', 'DARK')}${tb('auto', 'AUTO')}</div>
+    </div>
+
+    <div class="panel" style="margin-left:0;margin-right:0">
+      <div class="panel-h">EXPORT</div>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Download every logged set, weight, effort rating, swap and protocol check across all programs and weeks as a JSON file.</div>
+      <button class="big-btn" data-act="export">↓ EXPORT DATA</button>
+    </div>
+
+    <div class="panel" style="margin-left:0;margin-right:0">
+      <div class="panel-h">IMPORT</div>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Restore from a v1, v2 or v3 gAIns backup. Legacy files are migrated automatically.</div>
+      <button class="big-btn ghost" data-act="import">↑ IMPORT DATA</button>
+      <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+      ${view.importMsg ? `<div style="margin-top:10px;font-family:var(--font-mono);font-size:10px;color:${view.importOk ? 'var(--ok)' : 'var(--danger)'}">${esc(view.importMsg)}</div>` : ''}
+    </div>
+
+    <div class="panel" style="margin-left:0;margin-right:0;border-color:var(--border)">
+      <div class="panel-h" style="color:var(--muted-2)">THIS WEEK · WEEK ${currentWeek}/${prog.totalWeeks}</div>
+      <div class="kv"><span>Sets done</span><span>${s.done}/${s.total}</span></div>
+      <div class="kv"><span>Skipped</span><span>${s.skipped}</span></div>
+      <div class="kv"><span>Program</span><span>${esc(prog.name)}</span></div>
+    </div>
+
+    <button class="big-btn ghost" style="margin-top:12px;border:1px solid var(--border);color:var(--muted-2)" data-act="clearweek">CLEAR THIS WEEK'S LOG</button>
+  </div>`;
+}
 
 function renderScroll() {
   const el = document.getElementById('scroll');
@@ -2174,6 +2277,8 @@ function renderScroll() {
   else if (view.name === 'plan') el.innerHTML = planHTML();
   else if (view.name === 'progress') el.innerHTML = progressHTML();
   else el.innerHTML = settingsHTML();
+  const fi = document.getElementById('importFile');
+  if (fi) fi.onchange = importData;
 }
 function syncPending(day, act) {
   const key = `${curProg().id}:${currentWeek}:${day.id}:${act.ex.id}:${act.i}`;
@@ -2269,6 +2374,13 @@ document.addEventListener('click', e => {
   else if (act === 'restskip')   { view.restEnd = null; view.restMinimized = false; }
   else if (act === 'rest+')      { addRest(30); }
   else if (act === 'rest-')      { addRest(-15); }
+  else if (act === 'phase')  { view.openPhase = view.openPhase === Number(el.dataset.i) ? -1 : Number(el.dataset.i); }
+  else if (act === 'theme')  { setTheme(el.dataset.v === 'auto' ? null : el.dataset.v); return; }
+  else if (act === 'export') { exportData(); }
+  else if (act === 'import') { document.getElementById('importFile').click(); return; }
+  else if (act === 'clearweek') {
+    view.confirm = { title: 'Clear Week?', msg: "This week's logged sets, weights and effort will be reset.", act: 'clearweek' };
+  }
   else return;
   render();
 });
