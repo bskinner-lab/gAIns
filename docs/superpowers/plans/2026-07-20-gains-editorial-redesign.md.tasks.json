@@ -28,7 +28,7 @@
     {
       "id": 4,
       "subject": "Task 4: Masthead \u2014 title, week selector, program chips, tabs",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         3
       ],
@@ -37,7 +37,7 @@
     {
       "id": 5,
       "subject": "Task 5: Workout view \u2014 stats row, PR banner, day controls, protocol",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         4
       ],
@@ -46,7 +46,7 @@
     {
       "id": 6,
       "subject": "Task 6: Exercise cards and set grid",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         5
       ],
@@ -55,7 +55,7 @@
     {
       "id": 7,
       "subject": "Task 7: Sticky bottom bar \u2014 weight stepper, LOG SET, rest pill",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         6
       ],
@@ -64,7 +64,7 @@
     {
       "id": 8,
       "subject": "Task 8: Plan, Progress, and Settings views",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         7
       ],
@@ -73,7 +73,7 @@
     {
       "id": 9,
       "subject": "Task 9: Overlays \u2014 rest, swap, tip, confirm",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         8
       ],
@@ -82,12 +82,12 @@
     {
       "id": 10,
       "subject": "Task 10: Full-app verification and data-integrity check",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         9
       ],
       "description": "**Goal:** Confirm the redesigned app works end to end and that no logged data was lost or altered.\n\n**Files:**\n- Modify: `index.html` (only if defects found)\n- Modify: `CLAUDE.md` (update architecture description)\n\n**Acceptance Criteria:**\n- Script block parses cleanly\n- No dead references remain to deleted functions\n- localStorage after redesign is byte-identical to the pre-work snapshot for all `hypertrophy_*` keys apart from intentional edits\n- Every view and interaction behaves correctly in both light and dark themes\n- CLAUDE.md reflects the new architecture\n\n**Verify:** Syntax gate passes, dead-reference grep returns no matches, localStorage diff shows `DATA IDENTICAL`, full manual walkthrough passes in both themes\n\n**Steps:**\nRun node --check and dead-reference grep; diff localStorage before/after with jq; run the full manual walkthrough checklist twice (light and dark); update CLAUDE.md; commit.\n\n```json:metadata\n{\"files\": [\"index.html\", \"CLAUDE.md\"], \"verifyCommand\": \"node --check on extracted script; grep -nE 'renderTabs|renderDay\\\\(|renderInfoPanel|renderProgressPanel|sparklineSVG|toggleCard|refreshCurrentDay|showSwapPicker|showConfirm|closeConfirm|toggleMeso' index.html (expect no matches); jq diff of hypertrophy_* localStorage keys\", \"acceptanceCriteria\": [\"script parses\", \"no dead references\", \"localStorage data identical\", \"full walkthrough passes in light and dark\", \"CLAUDE.md updated\"], \"modelTier\": \"standard\"}\n```"
     }
   ],
-  "lastUpdated": "2026-07-21T07:59:11.713978+00:00"
+  "lastUpdated": "2026-07-21T08:27:55.420971+00:00"
 }
