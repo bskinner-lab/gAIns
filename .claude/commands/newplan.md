@@ -111,24 +111,38 @@ Apply, in this order:
      tighten RPE targets or adjust load before swapping the movement out.
 3. **Allocate volume per muscle** using the report's volume table against
    `docs/training-evidence.md`'s landmarks (MEV/MAV/MRV), biased by the
-   emphasis answer:
+   emphasis answer. Check every muscle against **both** ends — cutting below
+   MEV is the obvious failure, but quietly pushing a muscle past MRV is the
+   one that actually risks injury or overtraining, so don't only scan for
+   under-training:
    - A muscle reported **below MEV** or flagged in "Volume gaps — under-trained"
      needs real work started, not a token set.
    - A muscle **above MRV** gets its volume brought down into range this
      block, regardless of emphasis — MRV is a ceiling, not a target.
-   - For everything else, **ramp within the block**: start near MEV in week 1
-     (Foundation), climb toward MAV by the Overload/High Stimulus weeks, and
-     don't flatline one set number across all 8 weeks — the mesocycle's own
-     phase structure (see `weekPhases`/`mesocycle` in
-     `tools/fixtures/program-valid.json`) is where that ramp is expressed
-     (RPE per phase, and implicitly load/effort — set counts stay fixed per
-     exercise per week in this data model, so express the ramp by *which*
-     exercises are active and by RPE/effort targets, not by rewriting set
-     counts week to week).
+   - For everything else, **ramp within the block using both of the app's
+     two existing mechanisms together** — they are not alternatives:
+     1. Each exercise's baseline `sets` field is the week-1 (Foundation,
+        near-MEV) load.
+     2. The ramp toward MAV across the block is then expressed as concrete,
+        named set-count deltas in the relevant phase's `mesocycle[].points`
+        entries — this is how `meso1`/`meso2` already do it in `index.html`
+        (e.g. Overload: `'+1 set to: lateral delts, rear delts, biceps'`;
+        High Stimulus: `'+1 drop set per workout (laterals or curls)'`,
+        `'Volume near MRV'`; Overreach: `'+1 set to weak points'`; Deload:
+        `'Volume ↓ 50–60%'`). Write your points the same way: name the
+        specific muscle(s) or exercises getting the delta, not "add volume."
+     3. **The math must check out**: baseline `sets` plus the accumulated
+        `points` deltas at the Overreach/High-Stimulus phase should land the
+        muscle near MAV-high and must never exceed MRV once you add up what
+        the points actually prescribe.
+     4. RPE/effort targets per phase (already required by `weekPhases`) are
+        the complementary lever — rising RPE across phases is expected
+        alongside the points-driven set deltas, not instead of them.
    - Emphasis: "bring up a lagging area" pushes that muscle's target toward
-     MAV-high (never past MRV); "strength-leaning" shifts rep ranges down and
-     RPE targets slightly lower (more reps in reserve on compounds) without
-     necessarily changing set counts; "balanced" just follows the landmarks.
+     MAV-high (via a larger points-driven delta, never past MRV);
+     "strength-leaning" shifts rep ranges down and RPE targets slightly lower
+     (more reps in reserve on compounds) without necessarily changing set
+     counts; "balanced" just follows the landmarks.
 4. **Set block length**: 8 weeks by default. Use 6 weeks only if the
    adherence table shows completion collapsing after week 5–6 in the
    analyzed data — cite the specific week and completion number in the brief
@@ -176,11 +190,13 @@ Concretely, `validateProgram` will reject the file if:
 
 Do **not** include a top-level `id` field — `insert-program.js` assigns the
 next free `mesoN`. Prefix every new exercise id (and every alternative id)
-with `m<N>_` where `<N>` is that next program number — check the current
-highest `mesoN` by eye against what `analyze-history.js` reported (its
-program ids are the same `mesoN` keys) so the prefix you pick is the one
-`insert-program.js` will actually assign; if you're unsure, run it and let
-Gate 1's "already exists" error tell you, then bump the prefix and retry.
+with `m<N>_` where `<N>` is that next program number. Determine `N`
+deterministically: the analyzer's report lists the program ids that already
+exist (its `progId` values are the same `mesoN` keys `insert-program.js`
+works with), and the inserter always assigns the next integer after the
+highest one present — so `N` is just one past the highest existing `mesoN`.
+Treat Gate 1's "id already exists" error as a backstop that catches a
+miscount, not the primary way to discover `N`.
 
 ## Step 6 — Present the brief and wait
 
@@ -188,7 +204,12 @@ Print, in this order:
 
 1. **Per-muscle weekly sets** — a table with the new block's week-1 and
    peak-week (Overload/High Stimulus) target sets, next to the analyzed
-   actual from Step 2's volume table, for every muscle you changed.
+   actual from Step 2's volume table, for every muscle you changed. Check
+   every row against **both** landmark ends before printing it: below MEV is
+   the failure that's easy to spot, but a peak-week number that clears MRV is
+   the one that puts a real person at risk of injury or overtraining, so
+   verify the peak-week figure (baseline + accumulated `points` deltas)
+   against MRV explicitly, not just against MEV/MAV.
 2. **Day-by-day exercise list** — name, sets, reps, RPE, for every day.
 3. **Changed vs. last block, and why** — one line per change. Every line
    must cite either a specific analyzer flag (rejected / substituted /
