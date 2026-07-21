@@ -33,7 +33,7 @@ function normalizeExport(raw) {
   if (raw && raw.version === 2 && raw.weeks) {
     return { programs: { meso1: { weeks: raw.weeks, currentWeek: raw.currentWeek || 1 } } };
   }
-  if (raw && raw.state && raw.currentWeek) {
+  if (raw && raw.state && typeof raw.currentWeek === 'number') {
     return {
       programs: {
         meso1: { weeks: { [String(raw.currentWeek)]: raw.state }, currentWeek: raw.currentWeek },
@@ -95,12 +95,20 @@ function perExercise(normalized) {
           }
           if (!s.weeks.includes(w)) s.weeks.push(w);
 
+          // Assumes one weight per exercise per week — if an exercise id ever
+          // appeared on two days within the same week, this would push two
+          // points at the same x and skew the slope. Not live today (no id
+          // repeats across days in PROGRAMS), but worth knowing if that changes.
           const weight = weights[exId];
           if (typeof weight === 'number' && !Number.isNaN(weight)) {
             s.weightPoints.push([w, weight]);
           }
           const eff = effort[exId];
           if (EFFORT_LEVELS.includes(eff)) s.effortCounts[eff]++;
+          // Counts WEEKS a swap was recorded, not swap events — a swap made once
+          // and left in place across later weeks increments this each week, which
+          // is what makes it directly comparable to weeksTouched (e.g. "swapped in
+          // 2 of 3 trained weeks").
           if (swaps[exId]) s.swappedTo[swaps[exId]] = (s.swappedTo[swaps[exId]] || 0) + 1;
         }
       }
@@ -108,7 +116,11 @@ function perExercise(normalized) {
 
     for (const s of Object.values(byEx)) {
       s.weeksTouched = s.weeks.length;
-      s.skipRate = s.slots ? s.skipped / s.slots : 0;
+      // Denominator is completed+skipped, not slots — slots includes sets not
+      // yet attempted this (in-progress) week, which would otherwise dilute
+      // skipRate for exactly the exercises being skipped.
+      const attempted = s.completed + s.skipped;
+      s.skipRate = attempted ? s.skipped / attempted : 0;
       s.weightPoints.sort((a, b) => a[0] - b[0]);
       if (s.weightPoints.length) {
         s.firstWeight = s.weightPoints[0][1];

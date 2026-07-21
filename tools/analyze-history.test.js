@@ -29,6 +29,13 @@ test('normalizeExport handles v1', () => {
   assert.ok(n.programs.meso1.weeks['1'].day1);
 });
 
+test('normalizeExport handles v1 with currentWeek 0', () => {
+  // currentWeek is falsy but a valid number — `raw.currentWeek &&` would wrongly
+  // reject this as unrecognized.
+  const n = normalizeExport({ currentWeek: 0, state: { day1: { sets: {}, weights: {} } } });
+  assert.ok(n.programs.meso1.weeks['0'].day1);
+});
+
 test('normalizeExport rejects garbage', () => {
   assert.throws(() => normalizeExport({ hello: 'world' }), /unrecognized export/i);
 });
@@ -54,7 +61,11 @@ test('perExercise reports adherence, progression, effort and swaps', () => {
   const raise = stats['meso1']['cable_lat_raise_push'];
   assert.strictEqual(raise.completed, 0);
   assert.strictEqual(raise.skipped, 8);
-  assert.ok(Math.abs(raise.skipRate - 8 / 9) < 1e-9);
+  assert.strictEqual(raise.slots, 9);
+  // Week 3's final slot is `false` (not yet attempted, not skipped) — the
+  // in-progress week's untouched slot must not dilute skipRate, which is
+  // completed+skipped, not slots.
+  assert.strictEqual(raise.skipRate, 1);
 
   const machine = stats['meso1']['machine_chest_press'];
   assert.strictEqual(machine.slope, 0);
