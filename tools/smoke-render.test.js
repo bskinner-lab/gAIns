@@ -138,6 +138,38 @@ test('a non-integer index reports it is not an integer, not a misleading range m
   assert.doesNotMatch(result.error, /out of range/);
 });
 
+function matchBrace(src, openIdx) {
+  let depth = 0;
+  for (let i = openIdx; i < src.length; i++) {
+    const c = src[i];
+    if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) return i + 1; }
+    if (c === "'" || c === '"' || c === '`') {
+      const quote = c;
+      i++;
+      while (i < src.length && src[i] !== quote) { if (src[i] === '\\') i++; i++; }
+    }
+  }
+  throw new Error('no matching brace found');
+}
+
+test('a program with no swappable exercises skips the swap probe instead of failing', () => {
+  const file = writeBrokenCase(orig => {
+    const idx = orig.indexOf('const EXERCISE_ALTERNATIVES');
+    const openIdx = orig.indexOf('{', idx);
+    const closeIdx = matchBrace(orig, openIdx);
+    return orig.slice(0, openIdx) + '{}' + orig.slice(closeIdx);
+  });
+  try {
+    const result = smokeRender(file, 0);
+    assert.strictEqual(result.ok, true, result.error);
+    assert.ok(result.rendered.some(r => r.startsWith('swap:skipped')), 'expected a visible swap:skipped marker');
+    assert.ok(!result.rendered.includes('swap'), 'swap should not be marked as actually probed');
+  } finally {
+    fs.unlinkSync(file);
+  }
+});
+
 test('CLI rejects a non-integer program index with a purpose-built message', () => {
   const cliPath = path.join(__dirname, 'smoke-render.js');
   assert.throws(

@@ -126,7 +126,12 @@ function smokeRender(htmlPath, programIdx = 0) {
 
       // Swap overlay: find any exercise, on any day, with EXERCISE_ALTERNATIVES
       // — Task 9 splices `alternatives` data in, and nothing else in this gate
-      // ever renders it.
+      // ever renders it. Whether every program *must* have at least one
+      // swappable exercise is a data-shape rule, enforced (with a message
+      // that names the actual problem) by validateProgram in
+      // tools/insert-program.js — Gate 1, before this render gate ever runs.
+      // So here we skip the probe rather than fail when none exist, and say
+      // so in `rendered`, so the skip is visible instead of silent.
       {
         let swappable = null;
         for (const day of app.DAYS) {
@@ -136,24 +141,25 @@ function smokeRender(htmlPath, programIdx = 0) {
           if (swappable) break;
         }
         if (!swappable) {
-          return { ok: false, rendered, error: `program ${programIdx}: no exercise has an EXERCISE_ALTERNATIVES entry — swap overlay cannot be exercised` };
+          rendered.push('swap:skipped (no alternatives defined)');
+        } else {
+          app.view.name = 'day';
+          app.view.dayId = swappable.dayId;
+          app.view.swap = { dayId: swappable.dayId, origId: swappable.origId };
+          overlays.innerHTML = '';
+          try {
+            app.render();
+          } catch (e) {
+            return fail('swap', 1, `threw: ${e.message}`);
+          }
+          const altCount = app.EXERCISE_ALTERNATIVES[swappable.origId].length;
+          const optCount = countMatches(overlays.innerHTML, /data-act="doswap"/g);
+          if (!overlays.innerHTML.includes('Swap Exercise') || optCount !== altCount) {
+            return fail('swap', 1, `rendered ${optCount} swap options, expected ${altCount}`);
+          }
+          rendered.push('swap');
+          app.view.swap = null;
         }
-        app.view.name = 'day';
-        app.view.dayId = swappable.dayId;
-        app.view.swap = { dayId: swappable.dayId, origId: swappable.origId };
-        overlays.innerHTML = '';
-        try {
-          app.render();
-        } catch (e) {
-          return fail('swap', 1, `threw: ${e.message}`);
-        }
-        const altCount = app.EXERCISE_ALTERNATIVES[swappable.origId].length;
-        const optCount = countMatches(overlays.innerHTML, /data-act="doswap"/g);
-        if (!overlays.innerHTML.includes('Swap Exercise') || optCount !== altCount) {
-          return fail('swap', 1, `rendered ${optCount} swap options, expected ${altCount}`);
-        }
-        rendered.push('swap');
-        app.view.swap = null;
       }
 
       // Remaining weeks: representative day + plan, to catch weekPhases/mesocycle
