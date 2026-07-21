@@ -106,11 +106,15 @@ test('weeklyVolume credits completed sets only', () => {
   assert.strictEqual(vol.side_delt || 0, 0);
 });
 
-test('flagExercises identifies rejected, stalled and under-stimulating work', () => {
+test('flagExercises identifies rejected, substituted, stalled and under-stimulating work', () => {
   const stats = perExercise(normalizeExport(v3)).meso1;
   const flags = flagExercises(stats);
+  // Skip-driven rejection: genuinely abandoned.
   assert.ok(flags.rejected.some(f => f.exId === 'cable_lat_raise_push'));
-  assert.ok(flags.rejected.some(f => f.exId === 'machine_chest_press'));
+  // Swap-driven: the user consistently substitutes it, which is a "promote the
+  // substitute" signal, not a "drop the muscle group" signal — separate bucket.
+  assert.ok(!flags.rejected.some(f => f.exId === 'machine_chest_press'));
+  assert.ok(flags.substituted.some(f => f.exId === 'machine_chest_press'));
   assert.ok(flags.underStimulating.some(f => f.exId === 'rope_pushdown'));
   assert.ok(!flags.rejected.some(f => f.exId === 'incline_db_press'));
 });
@@ -135,4 +139,46 @@ test('renderReport flags an in-progress final week', () => {
   // mid-block, since that changes how the skip rates should be read.
   const md = renderReport(analyze(v3, muscleMap, landmarks));
   assert.match(md, /Week 3 is in progress; its unattempted sets are excluded from skip rates\./);
+});
+
+test('renderReport gives swap-driven rejections their own bucket', () => {
+  const md = renderReport(analyze(v3, muscleMap, landmarks));
+  assert.match(md, /Substitute promoted/i);
+  // machine_chest_press must appear under the substitute bucket, not "Rejected".
+  const rejectedSection = md.slice(md.indexOf('### Rejected'), md.indexOf('### Substitute'));
+  assert.ok(!rejectedSection.includes('machine_chest_press'));
+});
+
+test('weeklyVolume ignores weeks that were merely visited, not trained', () => {
+  // initState() in the app calls saveState() unconditionally on visit, so an
+  // opened-but-untouched week writes an all-false sets blob. That week must
+  // not dilute the average — it contributed zero completed sets.
+  const withVisitedWeek = JSON.parse(JSON.stringify(v3));
+  withVisitedWeek.programs.meso1.weeks['4'] = {
+    day1: {
+      sets: {
+        incline_db_press: [false, false, false, false],
+        machine_chest_press: [false, false, false],
+        cable_lat_raise_push: [false, false, false],
+        rope_pushdown: [false, false, false],
+      },
+      weights: {},
+      effort: {},
+      protocol: [],
+      swaps: {},
+    },
+  };
+  const before = weeklyVolume(normalizeExport(v3), muscleMap).meso1;
+  const after = weeklyVolume(normalizeExport(withVisitedWeek), muscleMap).meso1;
+  assert.ok(Math.abs(before.chest - after.chest) < 1e-9, `${before.chest} !== ${after.chest}`);
+  assert.ok(Math.abs(after.chest - 7) < 1e-9);
+});
+
+test('flagVolume exposes a per-muscle status that renderReport reuses', () => {
+  const flags = flagVolume({ chest: 7, side_delt: 0, biceps: 40, triceps: 8 }, landmarks);
+  assert.strictEqual(flags.statuses.chest, 'BELOW MEV');
+  assert.strictEqual(flags.statuses.biceps, 'ABOVE MRV');
+  assert.strictEqual(flags.statuses.triceps, 'below MAV');
+  const md = renderReport(analyze(v3, muscleMap, landmarks));
+  assert.match(md, /\| chest \| 7 \| 8 \| 12–20 \| 22 \| BELOW MEV \|/);
 });

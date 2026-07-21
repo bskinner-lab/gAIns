@@ -145,16 +145,36 @@ function resolveMuscles(performedId, originalId, muscleMap) {
 }
 
 /**
+ * Count weeks in a program's `weeks` map that have at least one COMPLETED set
+ * somewhere. `initState()` in the app calls `saveState()` unconditionally on
+ * every visit, so a week the user merely opened — the most common state, since
+ * opening the app to preview the plan predates training it — writes an
+ * all-false sets blob and shows up in the export. That week must not count
+ * toward a volume average it contributed nothing to.
+ */
+function countWeeksWithCompletedSets(weeksObj) {
+  let count = 0;
+  for (const weekData of Object.values(weeksObj || {})) {
+    const hasCompleted = Object.values(weekData || {}).some(dayData =>
+      Object.values(dayData.sets || {}).some(arr => Array.isArray(arr) && arr.some(v => v === true))
+    );
+    if (hasCompleted) count++;
+  }
+  return count;
+}
+
+/**
  * Average weekly sets per muscle, per program. Completed sets only — skipped
- * work is exactly the thing we do not want to count as stimulus.
+ * work is exactly the thing we do not want to count as stimulus. Averaged
+ * over weeks that actually had completed work, not every week key present —
+ * see countWeeksWithCompletedSets.
  */
 function weeklyVolume(normalized, muscleMap) {
   const out = {};
   for (const [progId, prog] of Object.entries(normalized.programs)) {
     const totals = {};
-    const weekNums = Object.keys(prog.weeks);
-    for (const w of weekNums) {
-      for (const dayData of Object.values(prog.weeks[w] || {})) {
+    for (const weekData of Object.values(prog.weeks)) {
+      for (const dayData of Object.values(weekData || {})) {
         const sets = dayData.sets || {};
         const swaps = dayData.swaps || {};
         for (const [exId, arr] of Object.entries(sets)) {
@@ -168,7 +188,7 @@ function weeklyVolume(normalized, muscleMap) {
         }
       }
     }
-    const weeksWithData = weekNums.length || 1;
+    const weeksWithData = countWeeksWithCompletedSets(prog.weeks) || 1;
     const avg = {};
     for (const [muscle, total] of Object.entries(totals)) avg[muscle] = total / weeksWithData;
     out[progId] = avg;
@@ -176,9 +196,18 @@ function weeklyVolume(normalized, muscleMap) {
   return out;
 }
 
-/** Classify exercises into the three actionable buckets. */
+/**
+ * Classify exercises into actionable buckets. `rejected` and `substituted`
+ * are both "stop programming the original exercise", but they call for
+ * opposite actions: a skip-driven rejection means the muscle group got no
+ * work and needs a genuinely new exercise; a swap-driven one means the user
+ * has been reliably training it via their own substitute the whole time, so
+ * the correct move is to promote that substitute into the slot, not drop it.
+ * Keeping them in one "Rejected" bucket would read as "cut this" in both
+ * cases, which is wrong for the swap case.
+ */
 function flagExercises(statsForProgram) {
-  const rejected = [], stalled = [], underStimulating = [];
+  const rejected = [], substituted = [], stalled = [], underStimulating = [];
 
   for (const [exId, s] of Object.entries(statsForProgram)) {
     const swapWeeks = Object.values(s.swappedTo).reduce((a, n) => a + n, 0);
@@ -186,7 +215,7 @@ function flagExercises(statsForProgram) {
       rejected.push({ exId, reason: `skipped ${Math.round(s.skipRate * 100)}% of sets attempted` });
     } else if (s.weeksTouched && swapWeeks > s.weeksTouched / 2) {
       const target = Object.keys(s.swappedTo).join(', ');
-      rejected.push({ exId, reason: `swapped away to ${target} in ${swapWeeks}/${s.weeksTouched} weeks` });
+      substituted.push({ exId, reason: `swapped away to ${target} in ${swapWeeks}/${s.weeksTouched} weeks` });
     }
 
     const effortTotal = s.effortCounts.low + s.effortCounts.medium + s.effortCounts.high;
@@ -197,18 +226,31 @@ function flagExercises(statsForProgram) {
       underStimulating.push({ exId, reason: `${s.effortCounts.low}/${effortTotal} sessions rated low effort with no load progress` });
     }
   }
-  return { rejected, stalled, underStimulating };
+  return { rejected, substituted, stalled, underStimulating };
 }
 
-/** Compare average weekly volume against the landmarks. */
+/**
+ * Compare average weekly volume against the landmarks. `statuses` gives the
+ * classification per muscle so renderReport's table can reuse it instead of
+ * re-deriving the same mev/mavLow/mrv comparisons a second time.
+ */
 function flagVolume(volumeForProgram, landmarks) {
-  const below = [], above = [];
+  const below = [], above = [], statuses = {};
   for (const [muscle, l] of Object.entries(landmarks)) {
     const sets = volumeForProgram[muscle] || 0;
-    if (l.mev > 0 && sets < l.mev) below.push({ muscle, sets, mev: l.mev });
-    else if (sets > l.mrv) above.push({ muscle, sets, mrv: l.mrv });
+    let status = 'in range';
+    if (l.mev > 0 && sets < l.mev) {
+      status = 'BELOW MEV';
+      below.push({ muscle, sets, mev: l.mev });
+    } else if (sets > l.mrv) {
+      status = 'ABOVE MRV';
+      above.push({ muscle, sets, mrv: l.mrv });
+    } else if (sets < l.mavLow) {
+      status = 'below MAV';
+    }
+    statuses[muscle] = status;
   }
-  return { below, above };
+  return { below, above, statuses };
 }
 
 function num(n, digits = 1) {
@@ -243,6 +285,7 @@ function analyze(raw, muscleMap, landmarks) {
     const latestWeek = weeks[weeks.length - 1];
     const latestWeekInProgress = latestWeek !== undefined &&
       weekHasUnattempted(normalized.programs[progId].weeks[String(latestWeek)]);
+    const volumeWeeks = countWeeksWithCompletedSets(normalized.programs[progId].weeks);
     programs[progId] = {
       weeks,
       hasData: slots > 0,
@@ -250,6 +293,7 @@ function analyze(raw, muscleMap, landmarks) {
       latestWeek, latestWeekInProgress,
       stats: progStats,
       volume: volume[progId] || {},
+      volumeWeeks,
       exerciseFlags: flagExercises(progStats),
       volumeFlags: flagVolume(volume[progId] || {}, landmarks),
     };
@@ -295,15 +339,13 @@ function renderReport(analysis) {
     }
     lines.push('');
 
-    lines.push(`## Weekly volume by muscle — ${progId}`, '');
+    const weekWord = p.volumeWeeks === 1 ? 'week' : 'weeks';
+    lines.push(`## Weekly volume by muscle — ${progId} (avg over ${p.volumeWeeks} ${weekWord} with completed sets)`, '');
     lines.push('| Muscle | Avg sets/week | MEV | MAV | MRV | Status |');
     lines.push('|---|---|---|---|---|---|');
     for (const [muscle, l] of Object.entries(analysis.landmarks)) {
       const sets = p.volume[muscle] || 0;
-      let status = 'in range';
-      if (l.mev > 0 && sets < l.mev) status = 'BELOW MEV';
-      else if (sets > l.mrv) status = 'ABOVE MRV';
-      else if (sets < l.mavLow) status = 'below MAV';
+      const status = p.volumeFlags.statuses[muscle];
       lines.push(`| ${muscle} | ${num(sets)} | ${l.mev} | ${l.mavLow}–${l.mavHigh} | ${l.mrv} | ${status} |`);
     }
     lines.push('');
@@ -311,6 +353,7 @@ function renderReport(analysis) {
     lines.push(`## Flags — ${progId}`, '');
     const buckets = [
       ['Rejected (drop from next block)', p.exerciseFlags.rejected],
+      ['Substitute promoted — replace the exercise, keep the slot', p.exerciseFlags.substituted],
       ['Stalled (change the stimulus)', p.exerciseFlags.stalled],
       ['Under-stimulating (too light)', p.exerciseFlags.underStimulating],
     ];
@@ -354,6 +397,7 @@ if (require.main === module) main(process.argv);
 
 module.exports = {
   findNewestExport, normalizeExport, slopeOf, perExercise, EFFORT_LEVELS,
-  resolveMuscles, weeklyVolume, flagExercises, flagVolume, analyze, renderReport,
+  resolveMuscles, weeklyVolume, countWeeksWithCompletedSets, flagExercises, flagVolume,
+  analyze, renderReport,
   REJECT_SKIP_RATE, STALL_MIN_WEEKS, LOW_EFFORT_SHARE,
 };
