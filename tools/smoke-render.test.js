@@ -110,6 +110,34 @@ test('weekPhases short by one entry is caught, not reported clean', () => {
   }
 });
 
+test('blank exercise names are caught, not reported clean', () => {
+  const pIdx = fs.readFileSync(APP_HTML, 'utf8').indexOf('const PROGRAMS = [');
+  const file = writeBrokenCase(orig => {
+    const daysIdx = orig.indexOf('days:', pIdx);
+    const exIdx = orig.indexOf('exercises:', daysIdx);
+    const openIdx = orig.indexOf('[', exIdx);
+    const closeIdx = matchBracket(orig, openIdx);
+    // Blank every exercise name on day1 while keeping the same count and
+    // shape — the count check alone can't see this, only a content check can.
+    const blanked = orig.slice(openIdx, closeIdx).replace(/name:\s*'[^']*'/g, "name: ''");
+    return orig.slice(0, openIdx) + blanked + orig.slice(closeIdx);
+  });
+  try {
+    const result = smokeRender(file, 0);
+    assert.strictEqual(result.ok, false);
+    assert.match(result.error, /empty name/);
+  } finally {
+    fs.unlinkSync(file);
+  }
+});
+
+test('a non-integer index reports it is not an integer, not a misleading range message', () => {
+  const result = smokeRender(undefined, 0.5);
+  assert.strictEqual(result.ok, false);
+  assert.match(result.error, /not an integer/);
+  assert.doesNotMatch(result.error, /out of range/);
+});
+
 test('CLI rejects a non-integer program index with a purpose-built message', () => {
   const cliPath = path.join(__dirname, 'smoke-render.js');
   assert.throws(

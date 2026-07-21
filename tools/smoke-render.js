@@ -13,12 +13,23 @@ function countMatches(html, re) {
 // week. The exercise-composition check (every day, real exercise counts)
 // already runs once per day at week 1, so nothing is lost by not repeating
 // it at every week — it would just re-render the same day markup N times.
+//
+// Scope: the assertions below check cardinality (rendered card/row count
+// matches the source array length) and, for exercise names, non-emptiness —
+// they do NOT validate field shape or types generally (e.g. `sets: 0`,
+// missing `rest`, wrong-type `muscles`). That's `validateProgram`'s job in
+// tools/insert-program.js, which runs earlier in the pipeline, before a
+// candidate program is spliced into index.html at all. Duplicating its
+// checks here would just create two places to keep in sync.
 function smokeRender(htmlPath, programIdx = 0) {
   try {
     return withApp({ htmlPath, storage: { hypertrophy_program: String(programIdx) } }, app => {
       const rendered = [];
 
-      if (!Number.isInteger(programIdx) || programIdx < 0 || programIdx >= app.PROGRAMS.length) {
+      if (!Number.isInteger(programIdx)) {
+        return { ok: false, rendered, error: `program index ${programIdx} is not an integer` };
+      }
+      if (programIdx < 0 || programIdx >= app.PROGRAMS.length) {
         return { ok: false, rendered, error: `program index ${programIdx} out of range (0..${app.PROGRAMS.length - 1})` };
       }
       if (app.currentProgramIdx !== programIdx) {
@@ -48,6 +59,10 @@ function smokeRender(htmlPath, programIdx = 0) {
         const exCount = countMatches(scroll.innerHTML, /<div class="ex">/g);
         if (exCount !== day.exercises.length) {
           return fail(label, week, `rendered ${exCount} exercise cards, expected ${day.exercises.length}`);
+        }
+        const names = [...scroll.innerHTML.matchAll(/<div class="ex-name[^"]*">\d+ ([^<]*)<\/div>/g)];
+        if (names.some(m => m[1].trim() === '')) {
+          return fail(label, week, 'a rendered exercise card has an empty name');
         }
         rendered.push(week === 1 ? label : `${label}@week${week}`);
         return null;
