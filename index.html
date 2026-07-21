@@ -91,6 +91,26 @@ body {
 
 .mono { font-family: var(--font-mono); }
 .disp { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 1px; }
+
+#masthead { padding: 18px 20px 0; position: sticky; top: 0; background: var(--bg); z-index: 5; }
+.mh-top { display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 3px solid var(--ink); padding-bottom: 9px; }
+.mh-title { font-family: var(--font-display); font-size: 34px; font-weight: 600; line-height: .95; letter-spacing: 1px; text-transform: uppercase; }
+.mh-title span { color: var(--accent); }
+.mh-sub { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.2px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mh-right { display: flex; align-items: flex-start; gap: 10px; flex: none; }
+.wk-row { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.wk-btn { border: none; background: none; cursor: pointer; color: var(--muted-2); font-size: 16px; line-height: 1; padding: 2px; }
+.wk-lbl { font-family: var(--font-display); font-size: 19px; font-weight: 600; color: var(--accent); min-width: 44px; text-align: center; }
+.phase-line { font-family: var(--font-mono); font-size: 8px; letter-spacing: .5px; color: var(--muted); margin-top: 2px; text-align: right; }
+.gear { width: 34px; height: 34px; flex: none; border: 1.5px solid var(--ink); background: transparent; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--ink); font-size: 16px; }
+.gear.on { background: var(--ink); color: var(--accent); }
+.prog-chips { display: flex; gap: 6px; padding: 9px 0 8px; }
+.chip { font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; padding: 5px 11px; border-radius: 3px; cursor: pointer; border: 1.5px solid var(--border); background: transparent; color: var(--muted-2); }
+.chip.on { border-color: var(--ink); background: var(--ink); color: var(--on-dark); }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+.tab { background: transparent; border: none; cursor: pointer; padding: 12px 7px; min-height: 42px; white-space: nowrap; font-family: var(--font-mono); font-size: 9px; letter-spacing: .8px; font-weight: 600; color: var(--muted-2); }
+.tab.on { background: var(--ink); color: var(--on-dark); }
+.tab i { color: var(--accent); font-style: normal; }
 </style>
 </head>
 <body>
@@ -799,21 +819,9 @@ function changeWeek(delta) {
   if (currentDayId !== 'info') switchDay(currentDayId);
 }
 
-function updateWeekDisplay() {
-  const phase = WEEK_PHASES[currentWeek - 1];
-  const maxWeeks = PROGRAMS[currentProgramIdx].totalWeeks;
-  document.getElementById('weekDisplay').textContent = `${currentWeek} / ${maxWeeks}`;
-  const phaseEl = document.getElementById('weekPhase');
-  phaseEl.textContent = `${phase.label} · ${phase.rpe}`;
-  phaseEl.style.color = phase.color;
-}
-
-function updateProgramSelector() {
-  document.querySelectorAll('.program-btn').forEach((btn, i) => {
-    btn.classList.toggle('active', i === currentProgramIdx);
-  });
-  document.getElementById('headerSubtitle').textContent = PROGRAMS[currentProgramIdx].subtitle;
-}
+// Compatibility shims — the preserved logic layer calls these; they now just re-render.
+function updateWeekDisplay()    {}
+function updateProgramSelector(){}
 
 function rebuildLegacyIdMap() {
   Object.keys(LEGACY_ID_MAP).forEach(k => delete LEGACY_ID_MAP[k]);
@@ -1060,46 +1068,8 @@ function isDayComplete(dayId) {
   });
 }
 
-function updateOverallProgress() {
-  const done = completedSets();
-  const total = totalSets();
-  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
-  const skipped = skippedSetsCount();
-  document.getElementById('overallLabel').textContent = skipped > 0
-    ? `${done} / ${total} sets (${skipped} skipped)`
-    : `${done} / ${total} sets`;
-  document.getElementById('overallPct').textContent = `${pct}%`;
-  const circumference = 138;
-  const offset = circumference - (pct / 100) * circumference;
-  document.getElementById('overallRing').style.strokeDashoffset = offset;
-}
-
-function renderTabs(activeId) {
-  const container = document.getElementById('dayTabs');
-  container.innerHTML = '';
-  DAYS.forEach(day => {
-    const btn = document.createElement('button');
-    const complete = isDayComplete(day.id);
-    const ids = activeExIds(day.id);
-    const hasAnyDone = complete && ids.some(id => state[day.id].sets[id] && state[day.id].sets[id].some(v => v === true));
-    btn.className = 'day-tab' + (day.id === activeId ? ' active' : '') + (complete && hasAnyDone ? ' completed' : '') + (complete && !hasAnyDone ? ' all-skipped' : '');
-    btn.textContent = day.label;
-    btn.onclick = () => switchDay(day.id);
-    container.appendChild(btn);
-  });
-  // Info tab
-  const info = document.createElement('button');
-  info.className = 'day-tab info-tab' + (activeId === 'info' ? ' active' : '');
-  info.textContent = 'Plan';
-  info.onclick = () => switchDay('info');
-  container.appendChild(info);
-  // Progress tab
-  const prog = document.createElement('button');
-  prog.className = 'day-tab info-tab' + (activeId === 'progress' ? ' active' : '');
-  prog.textContent = 'Progress';
-  prog.onclick = () => switchDay('progress');
-  container.appendChild(prog);
-}
+// Compatibility shim — the preserved logic layer calls this; it now just re-renders.
+function updateOverallProgress(){ render(); }
 
 function tip(term) {
   const def = GLOSSARY[term] || '';
@@ -1432,25 +1402,8 @@ function toggleMeso(i) {
   document.getElementById(`meso-${i}`).classList.toggle('open');
 }
 
-function switchDay(dayId) {
-  const mainContent = document.getElementById('mainContent');
-  if (dayId === 'info') {
-    mainContent.innerHTML = `<div class="day-panel active" id="info">${renderInfoPanel()}</div>`;
-    renderTabs('info');
-    currentDayId = 'info';
-    return;
-  }
-  if (dayId === 'progress') {
-    mainContent.innerHTML = `<div class="day-panel active" id="progress">${renderProgressPanel()}</div>`;
-    renderTabs('progress');
-    currentDayId = 'progress';
-    return;
-  }
-  const day = DAYS.find(d => d.id === dayId);
-  mainContent.innerHTML = `<div class="day-panel active" id="${dayId}">${renderDay(day)}</div>`;
-  renderTabs(dayId);
-  currentDayId = dayId;
-}
+// Compatibility shim — the preserved logic layer calls this; it now just re-renders.
+function switchDay(dayId) { if (dayId) view.dayId = dayId; render(); }
 
 let currentDayId = DAYS[0].id;
 
@@ -1553,10 +1506,8 @@ function saveEffort(dayId, exId, level) {
   });
 }
 
-function refreshCurrentDay(dayId) {
-  updateOverallProgress();
-  switchDay(dayId);
-}
+// Compatibility shim — the preserved logic layer calls this; it now just re-renders.
+function refreshCurrentDay()    { render(); }
 
 function toggleProtocol(dayId, idx) {
   if (!state[dayId].protocol) state[dayId].protocol = Array(PROTOCOL_ITEMS.length).fill(false);
@@ -2133,7 +2084,59 @@ const view = { name: 'day', dayId: null, openPhase: 2, tip: null, confirm: null,
                pendW: 0, pendKey: '', latestPr: null,
                restEnd: null, restTotal: 0, restInfo: '', restNext: '', restRec: '', restMinimized: false };
 
-function renderMasthead()  { document.getElementById('masthead').innerHTML = ''; }
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+function curProg() { return PROGRAMS[currentProgramIdx]; }
+function curDay()  { return DAYS.find(d => d.id === view.dayId) || DAYS[0]; }
+
+function renderMasthead() {
+  const prog = curProg(), day = curDay(), isW = view.name === 'day';
+  const phase = prog.weekPhases[currentWeek - 1];
+  const title = isW ? day.title
+    : view.name === 'plan' ? 'Plan' : view.name === 'progress' ? 'Progress' : 'Settings';
+  const sub = isW ? `${day.label} · ${prog.name} · ${day.subtitle}`
+    : view.name === 'plan' ? `${prog.name} · ${prog.subtitle}`
+    : view.name === 'progress' ? `${prog.name} · weight & effort by week`
+    : 'Your data stays on this device';
+
+  const chips = PROGRAMS.map((p, i) =>
+    `<button class="chip${i === currentProgramIdx ? ' on' : ''}" data-act="prog" data-i="${i}">${esc(p.name.replace('Mesocycle', 'MESO'))}</button>`
+  ).join('');
+
+  const tabs = DAYS.map(d => {
+    const complete = isDayComplete(d.id);
+    const ids = d.exercises.map(e => resolveExercise(d.id, e).id);
+    const anyDone = complete && ids.some(id => (state[d.id].sets[id] || []).some(v => v === true));
+    const on = isW && view.dayId === d.id;
+    const mark = complete ? (anyDone ? ' ✓' : ' —') : '';
+    return `<button class="tab${on ? ' on' : ''}" data-act="day" data-id="${d.id}">${esc(d.label.toUpperCase().replace(' ', ''))}<i>${mark}</i></button>`;
+  }).join('')
+    + `<button class="tab${view.name === 'plan' ? ' on' : ''}" data-act="view" data-v="plan">PLAN</button>`
+    + `<button class="tab${view.name === 'progress' ? ' on' : ''}" data-act="view" data-v="progress">PROGRESS</button>`;
+
+  document.getElementById('masthead').innerHTML = `
+    <div class="mh-top">
+      <div style="min-width:0">
+        <div class="mh-title">${esc(title)}<span>.</span></div>
+        <div class="mh-sub">${esc(sub)}</div>
+      </div>
+      <div class="mh-right">
+        <div>
+          <div class="wk-row">
+            <button class="wk-btn" data-act="wk" data-d="-1" aria-label="Previous week">‹</button>
+            <div class="wk-lbl">W${currentWeek}/${prog.totalWeeks}</div>
+            <button class="wk-btn" data-act="wk" data-d="1" aria-label="Next week">›</button>
+          </div>
+          <div class="phase-line">${esc(phase.label.toUpperCase())} · ${esc(phase.rpe.replace('RPE ', ''))}${phase.llp ? ' · LLP' : ''}</div>
+        </div>
+        <button class="gear${view.name === 'settings' ? ' on' : ''}" data-act="settings" aria-label="Settings">⚙</button>
+      </div>
+    </div>
+    <div class="prog-chips">${chips}</div>
+    <div class="tabs">${tabs}</div>`;
+}
 function renderScroll()    { document.getElementById('scroll').innerHTML = ''; }
 function renderBottomBar() { document.getElementById('bottombar').innerHTML = ''; }
 function renderOverlays()  { document.getElementById('overlays').innerHTML = ''; }
@@ -2144,6 +2147,19 @@ function render() {
   renderBottomBar();
   renderOverlays();
 }
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const act = el.dataset.act;
+  if (act === 'prog')     { switchProgram(Number(el.dataset.i)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; }
+  else if (act === 'wk')  { changeWeek(Number(el.dataset.d)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.restEnd = null; }
+  else if (act === 'day') { view.name = 'day'; view.dayId = el.dataset.id; view.pendKey = ''; }
+  else if (act === 'view'){ view.name = el.dataset.v; }
+  else if (act === 'settings') { view.name = view.name === 'settings' ? 'day' : 'settings'; }
+  else return;
+  render();
+});
 
 function boot() {
   migrateOldState();
