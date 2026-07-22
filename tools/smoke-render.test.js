@@ -7,10 +7,15 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { smokeRender } = require('./smoke-render');
-const { APP_HTML } = require('./app-shim');
+const { APP_HTML, loadApp } = require('./app-shim');
+
+// The program count grows every time /newplan inserts a real program
+// (meso3 is now real, and more will follow) — iterate every program that
+// actually exists rather than hardcoding [0, 1].
+const PROGRAM_COUNT = loadApp().PROGRAMS.length;
 
 test('every program renders every view', () => {
-  for (const idx of [0, 1]) {
+  for (let idx = 0; idx < PROGRAM_COUNT; idx++) {
     const result = smokeRender(undefined, idx);
     assert.strictEqual(result.ok, true, `program ${idx}: ${result.error}`);
     assert.ok(result.rendered.includes('plan'));

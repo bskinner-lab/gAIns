@@ -13,6 +13,14 @@ const { loadApp } = require('./app-shim');
 const { smokeRender } = require('./smoke-render');
 const valid = require('./fixtures/program-valid.json');
 
+// The fixture's exercise ids are prefixed 'mtest_', not 'm3_'. Real generated
+// programs always get ids of the form 'm<N>_' for an integer N (see
+// nextProgramId below), so a fixture using 'm3_' would collide the moment a
+// real third program (meso3) exists in index.html — which is exactly what
+// happened once /newplan generated one. 'mtest_' is not a shape any
+// generator produces, so it can never collide with a real program. Do not
+// "tidy" it back to 'm3_'.
+
 const clone = o => JSON.parse(JSON.stringify(o));
 
 function tempCopy() {
@@ -63,15 +71,15 @@ test('incomplete exercises are rejected', () => {
 
 test('duplicate ids inside the program are rejected', () => {
   const bad = clone(valid);
-  bad.days[1].exercises[0].id = 'm3_rope_pushdown';
+  bad.days[1].exercises[0].id = 'mtest_rope_pushdown';
   const errors = validateProgram(bad, new Set());
-  assert.ok(errors.some(e => /duplicate id 'm3_rope_pushdown'/.test(e)));
+  assert.ok(errors.some(e => /duplicate id 'mtest_rope_pushdown'/.test(e)));
 });
 
 test('collisions with existing app ids are rejected', () => {
   const bad = clone(valid);
   bad.days[0].exercises[0].id = 'incline_db_press';
-  bad.alternatives = { 'm3_rope_pushdown': [{ id: 'alt_pec_deck', name: 'Pec Deck', note: 'x' }] };
+  bad.alternatives = { 'mtest_rope_pushdown': [{ id: 'alt_pec_deck', name: 'Pec Deck', note: 'x' }] };
   const errors = validateProgram(bad, collectExistingIds());
   assert.ok(errors.some(e => /'incline_db_press' already exists/.test(e)));
   assert.ok(errors.some(e => /'alt_pec_deck' already exists/.test(e)));
@@ -168,9 +176,9 @@ test('fix9: llp/compound must be real booleans, sets a positive number', () => {
 
 test('fix10: alternatives referencing a non-existent exercise id are rejected', () => {
   const bad = clone(valid);
-  bad.alternatives = { 'm3_no_such_exercise': [{ id: 'm3_alt_ghost', name: 'Ghost', note: 'x' }] };
+  bad.alternatives = { 'mtest_no_such_exercise': [{ id: 'mtest_alt_ghost', name: 'Ghost', note: 'x' }] };
   const errors = validateProgram(bad, new Set());
-  assert.ok(errors.some(e => /no exercise with id 'm3_no_such_exercise' exists/.test(e)));
+  assert.ok(errors.some(e => /no exercise with id 'mtest_no_such_exercise' exists/.test(e)));
 });
 
 // --- Splice, gate, write -----------------------------------------------
@@ -197,30 +205,41 @@ test('toJsLiteral escapes embedded quotes', () => {
 
 test('insertProgram appends a renderable program', () => {
   const file = tempCopy();
+  // Derive expectations from the app's current program count rather than
+  // hardcoding 'meso3' / index 2 — that count grows every time /newplan
+  // inserts a real program, and did exactly that (meso3 is now real).
+  const startCount = loadApp({ htmlPath: file }).PROGRAMS.length;
+  const expectedId = nextProgramId(loadApp({ htmlPath: file }).PROGRAMS.map(p => p.id));
+
   const result = insertProgram(valid, { htmlPath: file });
   assert.strictEqual(result.ok, true, result.error);
-  assert.strictEqual(result.programId, 'meso3');
+  assert.strictEqual(result.programId, expectedId);
 
   const app = loadApp({ htmlPath: file });
-  assert.strictEqual(app.PROGRAMS.length, 3);
-  assert.strictEqual(app.PROGRAMS[2].id, 'meso3');
-  assert.strictEqual(app.PROGRAMS[2].days.length, 2);
-  assert.ok(app.EXERCISE_ALTERNATIVES['m3_rope_pushdown']);
-  assert.strictEqual(smokeRender(file, 2).ok, true);
+  assert.strictEqual(app.PROGRAMS.length, startCount + 1);
+  assert.strictEqual(app.PROGRAMS.at(-1).id, expectedId);
+  assert.strictEqual(app.PROGRAMS.at(-1).days.length, 2);
+  assert.ok(app.EXERCISE_ALTERNATIVES['mtest_rope_pushdown']);
+  assert.strictEqual(smokeRender(file, startCount).ok, true);
 });
 
-test('a second insert becomes meso4', () => {
+test('a second insert becomes the next sequential program id after that', () => {
   const file = tempCopy();
+  const startCount = loadApp({ htmlPath: file }).PROGRAMS.length;
   assert.strictEqual(insertProgram(valid, { htmlPath: file }).ok, true);
+
+  const afterFirst = loadApp({ htmlPath: file });
+  const expectedSecondId = nextProgramId(afterFirst.PROGRAMS.map(p => p.id));
+
   const second = JSON.parse(JSON.stringify(valid));
-  for (const day of second.days) for (const ex of day.exercises) ex.id = ex.id.replace('m3_', 'm4_');
+  for (const day of second.days) for (const ex of day.exercises) ex.id = ex.id.replace('mtest_', 'mtest2_');
   second.alternatives = {
-    'm4_rope_pushdown': [{ id: 'm4_alt_vbar', name: 'V-Bar Pushdown', note: 'Straighter wrists' }],
+    'mtest2_rope_pushdown': [{ id: 'mtest2_alt_vbar', name: 'V-Bar Pushdown', note: 'Straighter wrists' }],
   };
   const result = insertProgram(second, { htmlPath: file });
   assert.strictEqual(result.ok, true, result.error);
-  assert.strictEqual(result.programId, 'meso4');
-  assert.strictEqual(loadApp({ htmlPath: file }).PROGRAMS.length, 4);
+  assert.strictEqual(result.programId, expectedSecondId);
+  assert.strictEqual(loadApp({ htmlPath: file }).PROGRAMS.length, startCount + 2);
 });
 
 test('an invalid program leaves the file untouched', () => {
@@ -296,7 +315,7 @@ test('a note containing </script> does not truncate the script block', () => {
   assert.strictEqual(countAll(html, '</script>'), 1, 'exactly one real closing tag should survive');
 
   const app = loadApp({ htmlPath: file });
-  const ex = app.PROGRAMS[2].days[0].exercises[0];
+  const ex = app.PROGRAMS.at(-1).days[0].exercises[0];
   assert.strictEqual(ex.note, note, 'the round-tripped string must equal the original input exactly');
 });
 
@@ -310,7 +329,7 @@ test('a note containing </SCRIPT > (mixed case, trailing space) is neutralized',
   assert.strictEqual(countAll(html, '</script>'), 1);
 
   const app = loadApp({ htmlPath: file });
-  assert.strictEqual(app.PROGRAMS[2].days[0].exercises[0].note, note);
+  assert.strictEqual(app.PROGRAMS.at(-1).days[0].exercises[0].note, note);
 });
 
 test('a note containing a full injected script tag is neutralized end to end', () => {
@@ -323,7 +342,7 @@ test('a note containing a full injected script tag is neutralized end to end', (
   assert.strictEqual(countAll(html, '</script>'), 1, 'only the real trailing tag may remain');
 
   const app = loadApp({ htmlPath: file });
-  assert.strictEqual(app.PROGRAMS[2].days[0].exercises[0].note, note);
+  assert.strictEqual(app.PROGRAMS.at(-1).days[0].exercises[0].note, note);
 });
 
 // --- Hardening fixes (second adversarial review) ------------------------
@@ -337,7 +356,7 @@ test('a program with no alternatives anywhere is rejected at validation', () => 
 
 test('a program whose alternatives are all empty arrays is rejected at validation', () => {
   const bad = clone(valid);
-  bad.alternatives = { m3_rope_pushdown: [] };
+  bad.alternatives = { mtest_rope_pushdown: [] };
   const errors = validateProgram(bad, new Set());
   assert.ok(errors.some(e => /must define at least one exercise alternative/.test(e)));
 });

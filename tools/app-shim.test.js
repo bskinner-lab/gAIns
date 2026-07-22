@@ -54,8 +54,13 @@ test('extractScript matches </script> case-insensitively', () => {
 
 test('loadApp exposes real program data', () => {
   const app = loadApp();
-  assert.strictEqual(app.PROGRAMS.length, 2);
-  assert.deepStrictEqual(app.PROGRAMS.map(p => p.id), ['meso1', 'meso2']);
+  // The app gains a new program every time /newplan inserts one — assert the
+  // known baseline programs are present rather than exact-matching the
+  // whole (growing) array.
+  assert.ok(app.PROGRAMS.length >= 2);
+  const ids = app.PROGRAMS.map(p => p.id);
+  assert.ok(ids.includes('meso1'));
+  assert.ok(ids.includes('meso2'));
   assert.ok(Object.keys(app.EXERCISE_ALTERNATIVES).length > 0);
 });
 
@@ -111,8 +116,11 @@ test('loadApp still returns meso1 data-only (post-teardown getters keep working)
 });
 
 test('withApp propagates the return value of fn', () => {
+  // What's being tested is that fn's return value comes back through
+  // unchanged — the actual count is incidental, so compare against a fresh
+  // loadApp() rather than a hardcoded number of programs.
   const result = withApp({}, app => app.PROGRAMS.length);
-  assert.strictEqual(result, 2);
+  assert.strictEqual(result, loadApp().PROGRAMS.length);
 });
 
 test('withApp tears down globals even when fn throws', () => {

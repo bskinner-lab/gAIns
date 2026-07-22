@@ -3,28 +3,39 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadApp, withApp } = require('./app-shim');
 
+// The seen-programs auto-select logic only cares about program ids and
+// count, both of which grow every time /newplan inserts a new program (meso3
+// is now real, and more will follow). These tests build the seen-list from
+// the app's actual loaded PROGRAMS instead of hardcoding ['meso1', 'meso2'],
+// so the suite keeps meaning as programs accumulate.
+const ALL_IDS = loadApp().PROGRAMS.map(p => p.id);
+const LAST_IDX = ALL_IDS.length - 1;
+
 test('fresh install records ids without hijacking the saved program', () => {
-  const app = loadApp({ storage: { hypertrophy_program: '1' } });
-  assert.strictEqual(app.currentProgramIdx, 1);
+  const app = loadApp({ storage: { hypertrophy_program: String(LAST_IDX) } });
+  assert.strictEqual(app.currentProgramIdx, LAST_IDX);
   assert.deepStrictEqual(
     JSON.parse(app.storage.getItem('hypertrophy_seen_programs')),
-    ['meso1', 'meso2']
+    ALL_IDS
   );
 });
 
 test('an unseen program is auto-selected', () => {
+  // Seed "all but the last" as seen, simulating exactly one new program
+  // (the last one) having just appeared.
+  const seenSoFar = ALL_IDS.slice(0, -1);
   const app = loadApp({
     storage: {
       hypertrophy_program: '0',
-      hypertrophy_seen_programs: JSON.stringify(['meso1']),
+      hypertrophy_seen_programs: JSON.stringify(seenSoFar),
     },
   });
-  // meso2 is unseen, so the app should jump to it.
-  assert.strictEqual(app.currentProgramIdx, 1);
-  assert.strictEqual(app.storage.getItem('hypertrophy_program'), '1');
+  // The last program is unseen, so the app should jump to it.
+  assert.strictEqual(app.currentProgramIdx, LAST_IDX);
+  assert.strictEqual(app.storage.getItem('hypertrophy_program'), String(LAST_IDX));
   assert.deepStrictEqual(
     JSON.parse(app.storage.getItem('hypertrophy_seen_programs')),
-    ['meso1', 'meso2']
+    ALL_IDS
   );
 });
 
@@ -32,7 +43,7 @@ test('manual selection sticks when nothing is new', () => {
   const app = loadApp({
     storage: {
       hypertrophy_program: '0',
-      hypertrophy_seen_programs: JSON.stringify(['meso1', 'meso2']),
+      hypertrophy_seen_programs: JSON.stringify(ALL_IDS),
     },
   });
   assert.strictEqual(app.currentProgramIdx, 0);
@@ -40,12 +51,12 @@ test('manual selection sticks when nothing is new', () => {
 
 test('corrupt seen-programs value is tolerated', () => {
   const app = loadApp({
-    storage: { hypertrophy_program: '1', hypertrophy_seen_programs: '{not json' },
+    storage: { hypertrophy_program: String(LAST_IDX), hypertrophy_seen_programs: '{not json' },
   });
-  assert.strictEqual(app.currentProgramIdx, 1);
+  assert.strictEqual(app.currentProgramIdx, LAST_IDX);
   assert.deepStrictEqual(
     JSON.parse(app.storage.getItem('hypertrophy_seen_programs')),
-    ['meso1', 'meso2']
+    ALL_IDS
   );
 });
 
@@ -54,12 +65,12 @@ test('corrupt seen-programs value is tolerated', () => {
 // (record, don't switch), not like proof of a fresh unseen program.
 test('an empty seen-list does not override the saved program', () => {
   const app = loadApp({
-    storage: { hypertrophy_program: '1', hypertrophy_seen_programs: '[]' },
+    storage: { hypertrophy_program: String(LAST_IDX), hypertrophy_seen_programs: '[]' },
   });
-  assert.strictEqual(app.currentProgramIdx, 1);
+  assert.strictEqual(app.currentProgramIdx, LAST_IDX);
   assert.deepStrictEqual(
     JSON.parse(app.storage.getItem('hypertrophy_seen_programs')),
-    ['meso1', 'meso2']
+    ALL_IDS
   );
 });
 
@@ -67,17 +78,17 @@ test('a seen-list sharing no ids with the current programs does not override the
   for (const corrupt of [[1, 2], [null], [{}], ['meso_deleted']]) {
     const app = loadApp({
       storage: {
-        hypertrophy_program: '1',
+        hypertrophy_program: String(LAST_IDX),
         hypertrophy_seen_programs: JSON.stringify(corrupt),
       },
     });
     assert.strictEqual(
-      app.currentProgramIdx, 1,
+      app.currentProgramIdx, LAST_IDX,
       `expected no override for seen=${JSON.stringify(corrupt)}`
     );
     assert.deepStrictEqual(
       JSON.parse(app.storage.getItem('hypertrophy_seen_programs')),
-      ['meso1', 'meso2']
+      ALL_IDS
     );
   }
 });
@@ -91,17 +102,17 @@ test('a failed seen-list write blocks the switch, on every load it keeps failing
       // Fully seen and settled, so the automatic first boot (which runs
       // during eval, before we can patch storage) is a no-op.
       storage: {
-        hypertrophy_program: '1',
-        hypertrophy_seen_programs: JSON.stringify(['meso1', 'meso2']),
+        hypertrophy_program: String(LAST_IDX),
+        hypertrophy_seen_programs: JSON.stringify(ALL_IDS),
       },
     },
     (app) => {
       // Now recreate the exact state from the bug report: a switch is
-      // pending (meso2 unseen) and the user has manually reverted to
-      // program 0 — then make the seen-list write throw persistently, as
-      // if storage were read-only.
+      // pending (the last program is unseen) and the user has manually
+      // reverted to program 0 — then make the seen-list write throw
+      // persistently, as if storage were read-only.
       app.storage.setItem('hypertrophy_program', '0');
-      app.storage.setItem('hypertrophy_seen_programs', JSON.stringify(['meso1']));
+      app.storage.setItem('hypertrophy_seen_programs', JSON.stringify(ALL_IDS.slice(0, -1)));
       const realSetItem = app.storage.setItem;
       app.storage.setItem = (k, v) => {
         if (k === 'hypertrophy_seen_programs') throw new Error('storage is read-only');
