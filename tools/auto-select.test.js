@@ -60,6 +60,84 @@ test('corrupt seen-programs value is tolerated', () => {
   );
 });
 
+// The rollout-gap case: auto-select shipped in the same release as a new
+// program, so the seen key never existed for this user at all — the trusted
+// path above has nothing to compare against. Fall back to logged-data: the
+// earlier programs have real state keys (a realistic saveState() blob, not
+// just an empty shell), the last one has none at all, so the last one must
+// be the one that's actually new.
+test('first run with no seen key: unlogged last program is auto-selected over trained earlier ones', () => {
+  const storage = { hypertrophy_program: '0' };
+  for (let i = 0; i < LAST_IDX; i++) {
+    storage[`hypertrophy_state_${ALL_IDS[i]}_w1`] = JSON.stringify({
+      day1: { sets: { ex1: [true, true, false] }, weights: { ex1: '135' }, effort: { ex1: '8' }, protocol: {}, swaps: {} },
+    });
+  }
+  const app = loadApp({ storage });
+  assert.strictEqual(app.currentProgramIdx, LAST_IDX);
+  assert.strictEqual(app.storage.getItem('hypertrophy_program'), String(LAST_IDX));
+  assert.deepStrictEqual(
+    JSON.parse(app.storage.getItem('hypertrophy_seen_programs')),
+    ALL_IDS
+  );
+});
+
+// Opened-but-untrained: the real-world user was told to tap the new
+// program's chip to check it out, which writes a state blob via
+// initState()/saveState() even though they never completed a set. That
+// blob existing must NOT disqualify it from being the auto-select target —
+// only a completed (`true`) set means "already trained," matching
+// tools/analyze-history.js's countWeeksWithCompletedSets.
+test('first run with no seen key: opened-but-untrained last program is still auto-selected', () => {
+  const storage = { hypertrophy_program: '0' };
+  for (let i = 0; i < LAST_IDX; i++) {
+    storage[`hypertrophy_state_${ALL_IDS[i]}_w1`] = JSON.stringify({
+      day1: { sets: { ex1: [true, true, false] }, weights: { ex1: '135' }, effort: { ex1: '8' }, protocol: {}, swaps: {} },
+    });
+  }
+  // Last program was merely opened — all sets still false/skipped, nothing
+  // completed.
+  storage[`hypertrophy_state_${ALL_IDS[LAST_IDX]}_w1`] = JSON.stringify({
+    day1: { sets: { ex1: [false, 'skipped', false] }, weights: {}, effort: {}, protocol: {}, swaps: {} },
+  });
+  const app = loadApp({ storage });
+  assert.strictEqual(app.currentProgramIdx, LAST_IDX);
+  assert.strictEqual(app.storage.getItem('hypertrophy_program'), String(LAST_IDX));
+  assert.deepStrictEqual(
+    JSON.parse(app.storage.getItem('hypertrophy_seen_programs')),
+    ALL_IDS
+  );
+});
+
+// Genuinely fresh install: no seen key, and nobody has logged anything
+// anywhere — there is no "new" program to distinguish from the rest, so stay
+// on the default rather than auto-select.
+test('first run with no seen key and no logged data anywhere: no switch', () => {
+  const app = loadApp({ storage: { hypertrophy_program: '0' } });
+  assert.strictEqual(app.currentProgramIdx, 0);
+  assert.deepStrictEqual(
+    JSON.parse(app.storage.getItem('hypertrophy_seen_programs')),
+    ALL_IDS
+  );
+});
+
+// If the user has already trained the last program too, it isn't new to
+// them, whatever the (absent) seen-list says — don't switch.
+test('first run with no seen key: last program already trained, no switch', () => {
+  const storage = { hypertrophy_program: '0' };
+  for (const id of ALL_IDS) {
+    storage[`hypertrophy_state_${id}_w1`] = JSON.stringify({
+      day1: { sets: { ex1: [true] }, weights: { ex1: '95' }, effort: { ex1: '7' }, protocol: {}, swaps: {} },
+    });
+  }
+  const app = loadApp({ storage });
+  assert.strictEqual(app.currentProgramIdx, 0);
+  assert.deepStrictEqual(
+    JSON.parse(app.storage.getItem('hypertrophy_seen_programs')),
+    ALL_IDS
+  );
+});
+
 // A literal `[]` parses fine, so `Array.isArray` alone can't tell it apart
 // from "every program is new" — it must be treated like the key-absent case
 // (record, don't switch), not like proof of a fresh unseen program.
