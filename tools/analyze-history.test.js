@@ -9,7 +9,7 @@ const {
   normalizeExport, findNewestExport, perExercise, slopeOf,
   resolveMuscles, weeklyVolume, flagExercises, flagVolume, renderReport, analyze,
   toNumber, buildLegacyIdMap, migrateLegacyState, isLegacyDayState, excludeLegacyState,
-  buildAltReverseMap, resolveDaySlots,
+  buildAltReverseMap, resolveDaySlots, pickDominantVariant, dominantVariantOf,
 } = require('./analyze-history');
 const muscleMap = require('./muscle-map.json');
 const landmarks = require('./volume-landmarks.json');
@@ -531,7 +531,7 @@ test('when both original and substitute carry a weight in the same week, the sub
     },
   });
   const stats = perExercise(normalizeExport(raw)).meso2;
-  assert.deepStrictEqual(stats.m2_ssb_squat.weightPoints, [[1, 155]]);
+  assert.deepStrictEqual(stats.m2_ssb_squat.variants.alt_m2_hack_squat.weightPoints, [[1, 155]]);
   assert.strictEqual(stats.m2_ssb_squat.lastWeight, 155);
 });
 
@@ -622,5 +622,143 @@ test('perExercise does not double-count slots/weight when a stale orphan key sit
   const s = stats.m2_incline_smith;
   assert.strictEqual(s.slots, 4, 'only the live substitute\'s 4 sets should count, not 4+3');
   assert.strictEqual(s.completed, 4);
-  assert.strictEqual(s.weightPoints.length, 0, 'the stale weight under the orphan id must not surface');
+  assert.strictEqual(
+    s.variants.alt_m2_incline_db.weightPoints.length, 0,
+    'the stale weight under the orphan id must not surface'
+  );
+  assert.ok(!('alt_m2_incline_bb' in s.variants), 'the orphan must not open its own variant either');
+});
+
+// ── per-variant weight series (further mismatch found on real data) ──
+//
+// 60a56e7 correctly merged a swapped slot into one row, but pooled every
+// variant's weights into one series. A dumbbell press and a Smith-machine
+// press are not on the same scale — pooling fabricates the slope. Each
+// performed exercise now gets its own `variants[slotKey]` series; the slot's
+// headline slope/firstWeight/lastWeight come from whichever variant was
+// performed in the most weeks (`pickDominantVariant`).
+
+test('a slot performed as A for 2 weeks then B for 6 gets two variants, and the headline slope is B\'s', () => {
+  const raw = swapExport({
+    1: { sets: { m2_ssb_squat: [true] }, weights: { m2_ssb_squat: '45' }, effort: {}, swaps: {} },
+    2: { sets: { m2_ssb_squat: [true] }, weights: { m2_ssb_squat: '45' }, effort: {}, swaps: {} },
+    3: { sets: { alt_m2_hack_squat: [true] }, weights: { alt_m2_hack_squat: '140' }, effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+    4: { sets: { alt_m2_hack_squat: [true] }, weights: { alt_m2_hack_squat: '150' }, effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+    5: { sets: { alt_m2_hack_squat: [true] }, weights: { alt_m2_hack_squat: '160' }, effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+    6: { sets: { alt_m2_hack_squat: [true] }, weights: { alt_m2_hack_squat: '170' }, effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+    7: { sets: { alt_m2_hack_squat: [true] }, weights: { alt_m2_hack_squat: '180' }, effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+    8: { sets: { alt_m2_hack_squat: [true] }, weights: { alt_m2_hack_squat: '190' }, effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+  });
+  const s = perExercise(normalizeExport(raw)).meso2.m2_ssb_squat;
+
+  assert.deepStrictEqual(Object.keys(s.variants).sort(), ['alt_m2_hack_squat', 'm2_ssb_squat']);
+  assert.deepStrictEqual(s.variants.m2_ssb_squat.weightPoints, [[1, 45], [2, 45]]);
+  assert.strictEqual(s.variants.m2_ssb_squat.slope, 0);
+  assert.deepStrictEqual(
+    s.variants.alt_m2_hack_squat.weightPoints,
+    [[3, 140], [4, 150], [5, 160], [6, 170], [7, 180], [8, 190]]
+  );
+  assert.strictEqual(s.variants.alt_m2_hack_squat.slope, 10);
+
+  assert.strictEqual(s.dominantVariant, 'alt_m2_hack_squat', 'B was performed in 6 of 8 weeks, A in only 2');
+  assert.strictEqual(s.slope, s.variants.alt_m2_hack_squat.slope, 'headline slope is the dominant variant\'s');
+  assert.strictEqual(s.firstWeight, 140);
+  assert.strictEqual(s.lastWeight, 190);
+});
+
+test('pickDominantVariant breaks a tie in week count toward whichever variant was performed more recently', () => {
+  const raw = swapExport({
+    1: { sets: { m2_ssb_squat: [true] }, weights: {}, effort: {}, swaps: {} },
+    2: { sets: { m2_ssb_squat: [true] }, weights: {}, effort: {}, swaps: {} },
+    3: { sets: { alt_m2_hack_squat: [true] }, weights: {}, effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+    4: { sets: { alt_m2_hack_squat: [true] }, weights: {}, effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+  });
+  const s = perExercise(normalizeExport(raw)).meso2.m2_ssb_squat;
+  assert.strictEqual(s.variants.m2_ssb_squat.weeks.length, s.variants.alt_m2_hack_squat.weeks.length, 'both performed 2 weeks — a genuine tie');
+  assert.strictEqual(s.dominantVariant, 'alt_m2_hack_squat', 'the substitute was performed more recently (weeks 3-4 vs 1-2), so it wins the tie');
+
+  // Sanity-check pickDominantVariant directly against the same shape.
+  assert.strictEqual(
+    pickDominantVariant({
+      a: { weeks: [1, 2], weightPoints: [], firstWeight: null, lastWeight: null, slope: null },
+      b: { weeks: [3, 4], weightPoints: [], firstWeight: null, lastWeight: null, slope: null },
+    }),
+    'b'
+  );
+});
+
+test('a stale original-id weight in a week the substitute was performed does not become a data point for the original\'s own variant', () => {
+  const raw = swapExport({
+    1: { sets: { m2_ssb_squat: [true] }, weights: { m2_ssb_squat: '45' }, effort: {}, swaps: {} },
+    2: {
+      // Live this week is the substitute, but the ORIGINAL's key is still
+      // sitting in `weights` from week 1 — performSwap() never cleans it up.
+      sets: { alt_m2_hack_squat: [true] },
+      weights: { m2_ssb_squat: '45', alt_m2_hack_squat: '160' },
+      effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' },
+    },
+  });
+  const s = perExercise(normalizeExport(raw)).meso2.m2_ssb_squat;
+  assert.deepStrictEqual(s.variants.m2_ssb_squat.weightPoints, [[1, 45]], 'week 2\'s stale entry must not appear here');
+  assert.deepStrictEqual(s.variants.alt_m2_hack_squat.weightPoints, [[2, 160]]);
+});
+
+test('flagExercises does not mark a slot stalled when the dominant variant is progressing, even though the pooled series would have sloped <= 0', () => {
+  // Same shape as the real m2_ssb_squat slot (2 weeks on the original, 6 on
+  // the substitute), but with the original logged at a HIGHER weight than
+  // the substitute's early sessions, so pooling all 8 points drags the
+  // least-squares slope negative even though the substitute alone climbs
+  // steadily (100 -> 150, slope +10). This is the exact failure mode that
+  // motivated tracking variants separately: a genuinely progressing lift
+  // must not be called stalled because of a scale mismatch.
+  const raw = swapExport({
+    1: { sets: { m2_ssb_squat: [true] }, weights: { m2_ssb_squat: '200' }, effort: { m2_ssb_squat: 'high' }, swaps: {} },
+    2: { sets: { m2_ssb_squat: [true] }, weights: { m2_ssb_squat: '200' }, effort: { m2_ssb_squat: 'high' }, swaps: {} },
+    3: { sets: { alt_m2_hack_squat: [true] }, weights: { alt_m2_hack_squat: '100' }, effort: { alt_m2_hack_squat: 'high' }, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+    4: { sets: { alt_m2_hack_squat: [true] }, weights: { alt_m2_hack_squat: '110' }, effort: { alt_m2_hack_squat: 'high' }, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+    5: { sets: { alt_m2_hack_squat: [true] }, weights: { alt_m2_hack_squat: '120' }, effort: { alt_m2_hack_squat: 'high' }, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+    6: { sets: { alt_m2_hack_squat: [true] }, weights: { alt_m2_hack_squat: '130' }, effort: { alt_m2_hack_squat: 'high' }, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+    7: { sets: { alt_m2_hack_squat: [true] }, weights: { alt_m2_hack_squat: '140' }, effort: { alt_m2_hack_squat: 'high' }, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+    8: { sets: { alt_m2_hack_squat: [true] }, weights: { alt_m2_hack_squat: '150' }, effort: { alt_m2_hack_squat: 'high' }, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+  });
+  const stats = perExercise(normalizeExport(raw)).meso2;
+  const s = stats.m2_ssb_squat;
+
+  // Confirm the setup actually produces the mismatch this test is about.
+  assert.strictEqual(s.variants.alt_m2_hack_squat.slope, 10, 'the dominant variant is clearly progressing');
+  const pooled = [[1, 200], [2, 200], [3, 100], [4, 110], [5, 120], [6, 130], [7, 140], [8, 150]];
+  assert.ok(slopeOf(pooled) <= 0, 'the pooled series (not used anywhere) would have sloped <= 0');
+  assert.strictEqual(s.slope, 10, 'the headline slope is the dominant variant\'s, not the pooled one');
+
+  const flags = flagExercises(stats);
+  assert.ok(!flags.stalled.some(f => f.exId === 'm2_ssb_squat'), 'a progressing lift must not be flagged stalled due to pooling');
+});
+
+test('renderReport surfaces each variant of a multi-variant slot, not just the dominant one', () => {
+  const raw = swapExport({
+    1: { sets: { m2_ssb_squat: [true, true] }, weights: { m2_ssb_squat: '45' }, effort: {}, swaps: {} },
+    2: { sets: { m2_ssb_squat: [true, true] }, weights: { m2_ssb_squat: '45' }, effort: {}, swaps: {} },
+    3: { sets: { alt_m2_hack_squat: [true, true] }, weights: { alt_m2_hack_squat: '140' }, effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+    4: { sets: { alt_m2_hack_squat: [true, true] }, weights: { alt_m2_hack_squat: '205' }, effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+  });
+  const report = renderReport(analyze(raw, muscleMap, landmarks));
+
+  assert.match(report, /### Variants — meso2/);
+  assert.match(report, /`m2_ssb_squat`/);
+  assert.match(report, /`alt_m2_hack_squat`.*\(dominant\)/);
+  // The main table's weight column is starred to flag it as dominant-only.
+  assert.match(report, /\|\s*m2_ssb_squat\s*\|.*\*\s*\|/);
+});
+
+test('a single-variant slot behaves exactly as before (regression guard)', () => {
+  const stats = perExercise(normalizeExport(v3)).meso1;
+  const press = stats.incline_db_press;
+  assert.deepStrictEqual(Object.keys(press.variants), ['incline_db_press']);
+  assert.strictEqual(press.dominantVariant, 'incline_db_press');
+  assert.strictEqual(dominantVariantOf(press), press.variants.incline_db_press);
+  // Same numbers the very first test in this file already asserts at the
+  // top level — a single-variant slot's headline is just its own variant.
+  assert.strictEqual(press.firstWeight, 60);
+  assert.strictEqual(press.lastWeight, 70);
+  assert.strictEqual(press.slope, 5);
 });

@@ -216,10 +216,49 @@ function emptyStat() {
   return {
     completed: 0, skipped: 0, slots: 0, skipRate: 0,
     weeksTouched: 0, weeks: [],
-    firstWeight: null, lastWeight: null, slope: null, weightPoints: [],
+    // Per-performed-exercise weight series — see `variants` doc below. There
+    // is deliberately NO pooled `weightPoints`/top-level array on this object:
+    // `firstWeight`/`lastWeight`/`slope` are copied from the DOMINANT variant
+    // only (see `pickDominantVariant`), never computed across variants.
+    variants: {},
+    dominantVariant: null,
+    firstWeight: null, lastWeight: null, slope: null,
     effortCounts: { low: 0, medium: 0, high: 0 },
     swappedTo: {},
   };
+}
+
+/** One performed exercise's own weight series within a slot — see `emptyStat`. */
+function emptyVariant() {
+  return { weeks: [], weightPoints: [], firstWeight: null, lastWeight: null, slope: null };
+}
+
+/**
+ * Which variant a slot's headline `slope`/`firstWeight`/`lastWeight` should
+ * come from, when a slot was performed as more than one exercise (a swap mid-
+ * block). Rule: the variant performed in the most weeks wins — that's the one
+ * with enough data points to say anything about progression; a 2-week stint
+ * on the original before a 6-week run on the substitute shouldn't out-vote
+ * the substitute just because it happened first. Ties (equal week counts)
+ * break toward whichever variant was performed more recently, since that's
+ * the series that describes where the lifter is now.
+ * @returns {string|null} the winning slotKey, or null if there are no variants
+ */
+function pickDominantVariant(variants) {
+  let bestKey = null, best = null;
+  for (const [slotKey, v] of Object.entries(variants)) {
+    if (!best || v.weeks.length > best.weeks.length) {
+      bestKey = slotKey; best = v;
+    } else if (v.weeks.length === best.weeks.length) {
+      if (Math.max(...v.weeks) > Math.max(...best.weeks)) { bestKey = slotKey; best = v; }
+    }
+  }
+  return bestKey;
+}
+
+/** The dominant variant object for a stat, or null if it has none yet. */
+function dominantVariantOf(s) {
+  return s.dominantVariant ? s.variants[s.dominantVariant] : null;
 }
 
 /**
@@ -307,6 +346,14 @@ function perExercise(normalized, exerciseAlternatives) {
           }
           if (!s.weeks.includes(w)) s.weeks.push(w);
 
+          // One variant per PERFORMED exercise (slotKey), not per slot — this
+          // is what keeps a 45 lb SSB-squat week and a 205 lb hack-squat week
+          // from ever landing in the same weight series. `weeks` here tracks
+          // which weeks THIS variant was the live performed exercise, which is
+          // what `pickDominantVariant` counts on.
+          const variant = (s.variants[slotKey] = s.variants[slotKey] || emptyVariant());
+          if (!variant.weeks.includes(w)) variant.weeks.push(w);
+
           // Assumes one weight per exercise per week — if an exercise id ever
           // appeared on two days within the same week, this would push two
           // points at the same x and skew the slope. Not live today (no id
@@ -316,10 +363,13 @@ function perExercise(normalized, exerciseAlternatives) {
           // (the original) is stale leftover from before the swap, and
           // `weights[slotKey]` (the substitute) is the real number for this
           // week. Reading by slotKey picks whichever one was actually logged
-          // this week and never lets the stale entry create a phantom point.
+          // this week and never lets the stale entry create a phantom point —
+          // and pushing it onto `variant.weightPoints` (not a pooled array)
+          // means it can never bleed into a different performed exercise's
+          // series either.
           const weight = toNumber(weights[slotKey]);
           if (weight !== null) {
-            s.weightPoints.push([w, weight]);
+            variant.weightPoints.push([w, weight]);
           }
           const eff = effort[slotKey];
           if (EFFORT_LEVELS.includes(eff)) s.effortCounts[eff]++;
@@ -342,12 +392,25 @@ function perExercise(normalized, exerciseAlternatives) {
       // skipRate for exactly the exercises being skipped.
       const attempted = s.completed + s.skipped;
       s.skipRate = attempted ? s.skipped / attempted : 0;
-      s.weightPoints.sort((a, b) => a[0] - b[0]);
-      if (s.weightPoints.length) {
-        s.firstWeight = s.weightPoints[0][1];
-        s.lastWeight = s.weightPoints[s.weightPoints.length - 1][1];
+
+      for (const v of Object.values(s.variants)) {
+        v.weightPoints.sort((a, b) => a[0] - b[0]);
+        if (v.weightPoints.length) {
+          v.firstWeight = v.weightPoints[0][1];
+          v.lastWeight = v.weightPoints[v.weightPoints.length - 1][1];
+        }
+        v.slope = slopeOf(v.weightPoints);
       }
-      s.slope = slopeOf(s.weightPoints);
+
+      // Headline slope/firstWeight/lastWeight are the DOMINANT variant's, and
+      // ONLY the dominant variant's — see `pickDominantVariant`. A slot with
+      // one variant (the overwhelmingly common case) just gets that variant's
+      // numbers back unchanged.
+      s.dominantVariant = pickDominantVariant(s.variants);
+      const dom = dominantVariantOf(s);
+      s.firstWeight = dom ? dom.firstWeight : null;
+      s.lastWeight = dom ? dom.lastWeight : null;
+      s.slope = dom ? dom.slope : null;
     }
   }
   return out;
@@ -447,8 +510,15 @@ function flagExercises(statsForProgram) {
     }
 
     const effortTotal = s.effortCounts.low + s.effortCounts.medium + s.effortCounts.high;
-    if (s.weightPoints.length >= STALL_MIN_WEEKS && s.slope !== null && s.slope <= 0 && s.effortCounts.high > 0) {
-      stalled.push({ exId, reason: `no load progress across ${s.weightPoints.length} weeks at high effort` });
+    // Both rules below judge progression, so both must read the DOMINANT
+    // variant's point count/slope — never a pooled one. `s.slope` already IS
+    // the dominant variant's slope (see `perExercise`'s post-pass), but the
+    // point count needs to be read from the variant directly since there is
+    // no pooled `weightPoints` to fall back on.
+    const dom = dominantVariantOf(s);
+    const domPoints = dom ? dom.weightPoints.length : 0;
+    if (domPoints >= STALL_MIN_WEEKS && s.slope !== null && s.slope <= 0 && s.effortCounts.high > 0) {
+      stalled.push({ exId, reason: `no load progress across ${domPoints} weeks at high effort` });
     }
     if (effortTotal && s.effortCounts.low / effortTotal > LOW_EFFORT_SHARE && (s.slope === null || s.slope <= 0)) {
       underStimulating.push({ exId, reason: `${s.effortCounts.low}/${effortTotal} sessions rated low effort with no load progress` });
@@ -588,10 +658,21 @@ function renderReport(analysis) {
     if (!p.hasData) continue;
 
     lines.push(`## Per exercise — ${progId}`, '');
+    const multiVariant = Object.entries(p.stats).filter(([, s]) => Object.keys(s.variants).length > 1);
+    if (multiVariant.length) {
+      lines.push(
+        '> Weight/Slope below are the DOMINANT variant only (the performed exercise ' +
+        'trained the most weeks — see `pickDominantVariant`) for any slot marked `*`. ' +
+        'A dumbbell press and a Smith-machine press are not on the same scale, so their ' +
+        'weights are never averaged together — see Variants below the table.',
+        ''
+      );
+    }
     lines.push('| Exercise | Done | Skipped | Skip % | Weeks | Weight | Slope/wk | Effort L/M/H | Swapped to |');
     lines.push('|---|---|---|---|---|---|---|---|---|');
     for (const [exId, s] of Object.entries(p.stats)) {
-      const weight = s.firstWeight === null ? '—' : `${num(s.firstWeight)} → ${num(s.lastWeight)}`;
+      const isMulti = Object.keys(s.variants).length > 1;
+      const weight = s.firstWeight === null ? '—' : `${num(s.firstWeight)} → ${num(s.lastWeight)}${isMulti ? '*' : ''}`;
       const swaps = Object.keys(s.swappedTo).join(', ') || '—';
       const e = s.effortCounts;
       lines.push(
@@ -600,6 +681,24 @@ function renderReport(analysis) {
       );
     }
     lines.push('');
+
+    if (multiVariant.length) {
+      lines.push(`### Variants — ${progId}`, '');
+      lines.push(
+        '_Slots trained as more than one exercise this block, so pooling their weights ' +
+        'would be meaningless. Each variant below is its own series._',
+        ''
+      );
+      for (const [exId, s] of multiVariant) {
+        lines.push(`- \`${exId}\``);
+        for (const [slotKey, v] of Object.entries(s.variants)) {
+          const w = v.firstWeight === null ? '—' : `${num(v.firstWeight)} → ${num(v.lastWeight)}`;
+          const mark = slotKey === s.dominantVariant ? ' **(dominant)**' : '';
+          lines.push(`  - \`${slotKey}\`${mark} — weeks ${v.weeks.join(', ')}, weight ${w}, slope ${num(v.slope)}`);
+        }
+      }
+      lines.push('');
+    }
 
     const weekWord = p.volumeWeeks === 1 ? 'week' : 'weeks';
     lines.push(`## Weekly volume by muscle — ${progId} (avg over ${p.volumeWeeks} ${weekWord} with completed sets)`, '');
@@ -663,5 +762,6 @@ module.exports = {
   resolveMuscles, weeklyVolume, countWeeksWithCompletedSets, flagExercises, flagVolume,
   analyze, renderReport, toNumber, buildLegacyIdMap, migrateLegacyState,
   isLegacyDayState, excludeLegacyState, buildAltReverseMap, resolveDaySlots,
+  pickDominantVariant, dominantVariantOf,
   REJECT_SKIP_RATE, STALL_MIN_WEEKS, LOW_EFFORT_SHARE,
 };
