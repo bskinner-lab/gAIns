@@ -2451,6 +2451,9 @@ function boot() {
   initState();
   view.dayId = getStartDay();
   render();
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(() => {});
+  }
   setInterval(() => {
     view.now = Date.now();
     if (view.restEnd && view.restEnd <= view.now) { view.restEnd = null; view.restMinimized = false; }
