@@ -8,7 +8,8 @@ const path = require('path');
 const {
   normalizeExport, findNewestExport, perExercise, slopeOf,
   resolveMuscles, weeklyVolume, flagExercises, flagVolume, renderReport, analyze,
-  toNumber, buildLegacyIdMap, migrateLegacyState,
+  toNumber, buildLegacyIdMap, migrateLegacyState, isLegacyDayState, excludeLegacyState,
+  buildAltReverseMap, resolveDaySlots,
 } = require('./analyze-history');
 const muscleMap = require('./muscle-map.json');
 const landmarks = require('./volume-landmarks.json');
@@ -359,31 +360,267 @@ test('regression: numeric-key weeks no longer surface as exercises literally nam
   );
 });
 
-test('analyze() with programs supplied migrates legacy weeks and produces real slopes', () => {
+test('analyze() excludes legacy index-keyed weeks entirely rather than migrating them', () => {
+  // Bug: migrating a legacy week against the CURRENT program order silently
+  // fabricates numbers when that order has changed since the week was
+  // logged (see the comment on excludeLegacyState — meso1 day4's real
+  // close_grip_bench insertion is the proof). So these weeks must be
+  // dropped, not remapped: no `squat` row, no `0` row, and week 1 absent
+  // from the program's week list and adherence totals.
   const raw = {
     version: 3,
     programs: {
       meso1: {
-        currentWeek: 3,
+        currentWeek: 2,
         weeks: {
           1: { day3: { sets: { 0: [true] }, weights: { 0: '135' }, effort: {}, swaps: {} } },
-          2: { day3: { sets: { 0: [true] }, weights: { 0: '155' }, effort: {}, swaps: {} } },
-          3: { day3: { sets: { 0: [true] }, weights: { 0: '185' }, effort: {}, swaps: {} } },
+          2: { day3: { sets: { squat: [true] }, weights: { squat: '155' }, effort: {}, swaps: {} } },
         },
       },
     },
   };
-  const withoutMigration = analyze(raw, muscleMap, landmarks);
-  // Omitting `programs` keeps the prior (bogus) behavior: the slot is tracked
-  // under the literal index "0", not the real exercise id "squat".
-  assert.ok(withoutMigration.programs.meso1.stats['0']);
-  assert.ok(!('squat' in withoutMigration.programs.meso1.stats));
+  const result = analyze(raw, muscleMap, landmarks);
+  assert.ok(!('0' in result.programs.meso1.stats), 'literal index "0" must never surface as an exercise');
+  assert.deepStrictEqual(result.programs.meso1.weeks, [2]);
+  assert.strictEqual(result.programs.meso1.stats.squat.completed, 1);
+  assert.strictEqual(result.programs.meso1.stats.squat.firstWeight, 155);
+  assert.deepStrictEqual(result.excluded.meso1, [{ week: 1, days: ['day3'] }]);
+});
 
-  const withMigration = analyze(raw, muscleMap, landmarks, PROGRAMS);
-  const squat = withMigration.programs.meso1.stats.squat;
-  assert.ok(squat, 'squat should appear once weeks are migrated');
-  assert.strictEqual(squat.firstWeight, 135);
-  assert.strictEqual(squat.lastWeight, 185);
-  assert.strictEqual(squat.slope, 25);
-  assert.ok(!('0' in withMigration.programs.meso1.stats));
+// ── legacy-week exclusion (Bug A) ─────────────────────────────────
+
+test('isLegacyDayState detects index-only keys and leaves id-keyed/empty days alone', () => {
+  assert.strictEqual(isLegacyDayState({ sets: { 0: [true], 1: [true] } }), true);
+  assert.strictEqual(isLegacyDayState({ sets: { squat: [true] } }), false);
+  assert.strictEqual(isLegacyDayState({ sets: {} }), false);
+  assert.strictEqual(isLegacyDayState({}), false);
+  assert.strictEqual(isLegacyDayState(null), false);
+});
+
+test('excludeLegacyState drops only legacy day-entries, keeping id-keyed days in the same week', () => {
+  const normalized = {
+    programs: {
+      meso1: {
+        currentWeek: 1,
+        weeks: {
+          1: {
+            day3: { sets: { 0: [true], 1: [true] }, weights: {}, effort: {}, swaps: {} },
+            day1: { sets: { incline_db_press: [true] }, weights: {}, effort: {}, swaps: {} },
+          },
+        },
+      },
+    },
+  };
+  const { normalized: cleaned, excluded } = excludeLegacyState(normalized);
+  assert.deepStrictEqual(Object.keys(cleaned.programs.meso1.weeks[1]), ['day1']);
+  assert.deepStrictEqual(excluded.meso1, [{ week: 1, day: 'day3' }]);
+});
+
+test('excludeLegacyState drops a week entirely once every day-entry in it is legacy', () => {
+  const normalized = {
+    programs: {
+      meso1: {
+        currentWeek: 1,
+        weeks: {
+          1: { day3: { sets: { 0: [true] }, weights: {}, effort: {}, swaps: {} } },
+        },
+      },
+    },
+  };
+  const { normalized: cleaned } = excludeLegacyState(normalized);
+  assert.deepStrictEqual(cleaned.programs.meso1.weeks, {});
+});
+
+test('a mixed export (one legacy week, one id-keyed week) only lets the id-keyed week contribute', () => {
+  const raw = {
+    version: 3,
+    programs: {
+      meso1: {
+        currentWeek: 2,
+        weeks: {
+          1: {
+            day1: {
+              sets: { 0: [true, true], 1: ['skipped'] },
+              weights: {}, effort: {}, swaps: {},
+            },
+          },
+          2: {
+            day1: {
+              sets: { incline_db_press: [true, true, true, true] },
+              weights: { incline_db_press: 65 },
+              effort: {}, swaps: {},
+            },
+          },
+        },
+      },
+    },
+  };
+  const result = analyze(raw, muscleMap, landmarks);
+  assert.deepStrictEqual(result.programs.meso1.weeks, [2]);
+  assert.strictEqual(result.programs.meso1.completed, 4);
+  assert.strictEqual(result.programs.meso1.skipped, 0);
+  assert.strictEqual(result.programs.meso1.slots, 4);
+});
+
+test('renderReport names each excluded program/week loudly, near the top', () => {
+  const raw = {
+    version: 3,
+    programs: {
+      meso1: {
+        currentWeek: 1,
+        weeks: { 1: { day1: { sets: { 0: [true] }, weights: {}, effort: {}, swaps: {} } } },
+      },
+    },
+  };
+  const md = renderReport(analyze(raw, muscleMap, landmarks));
+  assert.match(md, /Excluded weeks/);
+  assert.match(md, /\| meso1 \| 1 \| day1 \|/);
+  assert.ok(md.indexOf('Excluded weeks') < md.indexOf('## Adherence'), 'exclusion block should come before Adherence');
+});
+
+test('renderReport says nothing about exclusions when there are none', () => {
+  const md = renderReport(analyze(v3, muscleMap, landmarks));
+  assert.doesNotMatch(md, /Excluded weeks/);
+});
+
+// ── swap merging (Bug B) ───────────────────────────────────────────
+//
+// Real shape, straight from the user's export: once a swap is live,
+// `sets`/`weights`/`effort` are keyed by the SUBSTITUTE id (mirrors
+// performSwap() in index.html), while `swaps` itself stays keyed by the
+// ORIGINAL id. A stale `weights[originalId]` entry can also linger from
+// before the swap.
+
+function swapExport(weeksSpec) {
+  const weeks = {};
+  for (const [w, spec] of Object.entries(weeksSpec)) {
+    weeks[w] = { day3: { protocol: [], ...spec } };
+  }
+  return { version: 3, programs: { meso2: { currentWeek: Object.keys(weeksSpec).length, weeks } } };
+}
+
+test('a swapped slot merges into ONE row under the original id, with swappedTo populated', () => {
+  const raw = swapExport({
+    1: {
+      sets: { m2_ssb_squat: [true, true] },
+      weights: { m2_ssb_squat: '45' },
+      effort: {}, swaps: {},
+    },
+    2: {
+      sets: { alt_m2_hack_squat: [true, true] },
+      weights: { m2_ssb_squat: '45', alt_m2_hack_squat: '155' },
+      effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' },
+    },
+  });
+  const stats = perExercise(normalizeExport(raw)).meso2;
+  assert.ok(stats.m2_ssb_squat, 'the merged row lives under the original id');
+  assert.ok(!stats.alt_m2_hack_squat, 'the substitute must not get its own row');
+  assert.strictEqual(stats.m2_ssb_squat.completed, 4);
+  assert.strictEqual(stats.m2_ssb_squat.weeksTouched, 2);
+  assert.deepStrictEqual(stats.m2_ssb_squat.swappedTo, { alt_m2_hack_squat: 1 });
+});
+
+test('when both original and substitute carry a weight in the same week, the substitute wins — no phantom point', () => {
+  const raw = swapExport({
+    1: {
+      sets: { alt_m2_hack_squat: [true] },
+      // A stale entry under the original alongside the real one under the
+      // substitute — exactly the shape seen in the real export.
+      weights: { m2_ssb_squat: '45', alt_m2_hack_squat: '155' },
+      effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' },
+    },
+  });
+  const stats = perExercise(normalizeExport(raw)).meso2;
+  assert.deepStrictEqual(stats.m2_ssb_squat.weightPoints, [[1, 155]]);
+  assert.strictEqual(stats.m2_ssb_squat.lastWeight, 155);
+});
+
+test('flagExercises puts a swap-driven slot in substituted, not rejected or absent', () => {
+  const raw = swapExport({
+    1: { sets: { alt_m2_hack_squat: [true, true] }, weights: {}, effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+    2: { sets: { alt_m2_hack_squat: [true, true] }, weights: {}, effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+    3: { sets: { alt_m2_hack_squat: [true, true] }, weights: {}, effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' } },
+  });
+  const stats = perExercise(normalizeExport(raw)).meso2;
+  const flags = flagExercises(stats);
+  assert.ok(flags.substituted.some(f => f.exId === 'm2_ssb_squat'));
+  assert.ok(!flags.rejected.some(f => f.exId === 'm2_ssb_squat'));
+  assert.ok(!('alt_m2_hack_squat' in stats));
+});
+
+test('weeklyVolume credits a swapped exercise once, to the right muscles, via the substitute falling back to the original', () => {
+  // alt_m2_hack_squat has no entry of its own in muscle-map.json; it must
+  // fall back to m2_ssb_squat's profile (quads/glutes/spinal_erectors).
+  const raw = swapExport({
+    1: {
+      sets: { alt_m2_hack_squat: [true, true, true] },
+      weights: {}, effort: {}, swaps: { m2_ssb_squat: 'alt_m2_hack_squat' },
+    },
+  });
+  const vol = weeklyVolume(normalizeExport(raw), muscleMap).meso2;
+  const profile = muscleMap.m2_ssb_squat;
+  assert.ok(Math.abs(vol.quads - 3 * profile.quads) < 1e-9);
+  assert.ok(Math.abs(vol.glutes - 3 * profile.glutes) < 1e-9);
+  assert.ok(Math.abs(vol.spinal_erectors - 3 * profile.spinal_erectors) < 1e-9);
+});
+
+// ── stale prior-substitute keys (further mismatch found on real data) ──
+//
+// performSwap() in index.html never deletes an old `sets` key when writing
+// the new substitute's — it only ensures the NEW id's array exists. So on
+// real data (meso2 day1 week8, m2_incline_smith's slot) a day can carry
+// TWO alt_* keys for the same slot in the same week: this week's live
+// substitute per `swaps`, and an orphan left over from an earlier swap that
+// `swaps` no longer mentions. A plain per-week `swaps` reverse map can't
+// recognize the orphan at all — only the static EXERCISE_ALTERNATIVES table
+// (index.html) knows alt_m2_incline_bb belongs to m2_incline_smith too.
+
+const altMap = { m2_incline_smith: [{ id: 'alt_m2_incline_db' }, { id: 'alt_m2_incline_bb' }] };
+
+test('buildAltReverseMap maps every alternative id back to its original, across all slots', () => {
+  const rev = buildAltReverseMap(altMap);
+  assert.deepStrictEqual(rev, { alt_m2_incline_db: 'm2_incline_smith', alt_m2_incline_bb: 'm2_incline_smith' });
+});
+
+test('resolveDaySlots prefers the live swap and drops a stale orphan key for the same slot', () => {
+  const dayData = {
+    sets: {
+      alt_m2_incline_db: [true, true, true, true],   // this week's live substitute
+      alt_m2_incline_bb: [true, true, true],           // orphan from an earlier swap
+    },
+    swaps: { m2_incline_smith: 'alt_m2_incline_db' },
+  };
+  const pairs = resolveDaySlots(dayData, buildAltReverseMap(altMap));
+  assert.deepStrictEqual(pairs, [['m2_incline_smith', 'alt_m2_incline_db']]);
+});
+
+test('perExercise does not double-count slots/weight when a stale orphan key sits alongside the live one', () => {
+  const raw = {
+    version: 3,
+    programs: {
+      meso2: {
+        currentWeek: 1,
+        weeks: {
+          1: {
+            day1: {
+              sets: {
+                alt_m2_incline_db: [true, true, true, true],
+                alt_m2_incline_bb: [true, true, true],
+              },
+              weights: { alt_m2_incline_bb: '135' }, // stale weight, must be ignored
+              effort: {},
+              protocol: [],
+              swaps: { m2_incline_smith: 'alt_m2_incline_db' },
+            },
+          },
+        },
+      },
+    },
+  };
+  const stats = perExercise(normalizeExport(raw), altMap).meso2;
+  assert.ok(!('alt_m2_incline_bb' in stats), 'the orphan must not open its own row');
+  const s = stats.m2_incline_smith;
+  assert.strictEqual(s.slots, 4, 'only the live substitute\'s 4 sets should count, not 4+3');
+  assert.strictEqual(s.completed, 4);
+  assert.strictEqual(s.weightPoints.length, 0, 'the stale weight under the orphan id must not surface');
 });
