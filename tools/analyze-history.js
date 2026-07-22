@@ -43,6 +43,97 @@ function normalizeExport(raw) {
   throw new Error('unrecognized export format — expected version 1, 2 or 3');
 }
 
+/**
+ * Parse a weight value into a finite number, or null if it isn't one. The app
+ * writes weights from `<input>` values, so strings ("135", "47.5") are the
+ * norm on real exports, not a corruption — this must accept those while still
+ * rejecting junk ("", "abc", null, NaN, Infinity).
+ */
+function toNumber(v) {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+/**
+ * Per-program, per-day map from legacy numeric index (an exercise's position
+ * within its day) to its real exercise id — mirrors `rebuildLegacyIdMap()` in
+ * index.html, built from the same `day.exercises` order.
+ * @returns {Record<string, Record<string, Record<string, string>>>}
+ */
+function buildLegacyIdMap(programs) {
+  const map = {};
+  for (const prog of programs || []) {
+    const dayMap = (map[prog.id] = {});
+    for (const day of prog.days || []) {
+      dayMap[day.id] = {};
+      day.exercises.forEach((ex, i) => { dayMap[day.id][i] = ex.id; });
+    }
+  }
+  return map;
+}
+
+/**
+ * Mirrors `migrateDayState()` in index.html exactly: a day is already
+ * id-keyed (leave alone) unless EVERY key in `sets` is numeric, in which case
+ * every numeric key is remapped through `dayIdMap` to its real exercise id.
+ * Keys with no entry in `dayIdMap` (index doesn't exist in this day) are
+ * dropped rather than carried through or thrown on.
+ */
+function migrateLegacyDayState(dayId, sd, dayIdMap) {
+  if (!sd || !sd.sets) return sd;
+  const hasStringKeys = Object.keys(sd.sets).some(k => isNaN(k));
+  if (hasStringKeys) return sd;
+  const map = dayIdMap[dayId];
+  if (!map) return sd;
+  const m = { sets: {}, weights: {}, effort: {}, protocol: sd.protocol || [], swaps: sd.swaps || {} };
+  Object.keys(sd.sets).forEach(k => {
+    const exId = map[k];
+    if (exId) m.sets[exId] = sd.sets[k];
+  });
+  if (sd.weights) {
+    Object.keys(sd.weights).forEach(k => {
+      if (k.includes('_')) {
+        const [ei, si] = k.split('_');
+        const exId = map[ei];
+        if (exId) m.weights[`${exId}_${si}`] = sd.weights[k];
+      } else {
+        const exId = map[k];
+        if (exId) m.weights[exId] = sd.weights[k];
+      }
+    });
+  }
+  if (sd.effort) {
+    Object.keys(sd.effort).forEach(k => {
+      const exId = map[k];
+      if (exId) m.effort[exId] = sd.effort[k];
+    });
+  }
+  return m;
+}
+
+/**
+ * Mutates `normalized` in place, migrating every day in every week of every
+ * program from legacy index-keyed state to id-keyed state where needed. The
+ * map is built per program because meso1 and meso2 have different days and
+ * exercise orders.
+ */
+function migrateLegacyState(normalized, programs) {
+  const idMap = buildLegacyIdMap(programs);
+  for (const [progId, prog] of Object.entries(normalized.programs)) {
+    const dayIdMap = idMap[progId] || {};
+    for (const weekData of Object.values(prog.weeks)) {
+      for (const dayId of Object.keys(weekData || {})) {
+        weekData[dayId] = migrateLegacyDayState(dayId, weekData[dayId], dayIdMap);
+      }
+    }
+  }
+  return normalized;
+}
+
 /** Least-squares slope of y over x; null with fewer than two points. */
 function slopeOf(points) {
   if (!points || points.length < 2) return null;
@@ -99,8 +190,8 @@ function perExercise(normalized) {
           // appeared on two days within the same week, this would push two
           // points at the same x and skew the slope. Not live today (no id
           // repeats across days in PROGRAMS), but worth knowing if that changes.
-          const weight = weights[exId];
-          if (typeof weight === 'number' && !Number.isNaN(weight)) {
+          const weight = toNumber(weights[exId]);
+          if (weight !== null) {
             s.weightPoints.push([w, weight]);
           }
           const eff = effort[exId];
@@ -268,9 +359,16 @@ function weekHasUnattempted(weekData) {
   return false;
 }
 
-/** Full analysis object for one export. */
-function analyze(raw, muscleMap, landmarks) {
+/**
+ * Full analysis object for one export. `allPrograms` is optional and, when
+ * supplied (the real `PROGRAMS` array from index.html), migrates any
+ * legacy index-keyed weeks before computing stats — see migrateLegacyState.
+ * Omitting it keeps existing callers/tests working unchanged, but any
+ * numeric-keyed weeks in `raw` will be misread as exercise ids.
+ */
+function analyze(raw, muscleMap, landmarks, allPrograms) {
   const normalized = normalizeExport(raw);
+  if (allPrograms) migrateLegacyState(normalized, allPrograms);
   const stats = perExercise(normalized);
   const volume = weeklyVolume(normalized, muscleMap);
   const programs = {};
@@ -389,8 +487,9 @@ function main(argv) {
   const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
   const muscleMap = require('./muscle-map.json');
   const landmarks = require('./volume-landmarks.json');
+  const { PROGRAMS } = require('./app-shim').loadApp();
   console.error(`Analyzing ${file}`);
-  console.log(renderReport(analyze(raw, muscleMap, landmarks)));
+  console.log(renderReport(analyze(raw, muscleMap, landmarks, PROGRAMS)));
 }
 
 if (require.main === module) main(process.argv);
@@ -398,6 +497,6 @@ if (require.main === module) main(process.argv);
 module.exports = {
   findNewestExport, normalizeExport, slopeOf, perExercise, EFFORT_LEVELS,
   resolveMuscles, weeklyVolume, countWeeksWithCompletedSets, flagExercises, flagVolume,
-  analyze, renderReport,
+  analyze, renderReport, toNumber, buildLegacyIdMap, migrateLegacyState,
   REJECT_SKIP_RATE, STALL_MIN_WEEKS, LOW_EFFORT_SHARE,
 };
