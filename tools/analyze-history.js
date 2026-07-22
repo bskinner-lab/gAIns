@@ -423,9 +423,45 @@ const REJECT_SKIP_RATE = 0.40;   // skipped more than 40% of sets actually attem
 const STALL_MIN_WEEKS  = 4;      // weeks of logged weight needed to call a stall
 const LOW_EFFORT_SHARE = 0.5;    // majority-low effort counts as under-stimulating
 
-/** Muscle profile for a performed exercise, falling back to the slot it filled. */
-function resolveMuscles(performedId, originalId, muscleMap) {
-  return muscleMap[performedId] || muscleMap[originalId] || {};
+/**
+ * Id -> inline `muscles` object, built once from `PROGRAMS`. Generated
+ * programs (meso3+) carry muscle credits directly on each exercise rather
+ * than in `muscle-map.json` — the map only ever covered the two hand-written
+ * programs' ids — so this is the authoritative, program-specific source
+ * `resolveMuscles` must consult first. `validateProgram` guarantees every
+ * PROGRAMS exercise with a `muscles` field has a non-empty one, so a plain
+ * presence check is enough; nothing here fabricates a profile for an
+ * exercise that doesn't carry one (e.g. a generated `alt_*` swap target).
+ * @returns {Record<string, Record<string, number>>}
+ */
+function buildInlineMuscleIndex(programs) {
+  const index = {};
+  for (const prog of programs || []) {
+    for (const day of prog.days || []) {
+      for (const ex of day.exercises || []) {
+        if (ex.muscles) index[ex.id] = ex.muscles;
+      }
+    }
+  }
+  return index;
+}
+
+/**
+ * Muscle profile for a performed exercise. Resolution order:
+ *  1. the performed exercise's OWN inline `muscles` (generated programs).
+ *  2. the ORIGINAL exercise's inline `muscles` — a generated alternative
+ *     swapped into a generated slot has no inline profile of its own, so it
+ *     inherits the slot's, same fallback shape as the map case below.
+ *  3. `muscle-map.json` for the performed id, then the original id — legacy
+ *     meso1/meso2 behavior, unchanged.
+ *  4. `{}` if none of the above has anything.
+ * `inlineMuscles` is optional so every existing caller that only ever dealt
+ * with legacy ids keeps working unchanged.
+ */
+function resolveMuscles(performedId, originalId, muscleMap, inlineMuscles) {
+  const inline = inlineMuscles || {};
+  return inline[performedId] || inline[originalId] ||
+    muscleMap[performedId] || muscleMap[originalId] || {};
 }
 
 /**
@@ -451,11 +487,16 @@ function countWeeksWithCompletedSets(weeksObj) {
  * Average weekly sets per muscle, per program. Completed sets only — skipped
  * work is exactly the thing we do not want to count as stimulus. Averaged
  * over weeks that actually had completed work, not every week key present —
- * see countWeeksWithCompletedSets.
+ * see countWeeksWithCompletedSets. `programs` (the real `PROGRAMS` from
+ * index.html) is optional and feeds `resolveMuscles`'s inline-profile lookup
+ * — see `buildInlineMuscleIndex`; omitting it just leaves generated
+ * programs' exercises to fall through to muscle-map.json (i.e. uncredited),
+ * same as before this parameter existed.
  */
-function weeklyVolume(normalized, muscleMap, exerciseAlternatives) {
+function weeklyVolume(normalized, muscleMap, exerciseAlternatives, programs) {
   const out = {};
   const altReverse = buildAltReverseMap(exerciseAlternatives);
+  const inlineMuscles = buildInlineMuscleIndex(programs);
   for (const [progId, prog] of Object.entries(normalized.programs)) {
     const totals = {};
     for (const weekData of Object.values(prog.weeks)) {
@@ -472,7 +513,7 @@ function weeklyVolume(normalized, muscleMap, exerciseAlternatives) {
           const arr = sets[slotKey];
           const done = arr.filter(v => v === true).length;
           if (!done) continue;
-          const muscles = resolveMuscles(slotKey, origId, muscleMap);
+          const muscles = resolveMuscles(slotKey, origId, muscleMap, inlineMuscles);
           for (const [muscle, credit] of Object.entries(muscles)) {
             totals[muscle] = (totals[muscle] || 0) + done * credit;
           }
@@ -573,13 +614,18 @@ function weekHasUnattempted(weekData) {
  * to migrating them" flag here. `exerciseAlternatives` is optional (the real
  * `EXERCISE_ALTERNATIVES` from index.html) — see `resolveDaySlots` for what
  * it buys: recognizing a stale prior-substitute key left behind by a swap
- * that has since been swapped away from again.
+ * that has since been swapped away from again. `appPrograms` (the real
+ * `PROGRAMS` from index.html — named to avoid colliding with this
+ * function's own `programs` output object) is likewise optional — see
+ * `weeklyVolume` and `buildInlineMuscleIndex` — and lets generated programs'
+ * inline muscle credits be counted instead of falling through to
+ * muscle-map.json.
  */
-function analyze(raw, muscleMap, landmarks, exerciseAlternatives) {
+function analyze(raw, muscleMap, landmarks, exerciseAlternatives, appPrograms) {
   const rawNormalized = normalizeExport(raw);
   const { normalized, excluded } = excludeLegacyState(rawNormalized);
   const stats = perExercise(normalized, exerciseAlternatives);
-  const volume = weeklyVolume(normalized, muscleMap, exerciseAlternatives);
+  const volume = weeklyVolume(normalized, muscleMap, exerciseAlternatives, appPrograms);
   const programs = {};
   const excludedReport = {};
   for (const progId of Object.keys(rawNormalized.programs)) {
@@ -750,16 +796,16 @@ function main(argv) {
   const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
   const muscleMap = require('./muscle-map.json');
   const landmarks = require('./volume-landmarks.json');
-  const { EXERCISE_ALTERNATIVES } = require('./app-shim').loadApp();
+  const { EXERCISE_ALTERNATIVES, PROGRAMS } = require('./app-shim').loadApp();
   console.error(`Analyzing ${file}`);
-  console.log(renderReport(analyze(raw, muscleMap, landmarks, EXERCISE_ALTERNATIVES)));
+  console.log(renderReport(analyze(raw, muscleMap, landmarks, EXERCISE_ALTERNATIVES, PROGRAMS)));
 }
 
 if (require.main === module) main(process.argv);
 
 module.exports = {
   findNewestExport, normalizeExport, slopeOf, perExercise, EFFORT_LEVELS,
-  resolveMuscles, weeklyVolume, countWeeksWithCompletedSets, flagExercises, flagVolume,
+  resolveMuscles, buildInlineMuscleIndex, weeklyVolume, countWeeksWithCompletedSets, flagExercises, flagVolume,
   analyze, renderReport, toNumber, buildLegacyIdMap, migrateLegacyState,
   isLegacyDayState, excludeLegacyState, buildAltReverseMap, resolveDaySlots,
   pickDominantVariant, dominantVariantOf,

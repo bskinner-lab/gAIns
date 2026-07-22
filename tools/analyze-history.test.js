@@ -113,6 +113,83 @@ test('weeklyVolume credits completed sets only', () => {
   assert.strictEqual(vol.side_delt || 0, 0);
 });
 
+// ── inline muscle credits (generated programs, meso3+) ──────────────────
+//
+// Generated programs carry their muscle credits directly on each exercise
+// (`ex.muscles`) rather than in muscle-map.json — the map only ever covered
+// meso1/meso2's hand-written ids. `resolveMuscles`/`weeklyVolume` must
+// consult the inline profile first, without disturbing legacy resolution.
+
+/** A one-day, one-week v3 export for `progId`, with the given day's `sets`. */
+function inlineExport(progId, dayId, sets) {
+  return { version: 3, programs: { [progId]: { currentWeek: 1, weeks: { 1: { [dayId]: { sets, weights: {}, effort: {}, protocol: [], swaps: {} } } } } } };
+}
+
+test('resolveMuscles uses the inline profile when there is no map entry', () => {
+  const inlineMuscles = { m3_incline_db_press: { chest: 1, front_delt: 0.5, triceps: 0.5 } };
+  assert.strictEqual(muscleMap.m3_incline_db_press, undefined);
+  assert.deepStrictEqual(
+    resolveMuscles('m3_incline_db_press', 'm3_incline_db_press', muscleMap, inlineMuscles),
+    { chest: 1, front_delt: 0.5, triceps: 0.5 }
+  );
+});
+
+test('resolveMuscles prefers the inline profile over a map entry for the same id', () => {
+  const clashId = 'incline_db_press'; // real meso1 id, real map entry
+  const inlineMuscles = { [clashId]: { chest: 0.42 } };
+  assert.notDeepStrictEqual(muscleMap[clashId], { chest: 0.42 }); // sanity: sources actually differ
+  assert.deepStrictEqual(
+    resolveMuscles(clashId, clashId, muscleMap, inlineMuscles),
+    { chest: 0.42 }
+  );
+});
+
+test('legacy meso1/meso2 exercises with no inline profile still resolve via muscle-map.json', () => {
+  // Regression guard: an empty/undefined inlineMuscles index must not break
+  // the map fallback that legacy programs depend on.
+  assert.deepStrictEqual(
+    resolveMuscles('incline_db_press', 'incline_db_press', muscleMap, {}),
+    muscleMap.incline_db_press
+  );
+  assert.deepStrictEqual(
+    resolveMuscles('alt_pec_deck', 'machine_chest_press', muscleMap, undefined),
+    muscleMap.machine_chest_press
+  );
+});
+
+test('weeklyVolume credits a generated program exercise via its inline muscles', () => {
+  const { PROGRAMS } = loadApp();
+  const raw = inlineExport('meso3', 'day1', {
+    m3_incline_db_press: [true, true, true, true],
+  });
+  const withoutPrograms = weeklyVolume(normalizeExport(raw), muscleMap).meso3;
+  assert.deepStrictEqual(withoutPrograms, {}); // old behavior: zero credit, nothing to resolve it
+  const withPrograms = weeklyVolume(normalizeExport(raw), muscleMap, undefined, PROGRAMS).meso3;
+  // m3_incline_db_press: chest 1, front_delt 0.5, triceps 0.5; 4 completed sets.
+  assert.ok(Math.abs(withPrograms.chest - 4) < 1e-9);
+  assert.ok(Math.abs(withPrograms.front_delt - 2) < 1e-9);
+  assert.ok(Math.abs(withPrograms.triceps - 2) < 1e-9);
+});
+
+test('a generated alternative swapped into a generated slot inherits the original exercise\'s inline profile', () => {
+  const { PROGRAMS, EXERCISE_ALTERNATIVES } = loadApp();
+  // m3_alt_pec_deck is a swap target for m3_machine_chest_press and carries no
+  // inline `muscles` of its own — same "generated alt has no profile" shape
+  // as the legacy alt_* case, just for a generated program.
+  const alt = EXERCISE_ALTERNATIVES.m3_machine_chest_press.find(a => a.id === 'm3_alt_pec_deck');
+  assert.ok(alt, 'fixture assumption: m3_alt_pec_deck exists as an alternative to m3_machine_chest_press');
+  const original = PROGRAMS.find(p => p.id === 'meso3').days.find(d => d.id === 'day1')
+    .exercises.find(e => e.id === 'm3_machine_chest_press');
+  assert.ok(original.muscles && Object.keys(original.muscles).length, 'fixture assumption: original has an inline profile');
+
+  const raw = inlineExport('meso3', 'day1', { m3_alt_pec_deck: [true, true, true] });
+  raw.programs.meso3.weeks['1'].day1.swaps = { m3_machine_chest_press: 'm3_alt_pec_deck' };
+  const vol = weeklyVolume(normalizeExport(raw), muscleMap, EXERCISE_ALTERNATIVES, PROGRAMS).meso3;
+  for (const [muscle, credit] of Object.entries(original.muscles)) {
+    assert.ok(Math.abs((vol[muscle] || 0) - 3 * credit) < 1e-9, `${muscle}: ${vol[muscle]} !== ${3 * credit}`);
+  }
+});
+
 test('flagExercises identifies rejected, substituted, stalled and under-stimulating work', () => {
   const stats = perExercise(normalizeExport(v3)).meso1;
   const flags = flagExercises(stats);
