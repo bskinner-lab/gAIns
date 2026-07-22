@@ -93,7 +93,7 @@
     {
       "id": 11,
       "subject": "Task 11: .claude/commands/newplan.md",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         3,
         6,
@@ -112,5 +112,5 @@
       "description": "**Goal:** Prove the whole pipeline works on the user's actual export, from `/newplan` through to the app rendering the new program.\n\n**USER-ORDERED GATE — NON-SKIPPABLE.** This task was requested by the user in the current conversation. It MUST NOT be closed by walking around it, by declaring it \"verified inline\", or by substituting a cheaper check. Close only after every item in `acceptanceCriteria` has been re-validated independently, with output captured.\n\n**Files:**\n- Modify: `index.html` (via `tools/insert-program.js` only — never by hand)\n- Create: `data/<user export>.json` (gitignored, supplied by the user)\n\n**Acceptance Criteria:**\n- [ ] `node tools/analyze-history.js` runs against the user's real export and exits 0\n- [ ] `/newplan` completes end-to-end and prints the approval brief\n- [ ] `node tools/insert-program.js newplan.json` exits 0 and reports `meso3`\n- [ ] `node tools/smoke-render.js index.html 2` exits 0\n- [ ] `node --test tools/*.test.js` passes with the new program in place\n- [ ] `git diff --stat index.html` shows additions only — no lines removed from meso1/meso2\n\n**Verify:** `node --test tools/*.test.js && node tools/smoke-render.js index.html 2 && git diff --stat index.html`\n\n**Steps:** Ask the user for a real export in `data/`; run the analyzer alone and sanity-check its numbers against what the user says about their training; run `/newplan` end-to-end; capture gate evidence; ask the user to confirm auto-select and intact meso1 history in a real browser; commit only once approved.\n\n```json:metadata\n{\"files\": [\"index.html\", \"data/\"], \"verifyCommand\": \"node --test tools/*.test.js && node tools/smoke-render.js index.html 2 && git diff --stat index.html\", \"acceptanceCriteria\": [\"analyze-history exits 0 on the real export\", \"/newplan prints the approval brief\", \"insert-program exits 0 reporting meso3\", \"smoke-render exits 0 for program index 2\", \"node --test tools/*.test.js passes\", \"git diff shows additions only, meso1/meso2 untouched\"], \"userGate\": true, \"tags\": [\"user-gate\"], \"modelTier\": \"standard\"}\n```"
     }
   ],
-  "lastUpdated": "2026-07-21"
+  "lastUpdated": "2026-07-22"
 }
