@@ -1,0 +1,71 @@
+{
+  "name": "Mesocycle 3",
+  "subtitle": "Test Fixture",
+  "totalWeeks": 2,
+  "days": [
+    {
+      "id": "day1",
+      "label": "Day 1",
+      "title": "PUSH",
+      "subtitle": "Chest · Triceps",
+      "note": "Fixture day.",
+      "protocol": true,
+      "exercises": [
+        {
+          "id": "mtest_incline_db_press", "name": "Incline DB Press", "sets": 4, "reps": "6–10",
+          "rpe": "7–9", "note": "Neutral grip.", "llp": false, "compound": true,
+          "rest": 150, "restLabel": "2–3 min",
+          "muscles": { "chest": 1.0, "front_delt": 0.5, "triceps": 0.5 }
+        },
+        {
+          "id": "mtest_rope_pushdown", "name": "Rope Pushdown", "sets": 3, "reps": "12–15",
+          "rpe": "8", "note": "Full extension.", "llp": false, "compound": false,
+          "rest": 75, "restLabel": "1–1.5 min",
+          "muscles": { "triceps": 1.0 }
+        }
+      ]
+    },
+    {
+      "id": "day2",
+      "label": "Day 2",
+      "title": "PULL",
+      "subtitle": "Lats · Biceps",
+      "note": "Fixture day.",
+      "protocol": true,
+      "exercises": [
+        {
+          "id": "mtest_neutral_pulldown", "name": "Neutral Pulldown", "sets": 4, "reps": "8–12",
+          "rpe": "7–9", "note": "Neutral grip.", "llp": false, "compound": true,
+          "rest": 135, "restLabel": "2–2.5 min",
+          "muscles": { "lats": 1.0, "biceps": 0.5 }
+        }
+      ]
+    }
+  ],
+  "protocolItems": [
+    "Band Pull-Aparts — 2×20 before any pressing",
+    "External Rotation (band/cable) — 2×15 per arm"
+  ],
+  "mesocycle": [
+    {
+      "weeks": "Week 1", "label": "Foundation", "rpe": "6.5–7.5",
+      "rir": "2–3 reps in reserve", "color": "#4eff91",
+      "points": ["Technique focus", "Baseline volume"]
+    },
+    {
+      "weeks": "Week 2", "label": "Deload", "rpe": "6–7",
+      "rir": "Feel fresh", "color": "#8b8bff",
+      "points": ["Volume down 50%"]
+    }
+  ],
+  "weekPhases": [
+    { "label": "Foundation", "rpe": "RPE 6.5–7.5", "llp": false, "color": "#4eff91" },
+    { "label": "Deload", "rpe": "RPE 6–7", "llp": false, "color": "#8b8bff" }
+  ],
+  "alternatives": {
+    "mtest_rope_pushdown": [
+      { "id": "mtest_alt_vbar_pushdown", "name": "V-Bar Pushdown", "note": "Straighter wrist path" },
+      { "id": "mtest_alt_skulls", "name": "Skull Crushers (EZ Bar)", "note": "More long-head stretch" }
+    ]
+  }
+}

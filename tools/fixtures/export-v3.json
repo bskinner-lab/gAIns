@@ -1,0 +1,53 @@
+{
+  "version": 3,
+  "currentProgram": 0,
+  "programs": {
+    "meso1": {
+      "currentWeek": 3,
+      "weeks": {
+        "1": {
+          "day1": {
+            "sets": {
+              "incline_db_press": [true, true, true, true],
+              "machine_chest_press": [true, true, true],
+              "cable_lat_raise_push": ["skipped", "skipped", "skipped"],
+              "rope_pushdown": [true, true, true]
+            },
+            "weights": { "incline_db_press": 60, "machine_chest_press": 100, "rope_pushdown": 40 },
+            "effort": { "incline_db_press": "medium", "rope_pushdown": "low" },
+            "protocol": [],
+            "swaps": {}
+          }
+        },
+        "2": {
+          "day1": {
+            "sets": {
+              "incline_db_press": [true, true, true, true],
+              "machine_chest_press": [true, true, true],
+              "cable_lat_raise_push": ["skipped", "skipped", "skipped"],
+              "rope_pushdown": [true, true, true]
+            },
+            "weights": { "incline_db_press": 65, "machine_chest_press": 100, "rope_pushdown": 40 },
+            "effort": { "incline_db_press": "medium", "rope_pushdown": "low" },
+            "protocol": [],
+            "swaps": { "machine_chest_press": "alt_pec_deck" }
+          }
+        },
+        "3": {
+          "day1": {
+            "sets": {
+              "incline_db_press": [true, true, true, true],
+              "machine_chest_press": [true, true, true],
+              "cable_lat_raise_push": ["skipped", "skipped", false],
+              "rope_pushdown": [true, true, true]
+            },
+            "weights": { "incline_db_press": 70, "machine_chest_press": 100, "rope_pushdown": 40 },
+            "effort": { "incline_db_press": "high", "rope_pushdown": "low" },
+            "protocol": [],
+            "swaps": { "machine_chest_press": "alt_pec_deck" }
+          }
+        }
+      }
+    }
+  }
+}
