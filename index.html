@@ -172,7 +172,7 @@ body {
 .grid-r.active .n { color: var(--accent); font-weight: 600; }
 .grid-r.done .n { color: var(--muted-2); }
 .grid-r .last { color: var(--muted-2); }
-.cell-today { padding: 5px 8px 5px 0; text-align: right; }
+.cell-today { padding: 5px 8px 5px 0; display: flex; align-items: center; justify-content: flex-end; min-height: 44px; }
 .log-btn { display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: var(--on-dark); font-weight: 600; font-size: 11px; letter-spacing: 1px; min-height: 32px; padding: 0 14px; border-radius: 4px; cursor: pointer; border: none; }
 .t-done { color: var(--ink); font-weight: 600; cursor: pointer; }
 .t-skip { color: var(--muted); text-decoration: line-through; cursor: pointer; }
@@ -2047,16 +2047,16 @@ function exercisesHTML(day) {
       const setW = state[day.id].weights[`${ex.id}_${i}`];
       const shown = setW != null ? setW : (curW != null ? curW : '');
       let cell;
-      if (isActive) cell = `<button class="log-btn" data-act="log">LOG</button>`;
-      else if (v === true) cell = `<span class="t-done" data-act="undo" data-ex="${ex.id}" data-i="${i}">${esc(shown)} ●</span>`;
-      else if (v === 'skipped') cell = `<span class="t-skip" data-act="skipset" data-ex="${ex.id}" data-i="${i}">SKIP</span>`;
-      else cell = `<span class="t-pend" data-act="skipset" data-ex="${ex.id}" data-i="${i}">skip →</span>`;
+      if (isActive) cell = `<div class="cell-today"><button class="log-btn" data-act="log">LOG</button></div>`;
+      else if (v === true) cell = `<div class="cell-today t-done" data-act="undo" data-ex="${ex.id}" data-i="${i}">${esc(shown)} ●</div>`;
+      else if (v === 'skipped') cell = `<div class="cell-today t-skip" data-act="skipset" data-ex="${ex.id}" data-i="${i}">SKIP</div>`;
+      else cell = `<div class="cell-today t-pend" data-act="skipset" data-ex="${ex.id}" data-i="${i}">skip →</div>`;
       const reps = ex.reps + (ex.llp && i === arr.length - 1 && !/LLP/.test(ex.reps) ? ' +LLP' : '');
       return `<div class="grid-r${isActive ? ' active' : ''}${v === true ? ' done' : ''}">
         <span class="n">${i + 1}</span>
         <span class="last">${prior && prior.weight != null ? esc(prior.weight) : '—'}</span>
         <span>${esc(reps)}</span>
-        <div class="cell-today">${cell}</div></div>`;
+        ${cell}</div>`;
     }).join('');
 
     const effort = ['low', 'medium', 'high'].map(l => {
