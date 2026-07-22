@@ -2046,12 +2046,36 @@ function saveProgram() {
 
 const SEEN_PROGRAMS_KEY = 'hypertrophy_seen_programs';
 
+// Has this program ever had a set actually completed, in any week? Used only
+// by the first-run heuristic below. A state key existing is not enough —
+// initState()/saveState() write a blob the moment a program is merely
+// opened, all-`false`/`'skipped'` entries and all, so key-existence alone
+// would mean "has been viewed," not "has been trained." tools/analyze-history.js
+// hit the same trap (see countWeeksWithCompletedSets) and fixed it the same
+// way: only a `true` in some day's sets array counts as real training.
+function programHasLoggedData(program) {
+  for (let w = 1; w <= program.totalWeeks; w++) {
+    try {
+      const raw = JSON.parse(localStorage.getItem(`${STORAGE_KEY}_${program.id}_w${w}`) || '{}');
+      const hasCompleted = Object.values(raw || {}).some(dayData =>
+        Object.values((dayData && dayData.sets) || {}).some(arr => Array.isArray(arr) && arr.some(v => v === true))
+      );
+      if (hasCompleted) return true;
+    } catch(e) {}
+  }
+  return false;
+}
+
 // Jump to a newly added program the first time it appears. On a fresh install we
 // only record what exists, so we never override a deliberate selection.
 function autoSelectNewProgram() {
   let seen = null;
   try { seen = JSON.parse(localStorage.getItem(SEEN_PROGRAMS_KEY)); } catch(e) {}
   const ids = PROGRAMS.map(p => p.id);
+  // The seen key never existed for this user (fresh install, or — the
+  // rollout-gap case — auto-select shipped in the same release as a new
+  // program, so it was never around to record anything before now).
+  const firstRun = seen === null;
   // An array sharing no ids with the current programs is suspect data (corrupt,
   // wiped, or foreign), not proof that every program is new — treat it like a
   // fresh install rather than let it clobber a deliberate selection.
@@ -2061,12 +2085,36 @@ function autoSelectNewProgram() {
   // Only switch if we could actually record having seen it — otherwise the
   // stale seen-list would trigger the same "unseen" verdict on every future
   // load, permanently overriding any manual switch back.
-  if (trustworthy && recorded) {
+  if (!recorded) return;
+
+  if (trustworthy) {
     const unseenIdx = PROGRAMS.findIndex(p => !seen.includes(p.id));
     if (unseenIdx !== -1) {
       currentProgramIdx = unseenIdx;
       saveProgram();
     }
+    return;
+  }
+
+  // Parseable but shares no ids with the current programs: suspect data, not
+  // a genuine first run — leave it alone, same as before.
+  if (!firstRun) return;
+
+  // First run: there's no seen-list to compare against, so the trusted path
+  // above can't tell us anything. Generated programs are always appended, so
+  // the LAST program is the only sensible auto-select target — jumping to
+  // "the first unseen" here could yank a user backwards into a mid-list
+  // program that predates this feature just as much as the rest. Only select
+  // it if it has no logged training data of its own (a program the user has
+  // already trained is not new to them, whatever the key says) AND some
+  // other program does have data (otherwise this is a genuinely fresh
+  // install, and there's nothing to distinguish "new" from "the default").
+  const lastIdx = PROGRAMS.length - 1;
+  const lastHasData = programHasLoggedData(PROGRAMS[lastIdx]);
+  const anyOtherHasData = PROGRAMS.slice(0, lastIdx).some(programHasLoggedData);
+  if (!lastHasData && anyOtherHasData) {
+    currentProgramIdx = lastIdx;
+    saveProgram();
   }
 }
 
