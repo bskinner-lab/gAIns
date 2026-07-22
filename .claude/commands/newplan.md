@@ -138,6 +138,26 @@ Apply, in this order:
      4. RPE/effort targets per phase (already required by `weekPhases`) are
         the complementary lever — rising RPE across phases is expected
         alongside the points-driven set deltas, not instead of them.
+
+     **Worked example — side delts** (landmarks: MEV 8, MAV 16–24, MRV 26).
+     Suppose the block trains them on three days, with baseline `sets` of
+     4 + 3 + 3 = **10 weekly sets in week 1** — just above MEV, correct for
+     Foundation. Then:
+
+     | Phase | Points entry | Delta | Running weekly sets |
+     |---|---|---|---|
+     | Foundation (wk 1–2) | — | — | 10 |
+     | Overload (wk 3–4) | `'+2 sets to: lateral delts'` | +2 | 12 |
+     | High Stimulus (wk 5–6) | `'+2 sets to: lateral delts, rear delts'` | +2 | 14 |
+     | Overreach (wk 7) | `'+2 sets to weak points (lateral delts)'` | +2 | 16 |
+     | Deload (wk 8) | `'Volume ↓ 50–60%'` | −50% | ~8 |
+
+     Peak is 16 — inside MAV (16–24), clear of MRV (26). That is the
+     arithmetic you must be able to show for **every** muscle in the brief:
+     week-1 baseline, each delta that names it, and the peak-week total
+     checked against that muscle's MAV and MRV. If a muscle's peak lands
+     above MRV, cut deltas until it doesn't. If it never reaches MAV-low, the
+     block under-delivers and the deltas are too timid.
    - Emphasis: "bring up a lagging area" pushes that muscle's target toward
      MAV-high (via a larger points-driven delta, never past MRV);
      "strength-leaning" shifts rep ranges down and RPE targets slightly lower
@@ -170,6 +190,8 @@ Concretely, `validateProgram` will reject the file if:
 - Any of `name, subtitle, totalWeeks, days, protocolItems, mesocycle,
   weekPhases` is missing.
 - `totalWeeks` isn't a positive integer, or `weekPhases.length !== totalWeeks`.
+- Any `weekPhases` entry is missing `label, rpe, llp, color`.
+- Any `mesocycle` entry is missing `weeks, label, rpe, rir, color, points`.
 - Any day is missing `id, label, title, subtitle, exercises`, has a duplicate
   `id` within the program, or has zero exercises.
 - Any exercise is missing `id, name, sets, reps, rpe, note, llp, compound,
@@ -187,6 +209,24 @@ Concretely, `validateProgram` will reject the file if:
   validation — it's good program design (the analyzer's *substituted* bucket
   above exists precisely because users swap), and the app's swap button reads
   straight from this data.
+
+  **`alternatives` is a single top-level object keyed by the original exercise
+  id — not a field on each exercise.** This is the easiest mistake to make
+  here, and the error you get if you make it (`program must define at least
+  one exercise alternative`) points at the wrong problem: it will read as
+  "add more alternatives" when the real fix is "move them to the top level."
+  The shape is:
+
+  ```json
+  "alternatives": {
+    "m3_rope_pushdown": [
+      { "id": "m3_alt_vbar_pushdown", "name": "V-Bar Pushdown", "note": "Straighter wrist path" },
+      { "id": "m3_alt_skulls", "name": "Skull Crushers (EZ Bar)", "note": "More long-head stretch" }
+    ]
+  }
+  ```
+
+  Every key must name an exercise that actually exists in the program.
 
 Do **not** include a top-level `id` field — `insert-program.js` assigns the
 next free `mesoN`. Prefix every new exercise id (and every alternative id)
