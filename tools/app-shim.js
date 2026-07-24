@@ -180,6 +180,12 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       '\n;({ PROGRAMS, EXERCISE_ALTERNATIVES, currentWeek, state, view,' +
       ' render, switchProgram, boot, activeSet, logActiveSet, skipSet, curDay,' +
       ' getExerciseHistory,' +
+      // commitEdit is a forward reference: it does not exist in index.html yet
+      // (Task 7 adds it). `typeof commitEdit` is legal even on an undeclared
+      // identifier — it evaluates to "undefined" — whereas a bare `commitEdit`
+      // reference here would throw ReferenceError at eval time and take down
+      // every test in the suite. Once index.html defines it, this getter can
+      // collapse to a plain destructure alongside the others above.
       ' get commitEdit() { return typeof commitEdit === "function" ? commitEdit : undefined; },' +
       ' get currentProgramIdx() { return currentProgramIdx; },' +
       ' get DAYS() { return DAYS; },' +

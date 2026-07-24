@@ -153,6 +153,19 @@ test('loadApp fully restores globals when the script block is missing', () => {
   }
 });
 
+test('loadApp fully restores globals when the script has a syntax error', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-shim-'));
+  const htmlPath = path.join(dir, 'bad-script.html');
+  fs.writeFileSync(htmlPath, '<script>const PROGRAMS = [ this is not valid js !!!</script>');
+
+  const before = snapshotGlobals();
+  assert.throws(() => loadApp({ htmlPath }));
+  const after = snapshotGlobals();
+  for (const k of GLOBAL_KEYS) {
+    assert.deepStrictEqual(after[k], before[k], `global.${k} not restored`);
+  }
+});
+
 test('the shim exposes the day-logging internals tests need', () => {
   withApp({}, app => {
     for (const name of ['activeSet', 'logActiveSet', 'skipSet', 'curDay', 'getExerciseHistory']) {
@@ -170,20 +183,8 @@ test('the shim exposes the day-logging internals tests need', () => {
 
 test('the element stub supports select() for inline inputs', () => {
   withApp({}, app => {
-    const el = app.elements.get('bottombar') || { select: null };
-    assert.doesNotThrow(() => { if (el.select) el.select(); });
+    const el = app.elements.get('bottombar');
+    assert.strictEqual(typeof el.select, 'function');
+    assert.doesNotThrow(() => el.select());
   });
-});
-
-test('loadApp fully restores globals when the script has a syntax error', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-shim-'));
-  const htmlPath = path.join(dir, 'bad-script.html');
-  fs.writeFileSync(htmlPath, '<script>const PROGRAMS = [ this is not valid js !!!</script>');
-
-  const before = snapshotGlobals();
-  assert.throws(() => loadApp({ htmlPath }));
-  const after = snapshotGlobals();
-  for (const k of GLOBAL_KEYS) {
-    assert.deepStrictEqual(after[k], before[k], `global.${k} not restored`);
-  }
 });
