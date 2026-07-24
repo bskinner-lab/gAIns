@@ -2151,7 +2151,9 @@ function resolveExercise(dayId, ex) {
   if (!altId) return ex;
   const alts = EXERCISE_ALTERNATIVES[ex.id];
   if (!alts) return ex;
-  return alts.find(a => a.id === altId) || ex;
+  const alt = alts.find(a => a.id === altId);
+  if (!alt) return ex;
+  return { ...ex, ...alt };
 }
 
 function syncProgramGlobals() {
