@@ -2223,6 +2223,7 @@ function initState() {
     state[day.id] = {
       sets: {},
       weights: savedDay.weights || {},
+      reps: savedDay.reps || {},
       effort: savedDay.effort || {},
       protocol: savedDay.protocol || [],
       swaps: savedDay.swaps || {}
@@ -2281,9 +2282,21 @@ function getExerciseHistory(dayId, exId) {
     if (!dayState) continue;
     const rawW = (dayState.weights || {})[exId];
     const weight = (rawW === '' || rawW == null) ? null : Number(rawW);
+    const rawR = (dayState.reps || {})[exId];
+    const reps = (rawR === '' || rawR == null) ? null : Number(rawR);
     const eff = (dayState.effort || {})[exId] || '';
-    if (weight == null && !eff) continue;
-    out.push({ week: w, weight, effort: eff });
+    // Per-set reps, keyed by set index. The suffix must be all digits: a bare
+    // startsWith(exId + '_') would credit `m3_squat_pause_0` to `m3_squat`,
+    // silently mixing two different exercises' reps together.
+    const setReps = {};
+    const repsMap = dayState.reps || {};
+    Object.keys(repsMap).forEach(k => {
+      if (!k.startsWith(exId + '_')) return;
+      const suffix = k.slice(exId.length + 1);
+      if (/^\d+$/.test(suffix)) setReps[suffix] = Number(repsMap[k]);
+    });
+    if (weight == null && reps == null && !eff) continue;
+    out.push({ week: w, weight, reps, effort: eff, setReps });
   }
   return out;
 }
@@ -3195,6 +3208,7 @@ function exercisesHTML(day) {
     const allDone = (dh + sk) === ex.sets;
     const prior = priorWeekEntry(day.id, ex.id);
     const curW = state[day.id].weights[ex.id];
+    const curR = state[day.id].reps[ex.id];
 
     let tags = `<span class="tag">${ex.sets}×${esc(ex.reps)}</span>`
       + `<span class="tag ink" data-act="tip" data-t="RPE">RPE ${esc(ex.rpe)}</span>`;
@@ -3220,16 +3234,24 @@ function exercisesHTML(day) {
       const isActive = i === activeI;
       const setW = state[day.id].weights[`${ex.id}_${i}`];
       const shown = setW != null ? setW : (curW != null ? curW : '');
+      // Reps actually performed for this set: per-set value first, then the
+      // exercise-level value, else null (no × suffix). Kept separate from
+      // `prescribedReps` below, which is the target range from the program data.
+      const setPerformedR = state[day.id].reps[`${ex.id}_${i}`];
+      const performedR = setPerformedR != null ? setPerformedR : (curR != null ? curR : null);
       let cell;
       if (isActive) cell = `<button class="log-btn" data-act="log">LOG</button>`;
-      else if (v === true) cell = `<span class="t-done" data-act="undo" data-ex="${ex.id}" data-i="${i}">${esc(shown)} ●</span>`;
+      else if (v === true) cell = `<span class="t-done" data-act="undo" data-ex="${ex.id}" data-i="${i}">${esc(shown)}${performedR != null ? ' × ' + esc(performedR) : ''} ●</span>`;
       else if (v === 'skipped') cell = `<span class="t-skip" data-act="skipset" data-ex="${ex.id}" data-i="${i}">SKIP</span>`;
       else cell = `<span class="t-pend" data-act="skipset" data-ex="${ex.id}" data-i="${i}">skip →</span>`;
-      const reps = ex.reps + (ex.llp && i === arr.length - 1 && !/LLP/.test(ex.reps) ? ' +LLP' : '');
+      const prescribedReps = ex.reps + (ex.llp && i === arr.length - 1 && !/LLP/.test(ex.reps) ? ' +LLP' : '');
+      // Prior week's performed reps for this set index, same fallback order.
+      const priorSetR = prior && prior.setReps ? prior.setReps[i] : null;
+      const priorPerformedR = priorSetR != null ? priorSetR : (prior && prior.reps != null ? prior.reps : null);
       return `<div class="grid-r${isActive ? ' active' : ''}${v === true ? ' done' : ''}">
         <span class="n">${i + 1}</span>
-        <span class="last">${prior && prior.weight != null ? esc(prior.weight) : '—'}</span>
-        <span>${esc(reps)}</span>
+        <span class="last">${prior && prior.weight != null ? esc(prior.weight) + (priorPerformedR != null ? ' × ' + esc(priorPerformedR) : '') : '—'}</span>
+        <span>${esc(prescribedReps)}</span>
         <div class="cell-today">${cell}</div></div>`;
     }).join('');
 
