@@ -279,6 +279,161 @@ test('15. the bottom bar renders both steppers and the LOG SET button', () => {
   });
 });
 
+test('16. tapping a value opens an inline field and freezes the bar', () => {
+  const seed = seededStorage();
+  withApp({ storage: seed.storage }, (app) => {
+    click(app, { day: seed.dayId });
+    app.render();
+    click(app, { act: 'editw' });
+    app.render();
+    const html = app.elements.get('bottombar').innerHTML;
+    assert.match(html, /id="editfield"/);
+    assert.match(html, /inputmode="decimal"/);
+    // Mutate state directly (bypassing commitEdit) so an unfrozen re-render
+    // WOULD produce different markup — this is what gives the freeze
+    // assertion below actual teeth, rather than two renders of unchanged
+    // state trivially matching by coincidence.
+    app.view.pendW = 999;
+    app.render();
+    app.render();
+    assert.strictEqual(app.elements.get('bottombar').innerHTML, html);
+  });
+});
+
+test('17. the reps field uses inputmode="numeric"', () => {
+  const seed = seededStorage();
+  withApp({ storage: seed.storage }, (app) => {
+    click(app, { day: seed.dayId });
+    app.render();
+    click(app, { act: 'editr' });
+    app.render();
+    const html = app.elements.get('bottombar').innerHTML;
+    assert.match(html, /id="editfield"/);
+    assert.match(html, /inputmode="numeric"/);
+  });
+});
+
+test('18. committing a typed weight updates pendW, clears editing, and unfreezes', () => {
+  const seed = seededStorage();
+  withApp({ storage: seed.storage }, (app) => {
+    click(app, { day: seed.dayId });
+    app.render();
+    click(app, { act: 'editw' });
+    app.render();
+    app.commitEdit('185');
+    assert.strictEqual(app.view.pendW, 185);
+    assert.strictEqual(app.view.editing, null);
+    const html = app.elements.get('bottombar').innerHTML;
+    assert.doesNotMatch(html, /id="editfield"/);
+  });
+});
+
+test('19. committing a typed reps count updates pendR as an integer', () => {
+  const seed = seededStorage();
+  withApp({ storage: seed.storage }, (app) => {
+    click(app, { day: seed.dayId });
+    app.render();
+    click(app, { act: 'editr' });
+    app.render();
+    app.commitEdit('12');
+    assert.strictEqual(app.view.pendR, 12);
+    assert.strictEqual(app.view.editing, null);
+  });
+});
+
+test('20. invalid and empty input leave the pending value untouched', () => {
+  const seed = seededStorage();
+  withApp({ storage: seed.storage }, (app) => {
+    click(app, { day: seed.dayId });
+    app.render();
+    click(app, { act: 'editw' });
+    app.render();
+    const before = app.view.pendW;
+    app.commitEdit('abc');
+    assert.strictEqual(app.view.pendW, before);
+    assert.strictEqual(app.view.editing, null);
+
+    click(app, { act: 'editw' });
+    app.render();
+    app.commitEdit('   ');
+    assert.strictEqual(app.view.pendW, before);
+    assert.strictEqual(app.view.editing, null);
+  });
+});
+
+test('21. negative input clamps to zero', () => {
+  const seed = seededStorage();
+  withApp({ storage: seed.storage }, (app) => {
+    click(app, { day: seed.dayId });
+    app.render();
+    click(app, { act: 'editw' });
+    app.render();
+    app.commitEdit('-50');
+    assert.strictEqual(app.view.pendW, 0);
+
+    click(app, { act: 'editr' });
+    app.render();
+    app.commitEdit('-3');
+    assert.strictEqual(app.view.pendR, 0);
+  });
+});
+
+test('22. a second commitEdit on the same edit is a no-op', () => {
+  const seed = seededStorage();
+  withApp({ storage: seed.storage }, (app) => {
+    click(app, { day: seed.dayId });
+    app.render();
+    click(app, { act: 'editw' });
+    app.render();
+    const priorR = app.view.pendR;
+    app.commitEdit('185');
+    assert.strictEqual(app.view.pendW, 185);
+    app.commitEdit('999');
+    assert.strictEqual(app.view.pendW, 185);
+    // A missing/removed guard falls through to the reps branch once
+    // view.editing is already null (field becomes null, which fails the 'w'
+    // check) — so a broken guard corrupts pendR here, not pendW. Assert both
+    // stay untouched, or this test can pass against a broken guard.
+    assert.strictEqual(app.view.pendR, priorR);
+  });
+});
+
+test('23. any other action closes the editor', () => {
+  const seed = seededStorage();
+  const others = [{ act: 'tip', t: 'RPE' }, { act: 'view', v: 'plan' }, { act: 'log' }];
+  others.forEach(dataset => {
+    withApp({ storage: seed.storage }, (app) => {
+      click(app, { day: seed.dayId });
+      app.render();
+      click(app, { act: 'editw' });
+      app.render();
+      assert.strictEqual(app.view.editing, 'w');
+      click(app, dataset);
+      assert.strictEqual(app.view.editing, null);
+    });
+  });
+});
+
+test('24. the field renders on the very first render after editing is set (would fail under a getElementById-based freeze guard)', () => {
+  const seed = seededStorage();
+  withApp({ storage: seed.storage }, (app) => {
+    click(app, { day: seed.dayId });
+    app.render();
+    click(app, { act: 'editw' });
+    // A single, first render() call after setting view.editing. A guard based
+    // on `document.getElementById('editfield')` would find the shim's
+    // auto-vivified stub (which is truthy even before the input markup ever
+    // existed) and freeze the bar before the field is ever emitted, so this
+    // render would leave the old step display in place with no editfield in
+    // the markup. The markup-based guard has nothing to freeze on yet (no
+    // prior render contained an editfield), so it renders normally and the
+    // field appears.
+    app.render();
+    const html = app.elements.get('bottombar').innerHTML;
+    assert.match(html, /id="editfield"/);
+  });
+});
+
 test('8. a logged set without reps renders weight only', () => {
   const { PROGRAMS } = loadApp();
   const prog = PROGRAMS[0];

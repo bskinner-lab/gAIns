@@ -207,6 +207,7 @@ body {
 .step-v { text-align: center; min-width: 0; flex: 1; }
 .step-v div:first-child { font-family: var(--font-mono); font-size: 16px; font-weight: 600; }
 .step-v div:last-child { font-family: var(--font-mono); font-size: 7px; color: rgba(242,239,232,.4); }
+.step-in { width: 100%; min-width: 0; box-sizing: border-box; background: var(--bar-btn); border: 1px solid var(--accent); border-radius: 6px; color: var(--on-dark); font-family: var(--font-mono); font-size: 16px; font-weight: 600; text-align: center; padding: 3px 2px; }
 .log-go { width: 100%; background: var(--accent); border: none; border-radius: 8px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 1px; height: 52px; cursor: pointer; }
 .done-row { display: flex; align-items: center; justify-content: space-between; padding: 15px 2px 17px; }
 .done-t { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: 1.5px; color: var(--accent); }
@@ -2988,9 +2989,12 @@ function advanceToCurrentWeek() {
 const view = { name: 'day', dayId: null, openPhase: 2, tip: null, confirm: null, swap: null,
                importMsg: '', importOk: true, sessionStart: Date.now(), now: Date.now(),
                // pendR's "not set" sentinel is '' (not null, unlike most of this
-               // codebase's == null convention) because Task 7 feeds it straight
-               // into an <input>'s value, where '' is the native empty state.
+               // codebase's == null convention) because it feeds straight into
+               // an <input>'s value, where '' is the native empty state.
                pendW: 0, pendR: '', pendKey: '', latestPr: null, selectedExId: null,
+               // Which pending value (if any) is currently a live inline
+               // <input> in the bottom bar: null, 'w' (weight), or 'r' (reps).
+               editing: null,
                restEnd: null, restTotal: 0, restInfo: '', restNext: '', restRec: '', restMinimized: false };
 
 function esc(s) {
@@ -3465,8 +3469,47 @@ function syncPending(day, act) {
     : (prior && prior.reps != null ? prior.reps : lowRep(act.ex.reps));
 }
 
+// Commit an inline numeric edit. Guarded on `view.editing` because a blur
+// fires BOTH `change` and `focusout`, so this runs twice for one edit — the
+// second call must do nothing rather than re-apply a stale field value.
+function commitEdit(raw) {
+  if (!view.editing) return;
+  const field = view.editing;
+  view.editing = null;
+  const s = String(raw == null ? '' : raw).trim();
+  if (s !== '') {
+    if (field === 'w') {
+      const n = parseFloat(s);
+      if (!isNaN(n)) view.pendW = Math.max(0, n);
+    } else {
+      const n = parseInt(s, 10);
+      if (!isNaN(n)) view.pendR = Math.max(0, n);
+    }
+  }
+  render();
+}
+
+document.addEventListener('change', e => {
+  if (e.target && e.target.id === 'editfield') commitEdit(e.target.value);
+});
+document.addEventListener('focusout', e => {
+  if (e.target && e.target.id === 'editfield') commitEdit(e.target.value);
+});
+document.addEventListener('keydown', e => {
+  if (!view.editing || !e.target || e.target.id !== 'editfield') return;
+  if (e.key === 'Enter') { e.preventDefault(); commitEdit(e.target.value); }
+  else if (e.key === 'Escape') { view.editing = null; render(); }
+});
+
 function renderBottomBar() {
   const el = document.getElementById('bottombar');
+  // A 500ms interval rebuilds this whole bar. Once the inline field is on
+  // screen, leave the DOM alone or the caret and any partially-typed value
+  // die twice a second. Checking the markup (not getElementById) keeps this
+  // correct under the headless test shim, whose getElementById never returns
+  // null. Only the rest pill's DISPLAY pauses; the timer is timestamp-based
+  // (view.restEnd vs Date.now()), so it catches up on the next real render.
+  if (view.editing && el.innerHTML.includes('id="editfield"')) return;
   if (view.name !== 'day') { el.innerHTML = ''; return; }
   const day = curDay(), act = activeSet(day), s = dayStats(day.id);
 
@@ -3498,12 +3541,16 @@ function renderBottomBar() {
         <div class="log-steps">
           <div class="stepper">
             <button class="step-b" data-act="w-">−</button>
-            <div class="step-v"><div>${view.pendW % 1 ? view.pendW.toFixed(1) : view.pendW}</div><div>LB</div></div>
+            <div class="step-v" data-act="editw">${view.editing === 'w'
+              ? `<input id="editfield" class="step-in" type="text" inputmode="decimal" value="${esc(view.pendW)}">`
+              : `<div>${view.pendW % 1 ? view.pendW.toFixed(1) : view.pendW}</div>`}<div>LB</div></div>
             <button class="step-b" data-act="w+">+</button>
           </div>
           <div class="stepper">
             <button class="step-b" data-act="r-">−</button>
-            <div class="step-v"><div>${view.pendR === '' ? '—' : view.pendR}</div><div>REPS</div></div>
+            <div class="step-v" data-act="editr">${view.editing === 'r'
+              ? `<input id="editfield" class="step-in" type="text" inputmode="numeric" value="${esc(view.pendR)}">`
+              : `<div>${view.pendR === '' ? '—' : view.pendR}</div>`}<div>REPS</div></div>
             <button class="step-b" data-act="r+">+</button>
           </div>
         </div>
@@ -3517,6 +3564,10 @@ function renderBottomBar() {
   }
 
   el.innerHTML = `<div class="bar">${pill}${body}</div>`;
+  if (view.editing) {
+    const f = document.getElementById('editfield');
+    if (f) { f.focus(); if (f.select) f.select(); }
+  }
 }
 const REST_PRESETS = [60, 90, 120, 180];
 const RING_C = 527.8;
@@ -3633,6 +3684,9 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
   if (!el) return;
   const act = el.dataset.act;
+  // One place to close the inline editor. Doing it per-branch would eventually
+  // miss one and leave the bar frozen behind an overlay showing a stale set.
+  if (act !== 'editw' && act !== 'editr') view.editing = null;
   if (act === 'prog')     { switchProgram(Number(el.dataset.i)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.selectedExId = null; }
   else if (act === 'wk')  { changeWeek(Number(el.dataset.d)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.restEnd = null; view.selectedExId = null; }
   else if (act === 'day') { view.name = 'day'; view.dayId = el.dataset.id; view.pendKey = ''; view.selectedExId = null; }
@@ -3665,6 +3719,8 @@ document.addEventListener('click', e => {
   else if (act === 'w+') { view.pendW = view.pendW + 2.5; }
   else if (act === 'r-') { view.pendR = Math.max(0, (Number(view.pendR) || 0) - 1); }
   else if (act === 'r+') { view.pendR = (Number(view.pendR) || 0) + 1; }
+  else if (act === 'editw') { view.editing = 'w'; }
+  else if (act === 'editr') { view.editing = 'r'; }
   else if (act === 'restexpand') { view.restMinimized = false; }
   else if (act === 'restskip')   { view.restEnd = null; view.restMinimized = false; }
   else if (act === 'rest+')      { addRest(30); }
