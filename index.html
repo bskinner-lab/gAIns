@@ -142,6 +142,9 @@ body {
 .ex-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .ex-name { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: .5px; min-width: 0; }
 .ex-name.done { color: var(--muted-2); }
+.ex.sel { box-shadow: inset 3px 0 0 var(--accent); }
+.ex.sel .ex-name { color: var(--accent); }
+.ex-top.pick { cursor: pointer; }
 .ex-right { display: flex; align-items: center; gap: 8px; flex: none; }
 .swap { border: 1px solid var(--border); background: transparent; color: var(--muted-2); border-radius: 3px; width: 26px; height: 26px; cursor: pointer; font-size: 13px; }
 .swap.on { border-color: var(--accent); color: var(--accent); background: rgba(227,79,30,.1); }
@@ -197,13 +200,15 @@ body {
 .log-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .log-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .log-set { font-family: var(--font-mono); font-size: 8px; letter-spacing: 1px; color: rgba(242,239,232,.45); flex: none; }
-.log-ctl { display: flex; align-items: stretch; gap: 10px; }
-.stepper { display: flex; align-items: center; gap: 6px; flex: none; }
-.step-b { width: 44px; height: 52px; background: var(--bar-btn); border: 1px solid var(--bar-edge); border-radius: 8px; color: var(--on-dark); font-size: 20px; cursor: pointer; }
-.step-v { text-align: center; min-width: 50px; }
+.log-ctl { display: flex; flex-direction: column; gap: 8px; }
+.log-steps { display: flex; gap: 10px; }
+.stepper { display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; min-width: 0; }
+.step-b { width: 44px; height: 52px; background: var(--bar-btn); border: 1px solid var(--bar-edge); border-radius: 8px; color: var(--on-dark); font-size: 20px; cursor: pointer; flex: none; }
+.step-v { text-align: center; min-width: 0; flex: 1; }
 .step-v div:first-child { font-family: var(--font-mono); font-size: 16px; font-weight: 600; }
 .step-v div:last-child { font-family: var(--font-mono); font-size: 7px; color: rgba(242,239,232,.4); }
-.log-go { flex: 1; min-width: 0; background: var(--accent); border: none; border-radius: 8px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 1px; height: 52px; cursor: pointer; }
+.step-in { width: 100%; min-width: 0; box-sizing: border-box; background: var(--bar-btn); border: 1px solid var(--accent); border-radius: 6px; color: var(--on-dark); font-family: var(--font-mono); font-size: 16px; font-weight: 600; text-align: center; padding: 3px 2px; }
+.log-go { width: 100%; background: var(--accent); border: none; border-radius: 8px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 1px; height: 52px; cursor: pointer; }
 .done-row { display: flex; align-items: center; justify-content: space-between; padding: 15px 2px 17px; }
 .done-t { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: 1.5px; color: var(--accent); }
 .done-s { font-family: var(--font-mono); font-size: 11px; color: rgba(242,239,232,.6); }
@@ -2220,6 +2225,7 @@ function initState() {
     state[day.id] = {
       sets: {},
       weights: savedDay.weights || {},
+      reps: savedDay.reps || {},
       effort: savedDay.effort || {},
       protocol: savedDay.protocol || [],
       swaps: savedDay.swaps || {}
@@ -2278,9 +2284,21 @@ function getExerciseHistory(dayId, exId) {
     if (!dayState) continue;
     const rawW = (dayState.weights || {})[exId];
     const weight = (rawW === '' || rawW == null) ? null : Number(rawW);
+    const rawR = (dayState.reps || {})[exId];
+    const reps = (rawR === '' || rawR == null) ? null : Number(rawR);
     const eff = (dayState.effort || {})[exId] || '';
-    if (weight == null && !eff) continue;
-    out.push({ week: w, weight, effort: eff });
+    // Per-set reps, keyed by set index. The suffix must be all digits: a bare
+    // startsWith(exId + '_') would credit `m3_squat_pause_0` to `m3_squat`,
+    // silently mixing two different exercises' reps together.
+    const setReps = {};
+    const repsMap = dayState.reps || {};
+    Object.keys(repsMap).forEach(k => {
+      if (!k.startsWith(exId + '_')) return;
+      const suffix = k.slice(exId.length + 1);
+      if (/^\d+$/.test(suffix)) setReps[suffix] = Number(repsMap[k]);
+    });
+    if (weight == null && reps == null && !eff) continue;
+    out.push({ week: w, weight, reps, effort: eff, setReps });
   }
   return out;
 }
@@ -2500,6 +2518,12 @@ function skipSet(dayId, exId, setIdx) {
     state[dayId].sets[exId][setIdx] = 'skipped';
   }
   saveState();
+  // Release the selection once the selected exercise has no set left to log.
+  if (view.selectedExId) {
+    const day = DAYS.find(d => d.id === dayId);
+    const orig = day && day.exercises.find(o => o.id === view.selectedExId);
+    if (orig && !hasPendingSet(day, orig)) view.selectedExId = null;
+  }
   refreshCurrentDay(dayId);
 }
 
@@ -2964,7 +2988,13 @@ function advanceToCurrentWeek() {
 
 const view = { name: 'day', dayId: null, openPhase: 2, tip: null, confirm: null, swap: null,
                importMsg: '', importOk: true, sessionStart: Date.now(), now: Date.now(),
-               pendW: 0, pendKey: '', latestPr: null,
+               // pendR's "not set" sentinel is '' (not null, unlike most of this
+               // codebase's == null convention) because it feeds straight into
+               // an <input>'s value, where '' is the native empty state.
+               pendW: 0, pendR: '', pendKey: '', latestPr: null, selectedExId: null,
+               // Which pending value (if any) is currently a live inline
+               // <input> in the bottom bar: null, 'w' (weight), or 'r' (reps).
+               editing: null,
                restEnd: null, restTotal: 0, restInfo: '', restNext: '', restRec: '', restMinimized: false };
 
 function esc(s) {
@@ -3087,14 +3117,42 @@ function workoutHeaderHTML(day) {
   return stats + pr + btns + proto;
 }
 
+// First open (unlogged, unskipped) set index for `orig` (an ORIGINAL
+// day.exercises entry, resolved to whatever it's currently swapped to), or
+// -1 if none remain. Shared by activeSet() and the "did this selection just
+// run out of sets" checks in logActiveSet()/skipSet() so there's one place
+// that knows how to scan a set array. Pass `ex` only when the caller already
+// resolved it, to skip a redundant resolveExercise() call.
+function openSetIndex(day, orig, ex = resolveExercise(day.id, orig)) {
+  const arr = state[day.id].sets[ex.id] || [];
+  return arr.findIndex(v => v === false);
+}
+
+// A selected exercise wins over plan order, so sets can be logged in any
+// order. Stays PURE — it runs during render, so it must never write to
+// `view`; the handlers that complete an exercise clear the selection instead.
 function activeSet(day) {
+  if (view.selectedExId) {
+    const sel = day.exercises.find(o => o.id === view.selectedExId);
+    if (sel) {
+      const ex = resolveExercise(day.id, sel);
+      const i = openSetIndex(day, sel, ex);
+      if (i !== -1) return { ex, orig: sel, i };
+    }
+  }
   for (const o of day.exercises) {
     const ex = resolveExercise(day.id, o);
-    const arr = state[day.id].sets[ex.id] || [];
-    const i = arr.findIndex(v => v === false);
+    const i = openSetIndex(day, o, ex);
     if (i !== -1) return { ex, orig: o, i };
   }
   return null;
+}
+
+// True when the exercise (given by its ORIGINAL day.exercises entry) still
+// has a set waiting to be logged. Used to decide when a selection has been
+// used up and should be released.
+function hasPendingSet(day, orig) {
+  return openSetIndex(day, orig) !== -1;
 }
 
 function undoSet(dayId, exId, i) {
@@ -3106,7 +3164,7 @@ function undoSet(dayId, exId, i) {
 function logActiveSet() {
   const day = curDay(), act = activeSet(day);
   if (!act) return;
-  const { ex, i } = act, w = view.pendW;
+  const { ex, i } = act, w = view.pendW, r = view.pendR;
 
   const hist = getExerciseHistory(day.id, ex.id).filter(h => h.week < currentWeek && h.weight != null);
   const maxPrior = hist.length ? Math.max(...hist.map(h => h.weight)) : 0;
@@ -3114,12 +3172,20 @@ function logActiveSet() {
   state[day.id].sets[ex.id][i] = true;
   state[day.id].weights[ex.id] = w;
   state[day.id].weights[`${ex.id}_${i}`] = w;
+  // Blank/invalid reps record nothing at all, so "not recorded" stays a single
+  // unambiguous state — exactly how every set logged before this feature reads.
+  const rn = (r === '' || r == null) ? NaN : Number(r);
+  if (!isNaN(rn)) {
+    state[day.id].reps[ex.id] = rn;
+    state[day.id].reps[`${ex.id}_${i}`] = rn;
+  }
   saveState();
 
   view.latestPr = (maxPrior > 0 && w > maxPrior)
     ? { type: 'WEIGHT PR', text: `${ex.name} — ${w} lb beats your W${hist.find(h => h.weight === maxPrior).week} best of ${maxPrior} lb` }
     : null;
   view.pendKey = '';
+  if (view.selectedExId === act.orig.id && !hasPendingSet(day, act.orig)) view.selectedExId = null;
 
   if (!isDayComplete(day.id)) {
     view.restEnd = Date.now() + ex.rest * 1000;
@@ -3157,6 +3223,7 @@ function exercisesHTML(day) {
     const allDone = (dh + sk) === ex.sets;
     const prior = priorWeekEntry(day.id, ex.id);
     const curW = state[day.id].weights[ex.id];
+    const curR = state[day.id].reps[ex.id];
 
     let tags = `<span class="tag">${ex.sets}×${esc(ex.reps)}</span>`
       + `<span class="tag ink" data-act="tip" data-t="RPE">RPE ${esc(ex.rpe)}</span>`;
@@ -3182,16 +3249,26 @@ function exercisesHTML(day) {
       const isActive = i === activeI;
       const setW = state[day.id].weights[`${ex.id}_${i}`];
       const shown = setW != null ? setW : (curW != null ? curW : '');
+      // Reps actually performed for this set: per-set value first, then the
+      // exercise-level value, else null (no × suffix). Kept separate from
+      // `prescribedReps` below, which is the target range from the program data.
+      const setPerformedR = state[day.id].reps[`${ex.id}_${i}`];
+      const performedR = setPerformedR != null ? setPerformedR : (curR != null ? curR : null);
       let cell;
+      // `cell-today` sits ON the cell element (not a wrapper) so the whole
+      // grid cell is a tap target, not just its text.
       if (isActive) cell = `<div class="cell-today"><button class="log-btn" data-act="log">LOG</button></div>`;
-      else if (v === true) cell = `<div class="cell-today t-done" data-act="undo" data-ex="${ex.id}" data-i="${i}">${esc(shown)} ●</div>`;
+      else if (v === true) cell = `<div class="cell-today t-done" data-act="undo" data-ex="${ex.id}" data-i="${i}">${esc(shown)}${performedR != null ? ' × ' + esc(performedR) : ''} ●</div>`;
       else if (v === 'skipped') cell = `<div class="cell-today t-skip" data-act="skipset" data-ex="${ex.id}" data-i="${i}">SKIP</div>`;
       else cell = `<div class="cell-today t-pend" data-act="skipset" data-ex="${ex.id}" data-i="${i}">skip →</div>`;
-      const reps = ex.reps + (ex.llp && i === arr.length - 1 && !/LLP/.test(ex.reps) ? ' +LLP' : '');
+      const prescribedReps = ex.reps + (ex.llp && i === arr.length - 1 && !/LLP/.test(ex.reps) ? ' +LLP' : '');
+      // Prior week's performed reps for this set index, same fallback order.
+      const priorSetR = prior && prior.setReps ? prior.setReps[i] : null;
+      const priorPerformedR = priorSetR != null ? priorSetR : (prior && prior.reps != null ? prior.reps : null);
       return `<div class="grid-r${isActive ? ' active' : ''}${v === true ? ' done' : ''}">
         <span class="n">${i + 1}</span>
-        <span class="last">${prior && prior.weight != null ? esc(prior.weight) : '—'}</span>
-        <span>${esc(reps)}</span>
+        <span class="last">${prior && prior.weight != null ? esc(prior.weight) + (priorPerformedR != null ? ' × ' + esc(priorPerformedR) : '') : '—'}</span>
+        <span>${esc(prescribedReps)}</span>
         ${cell}</div>`;
     }).join('');
 
@@ -3203,8 +3280,15 @@ function exercisesHTML(day) {
     const lastCol = prior
       ? `W${prior.week}${prior.effort ? ' · ' + EFF_LABEL[prior.effort] : ''}` : 'LAST';
 
-    return `<div class="ex">
-      <div class="ex-top">
+    // A finished exercise can't become the active set, so don't offer it —
+    // and don't highlight it as selected either, even if `view.selectedExId`
+    // still names it (a stale selection is released lazily at render time,
+    // not by every call site that can finish an exercise).
+    const isSel = view.selectedExId === orig.id && !allDone;
+    const topCls = `ex-top${allDone ? '' : ' pick'}`;
+    const topAttrs = allDone ? '' : ` data-act="selectex" data-ex="${orig.id}"`;
+    return `<div class="ex${isSel ? ' sel' : ''}">
+      <div class="${topCls}"${topAttrs}>
         <div class="ex-name${allDone ? ' done' : ''}">${String(xi + 1).padStart(2, '0')} ${esc(ex.name)}</div>
         <div class="ex-right">
           ${EXERCISE_ALTERNATIVES[orig.id] ? `<button class="swap${swapped ? ' on' : ''}" data-act="swap" data-orig="${orig.id}" aria-label="Swap exercise">⇄</button>` : ''}
@@ -3360,6 +3444,16 @@ function renderScroll() {
   const fi = document.getElementById('importFile');
   if (fi) fi.onchange = importData;
 }
+
+// The bottom of a prescribed range: the FIRST integer in the reps string.
+// Those strings vary a lot across programs — "6–10", "12–15", "10 each leg",
+// "8–12 each leg", "15 + LLP" — and the first integer is the right answer for
+// all of them (low end of a range, or the per-leg count), never an inflated one.
+function lowRep(repsStr) {
+  const m = /\d+/.exec(String(repsStr == null ? '' : repsStr));
+  return m ? Number(m[0]) : '';
+}
+
 function syncPending(day, act) {
   const key = `${curProg().id}:${currentWeek}:${day.id}:${act.ex.id}:${act.i}`;
   if (view.pendKey === key) return;
@@ -3368,10 +3462,67 @@ function syncPending(day, act) {
   const prev = act.i > 0 ? state[day.id].weights[`${act.ex.id}_${act.i - 1}`] : null;
   const prior = priorWeekEntry(day.id, act.ex.id);
   view.pendW = Number(prev != null ? prev : stored != null ? stored : (prior && prior.weight) || 0) || 0;
+
+  // Reps deliberately do NOT carry from the previous set the way weight does:
+  // reps drop set to set as fatigue accumulates, so set 1's number is a bad
+  // guess for set 3. Last week's number at the same set index is the anchor.
+  const priorSetR = prior && prior.setReps ? prior.setReps[act.i] : undefined;
+  view.pendR = priorSetR != null ? priorSetR
+    : (prior && prior.reps != null ? prior.reps : lowRep(act.ex.reps));
 }
+
+// Commit an inline numeric edit. Guarded on `view.editing` because a blur
+// fires BOTH `change` and `focusout`, so this runs twice for one edit — the
+// second call must do nothing rather than re-apply a stale field value.
+function commitEdit(raw) {
+  if (!view.editing) return;
+  const field = view.editing;
+  view.editing = null;
+  const s = String(raw == null ? '' : raw).trim();
+  if (s !== '') {
+    if (field === 'w') {
+      const n = parseFloat(s);
+      if (!isNaN(n)) view.pendW = Math.max(0, n);
+    } else if (field === 'r') {
+      const n = parseInt(s, 10);
+      if (!isNaN(n)) view.pendR = Math.max(0, n);
+    }
+  }
+  render();
+}
+
+// `change` and `focusout` intentionally overlap here: for a text input,
+// `change` is effectively a subset of `focusout`, so `focusout` alone would
+// cover every case in a desktop browser. `change` stays anyway because
+// soft-keyboard "Done"/"Go" behavior varies across mobile browsers, and this
+// is a phone-first app — the `view.editing` guard inside commitEdit already
+// makes the resulting double-fire a free no-op, so the redundancy costs
+// nothing and buys robustness.
+document.addEventListener('change', e => {
+  if (e.target && e.target.id === EDIT_FIELD_ID) commitEdit(e.target.value);
+});
+document.addEventListener('focusout', e => {
+  if (e.target && e.target.id === EDIT_FIELD_ID) commitEdit(e.target.value);
+});
+document.addEventListener('keydown', e => {
+  if (!view.editing || !e.target || e.target.id !== EDIT_FIELD_ID) return;
+  if (e.key === 'Enter') { e.preventDefault(); commitEdit(e.target.value); }
+  else if (e.key === 'Escape') { view.editing = null; render(); }
+});
 
 function renderBottomBar() {
   const el = document.getElementById('bottombar');
+  // A 500ms interval rebuilds this whole bar. Once the inline field is on
+  // screen, leave the DOM alone or the caret and any partially-typed value
+  // die twice a second. Checking the markup (not getElementById) keeps this
+  // correct under the headless test shim, whose getElementById never returns
+  // null. Only the rest pill's DISPLAY pauses; the timer is timestamp-based
+  // (view.restEnd vs Date.now()), so it catches up on the next real render.
+  // This match is coupled to the EXACT attribute spelling the two <input>
+  // templates below emit (double-quoted `id="..."`) — reorder those
+  // attributes or switch quote style and this substring check must change
+  // with it, constant or not.
+  if (view.editing && el.innerHTML.includes(`id="${EDIT_FIELD_ID}"`)) return;
   if (view.name !== 'day') { el.innerHTML = ''; return; }
   const day = curDay(), act = activeSet(day), s = dayStats(day.id);
 
@@ -3400,10 +3551,21 @@ function renderBottomBar() {
         <div class="log-set">SET ${act.i + 1}/${act.ex.sets} · ${esc(act.ex.reps)} REPS</div>
       </div>
       <div class="log-ctl">
-        <div class="stepper">
-          <button class="step-b" data-act="w-">−</button>
-          <div class="step-v"><div>${view.pendW % 1 ? view.pendW.toFixed(1) : view.pendW}</div><div>LB</div></div>
-          <button class="step-b" data-act="w+">+</button>
+        <div class="log-steps">
+          <div class="stepper">
+            <button class="step-b" data-act="w-">−</button>
+            <div class="step-v" data-act="editw">${view.editing === 'w'
+              ? `<input id="${EDIT_FIELD_ID}" class="step-in" type="text" inputmode="decimal" value="${esc(view.pendW)}">`
+              : `<div>${view.pendW % 1 ? view.pendW.toFixed(1) : view.pendW}</div>`}<div>LB</div></div>
+            <button class="step-b" data-act="w+">+</button>
+          </div>
+          <div class="stepper">
+            <button class="step-b" data-act="r-">−</button>
+            <div class="step-v" data-act="editr">${view.editing === 'r'
+              ? `<input id="${EDIT_FIELD_ID}" class="step-in" type="text" inputmode="numeric" value="${esc(view.pendR)}">`
+              : `<div>${view.pendR === '' ? '—' : view.pendR}</div>`}<div>REPS</div></div>
+            <button class="step-b" data-act="r+">+</button>
+          </div>
         </div>
         <button class="log-go" data-act="log">LOG SET</button>
       </div></div>`;
@@ -3415,7 +3577,16 @@ function renderBottomBar() {
   }
 
   el.innerHTML = `<div class="barbar">${pill}${body}</div>`;
+  if (view.editing) {
+    const f = document.getElementById(EDIT_FIELD_ID);
+    if (f) { f.focus(); if (f.select) f.select(); }
+  }
 }
+// Single source of truth for the inline edit field's id — referenced by the
+// freeze guard, both input templates, the post-render focus lookup, and the
+// change/focusout/keydown listeners. Change it here only; every use site
+// below derives from it, so nothing can desync.
+const EDIT_FIELD_ID = 'editfield';
 const REST_PRESETS = [60, 90, 120, 180];
 const RING_C = 527.8;
 
@@ -3531,9 +3702,12 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
   if (!el) return;
   const act = el.dataset.act;
-  if (act === 'prog')     { switchProgram(Number(el.dataset.i)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; }
-  else if (act === 'wk')  { changeWeek(Number(el.dataset.d)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.restEnd = null; }
-  else if (act === 'day') { view.name = 'day'; view.dayId = el.dataset.id; view.pendKey = ''; }
+  // One place to close the inline editor. Doing it per-branch would eventually
+  // miss one and leave the bar frozen behind an overlay showing a stale set.
+  if (act !== 'editw' && act !== 'editr') view.editing = null;
+  if (act === 'prog')     { switchProgram(Number(el.dataset.i)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.selectedExId = null; }
+  else if (act === 'wk')  { changeWeek(Number(el.dataset.d)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.restEnd = null; view.selectedExId = null; }
+  else if (act === 'day') { view.name = 'day'; view.dayId = el.dataset.id; view.pendKey = ''; view.selectedExId = null; }
   else if (act === 'view'){ view.name = el.dataset.v; }
   else if (act === 'settings') { view.name = view.name === 'settings' ? 'day' : 'settings'; }
   else if (act === 'proto') { toggleProtocol(curDay().id, Number(el.dataset.i)); }
@@ -3547,11 +3721,24 @@ document.addEventListener('click', e => {
   else if (act === 'undo')    { undoSet(curDay().id, el.dataset.ex, Number(el.dataset.i)); }
   else if (act === 'skipset') { skipSet(curDay().id, el.dataset.ex, Number(el.dataset.i)); }
   else if (act === 'skipex')  { skipExercise(curDay().id, el.dataset.ex); }
+  else if (act === 'selectex') {
+    const id = el.dataset.ex;
+    view.selectedExId = view.selectedExId === id ? null : id;
+    // Deliberately does NOT clear pendKey. syncPending() keys on the
+    // exercise id, so picking a different exercise already recomputes it —
+    // and re-selecting the exercise that's already active must NOT reset
+    // it, or a weight the user just dialed in on the stepper gets thrown
+    // away and re-prefilled from scratch.
+  }
   else if (act === 'eff')     { saveEffort(curDay().id, el.dataset.ex, el.dataset.l); }
   else if (act === 'swap')    { view.swap = { dayId: curDay().id, origId: el.dataset.orig }; }
   else if (act === 'log')     { logActiveSet(); }
   else if (act === 'w-') { view.pendW = Math.max(0, view.pendW - 2.5); }
   else if (act === 'w+') { view.pendW = view.pendW + 2.5; }
+  else if (act === 'r-') { view.pendR = Math.max(0, (Number(view.pendR) || 0) - 1); }
+  else if (act === 'r+') { view.pendR = (Number(view.pendR) || 0) + 1; }
+  else if (act === 'editw') { view.editing = 'w'; }
+  else if (act === 'editr') { view.editing = 'r'; }
   else if (act === 'restexpand') { view.restMinimized = false; }
   else if (act === 'restskip')   { view.restEnd = null; view.restMinimized = false; }
   else if (act === 'rest+')      { addRest(30); }
@@ -3567,7 +3754,7 @@ document.addEventListener('click', e => {
   else if (act === 'preset')  { setRest(Number(el.dataset.s)); }
   else if (act === 'tipx')    { view.tip = null; }
   else if (act === 'swapx')   { view.swap = null; }
-  else if (act === 'doswap')  { performSwap(view.swap.dayId, el.dataset.orig, el.dataset.new); view.swap = null; view.pendKey = ''; }
+  else if (act === 'doswap')  { performSwap(view.swap.dayId, el.dataset.orig, el.dataset.new); view.swap = null; view.pendKey = ''; view.selectedExId = null; }
   else if (act === 'cfok')    {
     const c = view.confirm; view.confirm = null;
     if (c.act === 'skipday') skipDay(curDay().id);

@@ -60,7 +60,7 @@ function makeElement(id) {
     addEventListener() {}, removeEventListener() {},
     appendChild() {}, removeChild() {}, remove() {},
     querySelector: () => null, querySelectorAll: () => [],
-    closest: () => null, focus() {}, blur() {}, click() {}, scrollTo() {},
+    closest: () => null, focus() {}, blur() {}, select() {}, click() {}, scrollTo() {},
     getContext: () => makeCtx2d(),
     toDataURL: () => 'data:,',
   };
@@ -178,7 +178,15 @@ function setupApp({ htmlPath, storage: seed } = {}) {
     api = eval(
       src +
       '\n;({ PROGRAMS, EXERCISE_ALTERNATIVES, currentWeek, state, view,' +
-      ' render, switchProgram, boot,' +
+      ' render, switchProgram, boot, activeSet, logActiveSet, skipSet, curDay,' +
+      ' getExerciseHistory, lowRep,' +
+      // commitEdit is a forward reference: it does not exist in index.html yet
+      // (Task 7 adds it). `typeof commitEdit` is legal even on an undeclared
+      // identifier — it evaluates to "undefined" — whereas a bare `commitEdit`
+      // reference here would throw ReferenceError at eval time and take down
+      // every test in the suite. Once index.html defines it, this getter can
+      // collapse to a plain destructure alongside the others above.
+      ' get commitEdit() { return typeof commitEdit === "function" ? commitEdit : undefined; },' +
       ' get currentProgramIdx() { return currentProgramIdx; },' +
       ' get DAYS() { return DAYS; },' +
       ' get MESOCYCLE() { return MESOCYCLE; },' +
@@ -217,8 +225,10 @@ function setupApp({ htmlPath, storage: seed } = {}) {
  *            MESOCYCLE: object, WEEK_PHASES: any[], PROTOCOL_ITEMS: any[],
  *            currentProgramIdx: number, currentWeek: number, state: object,
  *            view: object, render: Function, switchProgram: Function,
- *            boot: Function, storage: object, elements: Map<string, object>,
- *            clickHandler: Function|null}}
+ *            boot: Function, activeSet: Function, logActiveSet: Function,
+ *            skipSet: Function, curDay: Function, getExerciseHistory: Function,
+ *            commitEdit: Function|undefined, storage: object,
+ *            elements: Map<string, object>, clickHandler: Function|null}}
  */
 function loadApp(opts) {
   const { api, teardown } = setupApp(opts);

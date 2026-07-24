@@ -165,3 +165,26 @@ test('loadApp fully restores globals when the script has a syntax error', () => 
     assert.deepStrictEqual(after[k], before[k], `global.${k} not restored`);
   }
 });
+
+test('the shim exposes the day-logging internals tests need', () => {
+  withApp({}, app => {
+    for (const name of ['activeSet', 'logActiveSet', 'skipSet', 'curDay', 'getExerciseHistory']) {
+      assert.strictEqual(typeof app[name], 'function', `${name} not exposed`);
+    }
+    // curDay() must return a real day from the active program.
+    const day = app.curDay();
+    assert.ok(app.DAYS.some(d => d.id === day.id));
+    // activeSet() on a fresh state points at the first exercise, first set.
+    const act = app.activeSet(day);
+    assert.strictEqual(act.orig.id, day.exercises[0].id);
+    assert.strictEqual(act.i, 0);
+  });
+});
+
+test('the element stub supports select() for inline inputs', () => {
+  withApp({}, app => {
+    const el = app.elements.get('bottombar');
+    assert.strictEqual(typeof el.select, 'function');
+    assert.doesNotThrow(() => el.select());
+  });
+});

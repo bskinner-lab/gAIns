@@ -1,0 +1,76 @@
+{
+  "planPath": "docs/superpowers/plans/2026-07-23-out-of-order-logging-and-reps.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 1: Expose app internals to the test shim",
+      "status": "pending",
+      "description": "**Goal:** Tests can call activeSet(), logActiveSet(), skipSet(), curDay(), getExerciseHistory(), and commitEdit() directly instead of inferring behavior from rendered HTML.\n\n**Files:**\n- Modify: `tools/app-shim.js:180-192` (eval tail), `tools/app-shim.js:50-66` (makeElement)\n- Test: `tools/app-shim.test.js`\n\n**Acceptance Criteria:**\n- [ ] withApp exposes activeSet, logActiveSet, skipSet, curDay, getExerciseHistory as functions.\n- [ ] commitEdit is exposed behind a typeof guard (does not exist until Task 7).\n- [ ] The element stub answers select() without throwing.\n- [ ] Existing tests still pass unchanged.\n\n**Verify:** `node --test tools/*.test.js` -> all tests pass.\n\n**Steps:**\n1. Add the two new tests. 2. Confirm failure. 3. Add select() to makeElement. 4. Extend the eval tail. 5. Re-run + full suite. 6. Commit with explicit pathspec.\n\nSee `docs/superpowers/plans/2026-07-23-out-of-order-logging-and-reps.md` for exact code.\n\n```json:metadata\n{\"files\":[\"tools/app-shim.js\",\"tools/app-shim.test.js\"],\"verifyCommand\":\"node --test tools/*.test.js\",\"acceptanceCriteria\":[\"withApp exposes activeSet, logActiveSet, skipSet, curDay, getExerciseHistory\",\"commitEdit exposed behind a typeof guard\",\"element stub supports select()\",\"all existing tests still pass\"],\"modelTier\":\"mechanical\"}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 2: Selection state and activeSet() preference",
+      "status": "completed",
+      "blockedBy": [
+        0
+      ],
+      "description": "**Goal:** view.selectedExId biases which set is active, and a selectex click toggles it.\n\n**Files:**\n- Modify: `index.html:2966` (view init), `index.html:3090` (activeSet), `index.html:3530-3536` (click handler)\n- Test: `tools/select-exercise.test.js` (create)\n\n**Acceptance Criteria:**\n- [ ] view.selectedExId defaults to null.\n- [ ] A selection redirects activeSet to that exercise first incomplete set.\n- [ ] No selection preserves original plan-order behavior.\n- [ ] A completed or off-day selection falls through to plan order.\n- [ ] activeSet is pure and never mutates view.\n- [ ] selectex toggles the selection and clears pendKey.\n- [ ] day/week/program/swap clear the selection.\n\n**Verify:** `node --test tools/select-exercise.test.js` -> 10 tests pass.\n\n**Steps:**\n1. Create the test file with 10 tests + click helper. 2. Confirm failure. 3. Add selectedExId to view. 4. Replace activeSet (must stay pure). 5. Add selectex branch + clears on prog/wk/day/doswap. 6. Re-run + node --check + smoke. 7. Commit.\n\nSee `docs/superpowers/plans/2026-07-23-out-of-order-logging-and-reps.md` for exact code.\n\n```json:metadata\n{\"files\":[\"index.html\",\"tools/select-exercise.test.js\"],\"verifyCommand\":\"node --test tools/select-exercise.test.js\",\"acceptanceCriteria\":[\"view.selectedExId defaults to null\",\"a selection redirects activeSet\",\"no selection preserves plan order\",\"completed/off-day selection falls through\",\"activeSet is pure\",\"selectex toggles and clears pendKey\",\"day/week/program/swap clear the selection\"],\"modelTier\":\"standard\"}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 3: Clear the selection when the selected exercise completes",
+      "status": "completed",
+      "blockedBy": [
+        1
+      ],
+      "description": "**Goal:** Logging or skipping the selected exercise last remaining set releases the selection.\n\n**Files:**\n- Modify: `index.html:2495` (skipSet), `index.html:3106` (logActiveSet), new hasPendingSet helper\n- Test: `tools/select-exercise.test.js`\n\n**Acceptance Criteria:**\n- [ ] Logging the last incomplete set clears view.selectedExId.\n- [ ] Logging a non-final set KEEPS the selection.\n- [ ] Skipping the last incomplete set clears the selection.\n- [ ] Skip clearing works for a SWAPPED exercise (resolved id mapped back to original).\n- [ ] Un-skipping does not clear the selection.\n- [ ] Completing a different exercise never clears the selection.\n\n**Verify:** `node --test tools/select-exercise.test.js` -> 16 tests pass.\n\n**Steps:**\n1. Append 6 tests. 2. Confirm failure. 3. Add hasPendingSet. 4. Clear in logActiveSet via act.orig.id. 5. Replace skipSet with resolved->original mapping. 6. Re-run + node --check + full suite. 7. Commit.\n\nSee `docs/superpowers/plans/2026-07-23-out-of-order-logging-and-reps.md` for exact code.\n\n```json:metadata\n{\"files\":[\"index.html\",\"tools/select-exercise.test.js\"],\"verifyCommand\":\"node --test tools/select-exercise.test.js\",\"acceptanceCriteria\":[\"logging the final set clears the selection\",\"logging a non-final set keeps it\",\"skipping the final set clears it\",\"skip clearing works for a swapped exercise\",\"un-skipping does not clear\",\"completing a different exercise leaves it alone\"],\"modelTier\":\"standard\"}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 4: Make exercise cards selectable in the UI",
+      "status": "completed",
+      "blockedBy": [
+        2
+      ],
+      "description": "**Goal:** Tapping an exercise card header selects it, with a visible accent treatment; completed exercises are not selectable.\n\n**Files:**\n- Modify: `index.html:141-144` (CSS), `index.html:3205-3212` (exercisesHTML card markup)\n- Test: `tools/select-exercise.test.js`\n\n**Acceptance Criteria:**\n- [ ] Incomplete exercise headers carry data-act=selectex with the ORIGINAL id.\n- [ ] A fully-resolved exercise emits NO selectex.\n- [ ] The selected card root carries the sel class.\n- [ ] The nested swap button still resolves to data-act=swap.\n- [ ] CSS uses only existing custom properties.\n- [ ] smoke-render passes for every program.\n\n**Verify:** `node --test tools/select-exercise.test.js tools/smoke-render.test.js` -> all pass.\n\n**Steps:**\n1. Append 4 tests. 2. Confirm failure. 3. Add .ex.sel / .ex-top.pick CSS. 4. Update card markup with isSel/pick. 5. Re-run + node --check + smoke. 6. Commit.\n\nSee `docs/superpowers/plans/2026-07-23-out-of-order-logging-and-reps.md` for exact code.\n\n```json:metadata\n{\"files\":[\"index.html\",\"tools/select-exercise.test.js\"],\"verifyCommand\":\"node --test tools/select-exercise.test.js tools/smoke-render.test.js\",\"acceptanceCriteria\":[\"headers emit selectex with the original id\",\"completed exercises emit no selectex\",\"selected card renders class ex sel\",\"nested swap button still works\",\"CSS uses only existing custom properties\",\"smoke-render passes\"],\"modelTier\":\"standard\"}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 5: Reps storage, history, and display",
+      "status": "completed",
+      "blockedBy": [
+        0
+      ],
+      "description": "**Goal:** A state[dayId].reps map exists, persists, survives export/import, flows through getExerciseHistory, and renders in set rows.\n\n**Files:**\n- Modify: `index.html:2214-2226` (initState), `index.html:2265-2286` (getExerciseHistory), `index.html:3180-3195` (set-row markup)\n- Test: `tools/reps.test.js` (create)\n\n**Acceptance Criteria:**\n- [ ] state[dayId].reps is an object for every day on a fresh install.\n- [ ] State without a reps key loads and yields {}.\n- [ ] reps round-trip through saveState/loadState.\n- [ ] History entries carry reps and setReps.\n- [ ] setReps matches only ALL-DIGITS suffixes (m3_squat_pause_0 is NOT credited to m3_squat).\n- [ ] A reps-only week is not dropped from history.\n- [ ] A completed set with reps renders weight x reps; without reps, weight only.\n- [ ] The LAST column shows prior-week reps when recorded.\n\n**Verify:** `node --test tools/reps.test.js` -> 8 tests pass.\n\n**Steps:**\n1. Create the test file with seededStorage fixture + 8 tests. 2. Confirm failure. 3. Add reps to initState. 4. Extend getExerciseHistory (reps, setReps digits guard, widened skip). 5. Add curR and replace the row builder. 6. Re-run + node --check + full suite. 7. Commit.\n\nSee `docs/superpowers/plans/2026-07-23-out-of-order-logging-and-reps.md` for exact code.\n\n```json:metadata\n{\"files\":[\"index.html\",\"tools/reps.test.js\"],\"verifyCommand\":\"node --test tools/reps.test.js\",\"acceptanceCriteria\":[\"reps map exists for every day\",\"legacy state without reps yields {}\",\"reps round-trip through save/load\",\"history carries reps and setReps\",\"setReps matches digits-only suffixes\",\"reps-only week not dropped\",\"set rows render weight x reps or weight only\",\"LAST column shows prior reps\"],\"modelTier\":\"standard\"}\n```"
+    },
+    {
+      "id": 5,
+      "subject": "Task 6: Reps prefill and the reps stepper",
+      "status": "completed",
+      "blockedBy": [
+        4
+      ],
+      "description": "**Goal:** The bottom bar shows a reps value beside the weight, prefilled from last week (else the low end of the range), adjustable with +/-1, and written on log.\n\n**Files:**\n- Modify: `index.html:2966` (view init), `index.html:190-206` (CSS), `index.html:3106` (logActiveSet), `index.html:3363-3371` (syncPending), `index.html:3396-3409` (bottom bar), click handler\n- Test: `tools/reps.test.js`\n\n**Acceptance Criteria:**\n- [ ] view.pendR exists and is prefilled by syncPending.\n- [ ] Prefill order: prior-week same set index -> prior-week exercise level -> first integer in ex.reps -> empty.\n- [ ] lowRep parses 6/12/10/8/15 from the five real rep-string shapes.\n- [ ] Reps deliberately do NOT carry from the previous set (documented in a comment).\n- [ ] r+/r- adjust by one and clamp at zero.\n- [ ] logActiveSet writes reps at both keys when pendR is a number.\n- [ ] Empty pendR records no reps but still logs the set.\n- [ ] Two steppers on one row, full-width LOG SET below.\n- [ ] PR detection unchanged (weight-only).\n\n**Verify:** `node --test tools/reps.test.js` -> 14 tests pass.\n\n**Steps:**\n1. Append 6 tests. 2. Confirm failure. 3. Add pendR to view. 4. Add lowRep + extend syncPending. 5. Add reps writes to logActiveSet. 6. Add r-/r+ branches. 7. Replace log-ctl markup + CSS. 8. Re-run + node --check + full suite. 9. Commit.\n\nSee `docs/superpowers/plans/2026-07-23-out-of-order-logging-and-reps.md` for exact code.\n\n```json:metadata\n{\"files\":[\"index.html\",\"tools/reps.test.js\"],\"verifyCommand\":\"node --test tools/reps.test.js\",\"acceptanceCriteria\":[\"pendR prefilled by syncPending\",\"prefill order correct\",\"lowRep parses all program rep-string shapes\",\"r+/r- clamp at zero\",\"logActiveSet writes reps at both keys\",\"empty pendR records nothing but still logs\",\"both steppers render\",\"PR detection stays weight-only\"],\"modelTier\":\"standard\"}\n```"
+    },
+    {
+      "id": 6,
+      "subject": "Task 7: Inline numeric entry for weight and reps",
+      "status": "completed",
+      "blockedBy": [
+        5
+      ],
+      "description": "**Goal:** Tapping either value turns it into a numeric input that survives the 500ms render loop, commits on Enter/blur/change, and cancels on Escape.\n\n**Files:**\n- Modify: `index.html:190-206` (CSS .step-in), `index.html:2966` (view init), `index.html:3373` (renderBottomBar guard + focus), bottom-bar markup, click handler, new commitEdit + document listeners\n- Test: `tools/reps.test.js`\n\n**Acceptance Criteria:**\n- [ ] view.editing starts null; editw/editr set it.\n- [ ] The FIRST render emits the input; subsequent renders leave innerHTML byte-identical.\n- [ ] The freeze guard reads el.innerHTML, NOT getElementById (the shim never returns null and would freeze forever).\n- [ ] Clearing view.editing unfreezes the bar.\n- [ ] commitEdit applies valid numbers and clears editing.\n- [ ] Invalid or empty input leaves the pending value unchanged.\n- [ ] Negative clamps to zero; reps parseInt, weight parseFloat.\n- [ ] A second commit on the same edit is a no-op (change + focusout both fire on blur).\n- [ ] Any non-edit action clears view.editing (one blanket line at the top of the handler).\n- [ ] Weight inputmode=decimal, reps inputmode=numeric.\n\n**Verify:** `node --test tools/reps.test.js` -> 22 tests pass.\n\n**Steps:**\n1. Append 8 test blocks. 2. Confirm failure. 3. Add editing to view. 4. Add freeze guard + focus/select. 5. Replace step-v divs with editable versions. 6. Add commitEdit + change/focusout/keydown listeners. 7. Add blanket clear + editw/editr branches. 8. Add .step-in CSS. 9. Re-run + node --check + full suite. 10. Commit.\n\nSee `docs/superpowers/plans/2026-07-23-out-of-order-logging-and-reps.md` for exact code.\n\n```json:metadata\n{\"files\":[\"index.html\",\"tools/reps.test.js\"],\"verifyCommand\":\"node --test tools/reps.test.js\",\"acceptanceCriteria\":[\"view.editing starts null; editw/editr set it\",\"first render emits input, later renders frozen\",\"freeze guard reads innerHTML not getElementById\",\"clearing editing unfreezes\",\"commitEdit applies valid numbers\",\"invalid/empty leaves value unchanged\",\"negative clamps to zero, reps integer\",\"second commit is a no-op\",\"any non-edit action clears editing\",\"correct inputmodes\"],\"modelTier\":\"standard\"}\n```"
+    },
+    {
+      "id": 7,
+      "subject": "Task 8: Export/import round-trip and full regression",
+      "status": "completed",
+      "blockedBy": [
+        6,
+        3
+      ],
+      "description": "**Goal:** Prove reps survive a real export/import cycle, that pre-reps backups still import cleanly, and that the whole suite is green.\n\n**Files:**\n- Test: `tools/reps.test.js`\n\n**Acceptance Criteria:**\n- [ ] A v3 export payload carries reps in its day objects.\n- [ ] Re-importing restores the same reps values.\n- [ ] A PRE-REPS v3 export loads without throwing and renders no x suffix.\n- [ ] node --test tools/*.test.js fully green, exact counts reported.\n- [ ] smoke-render passes for every program and week.\n- [ ] analyze-history.test.js count unchanged (analyzer ignores reps by design).\n\n**Verify:** `node --test tools/*.test.js` -> all pass; smoke command prints `smoke ok`.\n\n**Steps:**\n1. Append 3 round-trip tests (exportData writes through stubbed Blob/URL, so assert on the storage blobs it reads). 2. Run reps tests -> 25. 3. Full suite, report exact counts. 4. Smoke loop. 5. analyze-history count check. 6. Commit.\n\nSee `docs/superpowers/plans/2026-07-23-out-of-order-logging-and-reps.md` for exact code.\n\n```json:metadata\n{\"files\":[\"tools/reps.test.js\"],\"verifyCommand\":\"node --test tools/*.test.js\",\"acceptanceCriteria\":[\"v3 export payload carries reps\",\"re-import restores the same reps\",\"pre-reps backup imports and renders no suffix\",\"full suite green with exact counts\",\"smoke-render passes\",\"analyze-history count unchanged\"],\"modelTier\":\"standard\"}\n```"
+    }
+  ],
+  "lastUpdated": "2026-07-23T18:30:00.000Z"
+}
