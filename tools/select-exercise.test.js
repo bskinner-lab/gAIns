@@ -198,3 +198,66 @@ test('completing a different exercise leaves the selection alone', () => {
     assert.strictEqual(app.view.selectedExId, day.exercises[2].id);
   });
 });
+
+function scrollHTML(app) { return app.elements.get('scroll').innerHTML; }
+
+test('incomplete exercise cards are selectable', () => {
+  withApp({}, app => {
+    const day = app.curDay();
+    app.render();
+    const html = scrollHTML(app);
+    for (const o of day.exercises) {
+      assert.ok(
+        html.includes(`data-act="selectex" data-ex="${o.id}"`),
+        `missing selectex for ${o.id}`
+      );
+    }
+  });
+});
+
+test('a completed exercise is not selectable', () => {
+  withApp({}, app => {
+    const day = app.curDay();
+    const orig = day.exercises[1];
+    app.state[day.id].sets[orig.id] = app.state[day.id].sets[orig.id].map(() => true);
+    app.render();
+    assert.ok(!scrollHTML(app).includes(`data-act="selectex" data-ex="${orig.id}"`));
+  });
+});
+
+test('the selected card renders with the sel modifier', () => {
+  withApp({}, app => {
+    const id = app.curDay().exercises[2].id;
+    click(app, { act: 'selectex', ex: id });
+    app.render();
+    assert.ok(scrollHTML(app).includes('class="ex sel"'));
+  });
+});
+
+test('the swap button still emits its own act inside a selectable header', () => {
+  withApp({}, app => {
+    app.render();
+    assert.ok(scrollHTML(app).includes('data-act="swap"'), 'swap button disappeared');
+  });
+});
+
+test('a swapped exercise is still selectable by its ORIGINAL id', () => {
+  withApp({}, app => {
+    const day = app.curDay();
+    const orig = day.exercises.find(o => (app.EXERCISE_ALTERNATIVES[o.id] || []).length);
+    assert.ok(orig, 'expected at least one swappable exercise on the first day');
+    const altId = app.EXERCISE_ALTERNATIVES[orig.id][0].id;
+    click(app, { act: 'swap', orig: orig.id });
+    click(app, { act: 'doswap', orig: orig.id, new: altId });
+    app.render();
+    const html = scrollHTML(app);
+    assert.ok(
+      html.includes(`data-act="selectex" data-ex="${orig.id}"`),
+      'swapped card should be selectable by its original id, not the resolved id'
+    );
+    assert.ok(
+      !html.includes(`data-act="selectex" data-ex="${altId}"`),
+      'swapped card must not expose the resolved id for selection'
+    );
+  });
+});

@@ -142,6 +142,9 @@ body {
 .ex-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .ex-name { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: .5px; min-width: 0; }
 .ex-name.done { color: var(--muted-2); }
+.ex.sel { box-shadow: inset 3px 0 0 var(--accent); background: var(--surface); }
+.ex.sel .ex-name { color: var(--accent); }
+.ex-top.pick { cursor: pointer; }
 .ex-right { display: flex; align-items: center; gap: 8px; flex: none; }
 .swap { border: 1px solid var(--border); background: transparent; color: var(--muted-2); border-radius: 3px; width: 26px; height: 26px; cursor: pointer; font-size: 13px; }
 .swap.on { border-color: var(--accent); color: var(--accent); background: rgba(227,79,30,.1); }
@@ -3238,8 +3241,11 @@ function exercisesHTML(day) {
     const lastCol = prior
       ? `W${prior.week}${prior.effort ? ' · ' + EFF_LABEL[prior.effort] : ''}` : 'LAST';
 
-    return `<div class="ex">
-      <div class="ex-top">
+    const isSel = view.selectedExId === orig.id;
+    // A finished exercise can't become the active set, so don't offer it.
+    const pick = allDone ? '' : ` class="ex-top pick" data-act="selectex" data-ex="${orig.id}"`;
+    return `<div class="ex${isSel ? ' sel' : ''}">
+      <div${pick || ' class="ex-top"'}>
         <div class="ex-name${allDone ? ' done' : ''}">${String(xi + 1).padStart(2, '0')} ${esc(ex.name)}</div>
         <div class="ex-right">
           ${EXERCISE_ALTERNATIVES[orig.id] ? `<button class="swap${swapped ? ' on' : ''}" data-act="swap" data-orig="${orig.id}" aria-label="Swap exercise">⇄</button>` : ''}
