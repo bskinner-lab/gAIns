@@ -538,7 +538,10 @@ test('27. a pre-reps backup imports and renders without a reps suffix', () => {
     app.render();
     const html = app.elements.get('scroll').innerHTML;
     const block = extractExerciseBlock(html, 0, ex.name);
-    const cells = block.match(/<div class="cell-today">[\s\S]*?<\/div>/g) || [];
+    // `cell-today` is on the cell element itself and carries a state modifier
+    // (`t-done`/`t-skip`/`t-pend`), so match the class prefix, not an exact
+    // `class="cell-today"`.
+    const cells = block.match(/<div class="cell-today[^"]*"[\s\S]*?<\/div>/g) || [];
     assert.ok(cells.length > 0, 'expected at least one set-row cell for this exercise');
     cells.forEach(cell => {
       assert.doesNotMatch(cell, /×/, `set-row cell should not show a reps suffix: ${cell}`);

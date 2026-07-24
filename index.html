@@ -91,7 +91,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-#app { min-height: 100vh; display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; }
+#app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; }
 #scroll { flex: 1; overflow-y: auto; overflow-x: hidden; }
 
 .mono { font-family: var(--font-mono); }
@@ -175,19 +175,19 @@ body {
 .grid-r.active .n { color: var(--accent); font-weight: 600; }
 .grid-r.done .n { color: var(--muted-2); }
 .grid-r .last { color: var(--muted-2); }
-.cell-today { padding: 5px 8px 5px 0; text-align: right; }
+.cell-today { padding: 5px 8px 5px 0; display: flex; align-items: center; justify-content: flex-end; min-height: 44px; }
 .log-btn { display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: var(--on-dark); font-weight: 600; font-size: 11px; letter-spacing: 1px; min-height: 32px; padding: 0 14px; border-radius: 4px; cursor: pointer; border: none; }
 .t-done { color: var(--ink); font-weight: 600; cursor: pointer; }
-.t-skip { color: var(--faint); text-decoration: line-through; cursor: pointer; }
-.t-pend { color: var(--faint); cursor: pointer; font-size: 10px; }
+.t-skip { color: var(--muted); text-decoration: line-through; cursor: pointer; }
+.t-pend { color: var(--muted); cursor: pointer; font-size: 10px; }
 .effort { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
 .effort-k { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--muted-2); }
 .eff { font-family: var(--font-mono); font-size: 9px; padding: 4px 11px; min-height: 30px; border-radius: 3px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); }
 .eff.on { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
-.skipex { margin-top: 8px; background: transparent; border: 1px dashed var(--border); border-radius: 4px; color: var(--faint); font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; padding: 5px 12px; cursor: pointer; }
+.skipex { margin-top: 8px; background: transparent; border: 1px dashed var(--border); border-radius: 4px; color: var(--muted); font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; padding: 5px 12px; cursor: pointer; }
 
 #bottombar:empty { display: none; }
-.bar { background: var(--bar-dark); color: var(--on-dark); padding: 0 16px; flex: none; }
+.barbar { background: var(--bar-dark); color: var(--on-dark); padding: 0 16px; flex: none; }
 .pill { display: flex; align-items: center; justify-content: space-between; padding: 10px 2px; border-bottom: 1px solid var(--bar-line); }
 .pill-l { display: flex; align-items: center; gap: 9px; cursor: pointer; min-width: 0; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
@@ -3255,10 +3255,12 @@ function exercisesHTML(day) {
       const setPerformedR = state[day.id].reps[`${ex.id}_${i}`];
       const performedR = setPerformedR != null ? setPerformedR : (curR != null ? curR : null);
       let cell;
-      if (isActive) cell = `<button class="log-btn" data-act="log">LOG</button>`;
-      else if (v === true) cell = `<span class="t-done" data-act="undo" data-ex="${ex.id}" data-i="${i}">${esc(shown)}${performedR != null ? ' × ' + esc(performedR) : ''} ●</span>`;
-      else if (v === 'skipped') cell = `<span class="t-skip" data-act="skipset" data-ex="${ex.id}" data-i="${i}">SKIP</span>`;
-      else cell = `<span class="t-pend" data-act="skipset" data-ex="${ex.id}" data-i="${i}">skip →</span>`;
+      // `cell-today` sits ON the cell element (not a wrapper) so the whole
+      // grid cell is a tap target, not just its text.
+      if (isActive) cell = `<div class="cell-today"><button class="log-btn" data-act="log">LOG</button></div>`;
+      else if (v === true) cell = `<div class="cell-today t-done" data-act="undo" data-ex="${ex.id}" data-i="${i}">${esc(shown)}${performedR != null ? ' × ' + esc(performedR) : ''} ●</div>`;
+      else if (v === 'skipped') cell = `<div class="cell-today t-skip" data-act="skipset" data-ex="${ex.id}" data-i="${i}">SKIP</div>`;
+      else cell = `<div class="cell-today t-pend" data-act="skipset" data-ex="${ex.id}" data-i="${i}">skip →</div>`;
       const prescribedReps = ex.reps + (ex.llp && i === arr.length - 1 && !/LLP/.test(ex.reps) ? ' +LLP' : '');
       // Prior week's performed reps for this set index, same fallback order.
       const priorSetR = prior && prior.setReps ? prior.setReps[i] : null;
@@ -3267,7 +3269,7 @@ function exercisesHTML(day) {
         <span class="n">${i + 1}</span>
         <span class="last">${prior && prior.weight != null ? esc(prior.weight) + (priorPerformedR != null ? ' × ' + esc(priorPerformedR) : '') : '—'}</span>
         <span>${esc(prescribedReps)}</span>
-        <div class="cell-today">${cell}</div></div>`;
+        ${cell}</div>`;
     }).join('');
 
     const effort = ['low', 'medium', 'high'].map(l => {
@@ -3574,7 +3576,7 @@ function renderBottomBar() {
     </div>`;
   }
 
-  el.innerHTML = `<div class="bar">${pill}${body}</div>`;
+  el.innerHTML = `<div class="barbar">${pill}${body}</div>`;
   if (view.editing) {
     const f = document.getElementById(EDIT_FIELD_ID);
     if (f) { f.focus(); if (f.select) f.select(); }
