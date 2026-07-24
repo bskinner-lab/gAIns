@@ -2500,13 +2500,11 @@ function skipSet(dayId, exId, setIdx) {
     state[dayId].sets[exId][setIdx] = 'skipped';
   }
   saveState();
-  // `exId` here is the RESOLVED id, but `view.selectedExId` holds the
-  // ORIGINAL — a direct comparison would silently fail for any swapped
-  // exercise and strand the selection on a finished lift.
+  // Release the selection once the selected exercise has no set left to log.
   if (view.selectedExId) {
     const day = DAYS.find(d => d.id === dayId);
-    const orig = day && day.exercises.find(o => resolveExercise(dayId, o).id === exId);
-    if (orig && orig.id === view.selectedExId && !hasPendingSet(day, orig)) view.selectedExId = null;
+    const orig = day && day.exercises.find(o => o.id === view.selectedExId);
+    if (orig && !hasPendingSet(day, orig)) view.selectedExId = null;
   }
   refreshCurrentDay(dayId);
 }
@@ -3100,8 +3098,8 @@ function workoutHeaderHTML(day) {
 // -1 if none remain. Shared by activeSet() and the "did this selection just
 // run out of sets" checks in logActiveSet()/skipSet() so there's one place
 // that knows how to scan a set array.
-function openSetIndex(day, orig) {
-  const ex = resolveExercise(day.id, orig);
+function openSetIndex(day, orig, ex) {
+  ex = ex || resolveExercise(day.id, orig);
   const arr = state[day.id].sets[ex.id] || [];
   return arr.findIndex(v => v === false);
 }
@@ -3113,13 +3111,15 @@ function activeSet(day) {
   if (view.selectedExId) {
     const sel = day.exercises.find(o => o.id === view.selectedExId);
     if (sel) {
-      const i = openSetIndex(day, sel);
-      if (i !== -1) return { ex: resolveExercise(day.id, sel), orig: sel, i };
+      const ex = resolveExercise(day.id, sel);
+      const i = openSetIndex(day, sel, ex);
+      if (i !== -1) return { ex, orig: sel, i };
     }
   }
   for (const o of day.exercises) {
-    const i = openSetIndex(day, o);
-    if (i !== -1) return { ex: resolveExercise(day.id, o), orig: o, i };
+    const ex = resolveExercise(day.id, o);
+    const i = openSetIndex(day, o, ex);
+    if (i !== -1) return { ex, orig: o, i };
   }
   return null;
 }
