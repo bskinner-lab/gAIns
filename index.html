@@ -3562,7 +3562,11 @@ document.addEventListener('click', e => {
   else if (act === 'selectex') {
     const id = el.dataset.ex;
     view.selectedExId = view.selectedExId === id ? null : id;
-    view.pendKey = '';
+    // Deliberately does NOT clear pendKey. syncPending() keys on the
+    // exercise id, so picking a different exercise already recomputes it —
+    // and re-selecting the exercise that's already active must NOT reset
+    // it, or a weight the user just dialed in on the stepper gets thrown
+    // away and re-prefilled from scratch.
   }
   else if (act === 'eff')     { saveEffort(curDay().id, el.dataset.ex, el.dataset.l); }
   else if (act === 'swap')    { view.swap = { dayId: curDay().id, origId: el.dataset.orig }; }

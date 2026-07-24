@@ -58,16 +58,33 @@ test('a selection naming an off-day exercise falls through to plan order', () =>
 
 test('selectex sets, then toggles off, the selection', () => {
   withApp({}, app => {
-    const id = app.curDay().exercises[2].id;
-    const priorKey = app.view.pendKey;
-    click(app, { act: 'selectex', ex: id });
-    assert.strictEqual(app.view.selectedExId, id);
-    // The handler clears pendKey; render()'s syncPending immediately
-    // repopulates it to reflect the newly active (selected) exercise's set,
-    // not the stale key from whatever was active before selection.
-    assert.notStrictEqual(app.view.pendKey, priorKey);
-    click(app, { act: 'selectex', ex: id });
+    const day = app.curDay();
+    const orig = day.exercises[2];
+    click(app, { act: 'selectex', ex: orig.id });
+    assert.strictEqual(app.view.selectedExId, orig.id);
+    // render()'s syncPending keys on the RESOLVED exercise id, so verify
+    // the pendKey actually names the selected exercise's first open set —
+    // this would fail if the selection stopped taking effect.
+    const resolved = app.state[day.id].swaps && app.state[day.id].swaps[orig.id]
+      ? app.EXERCISE_ALTERNATIVES[orig.id].find(a => a.id === app.state[day.id].swaps[orig.id])
+      : orig;
+    const expectedKey = `${app.PROGRAMS[app.currentProgramIdx].id}:${app.currentWeek}:${day.id}:${resolved.id}:0`;
+    assert.strictEqual(app.view.pendKey, expectedKey);
+    click(app, { act: 'selectex', ex: orig.id });
     assert.strictEqual(app.view.selectedExId, null);
+  });
+});
+
+test('selecting the already-active exercise preserves a dialed-in weight', () => {
+  withApp({}, app => {
+    const day = app.curDay();
+    app.render();
+    click(app, { act: 'w+' });
+    click(app, { act: 'w+' });
+    const dialed = app.view.pendW;
+    assert.ok(dialed > 0, 'precondition: the stepper moved the weight');
+    click(app, { act: 'selectex', ex: day.exercises[0].id });
+    assert.strictEqual(app.view.pendW, dialed, 'tapping the active card discarded the dialed weight');
   });
 });
 
