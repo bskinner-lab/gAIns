@@ -190,10 +190,7 @@ test('10. reps prefill uses the low end of the prescribed range with no history'
   const day = prog.days[0];
   const ex = day.exercises[0];
   const expected = Number(/\d+/.exec(ex.reps)[0]);
-  withApp({ storage: { hypertrophy_program: '0', ...(() => {
-    const { PROGRAMS: P } = loadApp();
-    return { hypertrophy_seen_programs: JSON.stringify(P.map(p => p.id)) };
-  })() } }, (app) => {
+  withApp({ storage: { hypertrophy_program: '0', ...allSeenSeed() } }, (app) => {
     click(app, { day: day.id });
     app.render();
     assert.strictEqual(app.view.pendR, expected);

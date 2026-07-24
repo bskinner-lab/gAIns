@@ -204,10 +204,10 @@ body {
 .log-steps { display: flex; gap: 10px; }
 .stepper { display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; min-width: 0; }
 .step-b { width: 44px; height: 52px; background: var(--bar-btn); border: 1px solid var(--bar-edge); border-radius: 8px; color: var(--on-dark); font-size: 20px; cursor: pointer; flex: none; }
-.step-v { text-align: center; min-width: 50px; }
+.step-v { text-align: center; min-width: 0; flex: 1; }
 .step-v div:first-child { font-family: var(--font-mono); font-size: 16px; font-weight: 600; }
 .step-v div:last-child { font-family: var(--font-mono); font-size: 7px; color: rgba(242,239,232,.4); }
-.log-go { width: 100%; background: var(--accent); border: none; border-radius: 8px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 1px; height: 48px; cursor: pointer; }
+.log-go { width: 100%; background: var(--accent); border: none; border-radius: 8px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 1px; height: 52px; cursor: pointer; }
 .done-row { display: flex; align-items: center; justify-content: space-between; padding: 15px 2px 17px; }
 .done-t { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: 1.5px; color: var(--accent); }
 .done-s { font-family: var(--font-mono); font-size: 11px; color: rgba(242,239,232,.6); }
@@ -2987,6 +2987,9 @@ function advanceToCurrentWeek() {
 
 const view = { name: 'day', dayId: null, openPhase: 2, tip: null, confirm: null, swap: null,
                importMsg: '', importOk: true, sessionStart: Date.now(), now: Date.now(),
+               // pendR's "not set" sentinel is '' (not null, unlike most of this
+               // codebase's == null convention) because Task 7 feeds it straight
+               // into an <input>'s value, where '' is the native empty state.
                pendW: 0, pendR: '', pendKey: '', latestPr: null, selectedExId: null,
                restEnd: null, restTotal: 0, restInfo: '', restNext: '', restRec: '', restMinimized: false };
 
@@ -3435,6 +3438,7 @@ function renderScroll() {
   const fi = document.getElementById('importFile');
   if (fi) fi.onchange = importData;
 }
+
 // The bottom of a prescribed range: the FIRST integer in the reps string.
 // Those strings vary a lot across programs — "6–10", "12–15", "10 each leg",
 // "8–12 each leg", "15 + LLP" — and the first integer is the right answer for
