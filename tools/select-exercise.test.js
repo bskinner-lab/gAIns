@@ -201,6 +201,35 @@ test('completing a different exercise leaves the selection alone', () => {
 
 function scrollHTML(app) { return app.elements.get('scroll').innerHTML; }
 
+// Splits the rendered scroll HTML back into one string per exercise card,
+// each starting at its `<div class="ex...">` root, so assertions can be
+// pinned to the specific card under test instead of the whole page.
+function exCards(html) {
+  // Split only on the card ROOT (`class="ex"` or `class="ex sel"`), not on
+  // any of the many other `.ex-*` classes (`.ex-top`, `.ex-name`, …) that
+  // also happen to start with the same four characters.
+  return html.split(/(?=<div class="ex(?: sel)?">)/).slice(1);
+}
+
+// Extracts the full element (open tag through its matching close, honoring
+// nested <div>s) starting at the `<div class="ex-top` in `card`. Depth-aware
+// so a swap button relocated to be a sibling of ex-top — still textually
+// "before .tags" but no longer actually nested inside the header — is
+// correctly excluded, unlike a plain substring cut would be.
+function headerBlock(card) {
+  const start = card.indexOf('<div class="ex-top');
+  if (start === -1) return '';
+  const openEnd = card.indexOf('>', start) + 1;
+  const re = /<div\b|<\/div>/g;
+  re.lastIndex = openEnd;
+  let depth = 1, m;
+  while ((m = re.exec(card))) {
+    depth += m[0] === '</div>' ? -1 : 1;
+    if (depth === 0) return card.slice(start, re.lastIndex);
+  }
+  return card.slice(start);
+}
+
 test('incomplete exercise cards are selectable', () => {
   withApp({}, app => {
     const day = app.curDay();
@@ -227,17 +256,56 @@ test('a completed exercise is not selectable', () => {
 
 test('the selected card renders with the sel modifier', () => {
   withApp({}, app => {
-    const id = app.curDay().exercises[2].id;
+    const day = app.curDay();
+    const id = day.exercises[2].id;
     click(app, { act: 'selectex', ex: id });
     app.render();
-    assert.ok(scrollHTML(app).includes('class="ex sel"'));
+    const cards = exCards(scrollHTML(app));
+    const selCard = cards.find(c => c.includes(`data-ex="${id}"`));
+    assert.ok(selCard, 'expected to find the card for the selected exercise');
+    assert.ok(selCard.startsWith('<div class="ex sel">'), 'selected card is missing the sel modifier');
+    const others = cards.filter(c => c !== selCard);
+    assert.ok(
+      others.every(c => !c.startsWith('<div class="ex sel">')),
+      'an unselected card also carries sel'
+    );
   });
 });
 
 test('the swap button still emits its own act inside a selectable header', () => {
   withApp({}, app => {
+    const day = app.curDay();
     app.render();
-    assert.ok(scrollHTML(app).includes('data-act="swap"'), 'swap button disappeared');
+    const card = exCards(scrollHTML(app)).find(c => c.includes(`data-ex="${day.exercises[0].id}"`));
+    assert.ok(card, 'expected to find the first exercise card');
+    const header = headerBlock(card);
+    assert.ok(
+      header.includes('<div class="ex-top pick"'),
+      'the swap button must live inside the selectable ex-top header'
+    );
+    const swapBtn = header.match(/<button class="swap[^>]*>/);
+    assert.ok(swapBtn, 'swap button missing from the selectable header');
+    assert.ok(swapBtn[0].includes('data-act="swap"'), 'swap button lost its own act');
+    assert.ok(
+      !swapBtn[0].includes('data-act="selectex"'),
+      'swap button must not also carry selectex — it would double-fire the delegated handler'
+    );
+  });
+});
+
+test('completing the selected exercise via a non-log/skipset path drops the sel highlight', () => {
+  withApp({}, app => {
+    const day = app.curDay();
+    const orig = day.exercises[2];
+    click(app, { act: 'selectex', ex: orig.id });
+    assert.strictEqual(app.view.selectedExId, orig.id);
+    // skipex marks every set 'skipped' in one shot — it doesn't route through
+    // logActiveSet/skipSet, so it can finish the exercise without releasing
+    // the selection. The highlight must still not survive at render time.
+    click(app, { act: 'skipex', ex: orig.id });
+    app.render();
+    const selCard = exCards(scrollHTML(app)).find(c => c.startsWith('<div class="ex sel">'));
+    assert.ok(!selCard, 'a completed exercise must not render with the sel modifier');
   });
 });
 

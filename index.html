@@ -142,7 +142,7 @@ body {
 .ex-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .ex-name { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: .5px; min-width: 0; }
 .ex-name.done { color: var(--muted-2); }
-.ex.sel { box-shadow: inset 3px 0 0 var(--accent); background: var(--surface); }
+.ex.sel { box-shadow: inset 3px 0 0 var(--accent); }
 .ex.sel .ex-name { color: var(--accent); }
 .ex-top.pick { cursor: pointer; }
 .ex-right { display: flex; align-items: center; gap: 8px; flex: none; }
@@ -3100,9 +3100,9 @@ function workoutHeaderHTML(day) {
 // day.exercises entry, resolved to whatever it's currently swapped to), or
 // -1 if none remain. Shared by activeSet() and the "did this selection just
 // run out of sets" checks in logActiveSet()/skipSet() so there's one place
-// that knows how to scan a set array.
-function openSetIndex(day, orig, ex) {
-  ex = ex || resolveExercise(day.id, orig);
+// that knows how to scan a set array. Pass `ex` only when the caller already
+// resolved it, to skip a redundant resolveExercise() call.
+function openSetIndex(day, orig, ex = resolveExercise(day.id, orig)) {
   const arr = state[day.id].sets[ex.id] || [];
   return arr.findIndex(v => v === false);
 }
@@ -3241,11 +3241,15 @@ function exercisesHTML(day) {
     const lastCol = prior
       ? `W${prior.week}${prior.effort ? ' · ' + EFF_LABEL[prior.effort] : ''}` : 'LAST';
 
-    const isSel = view.selectedExId === orig.id;
-    // A finished exercise can't become the active set, so don't offer it.
-    const pick = allDone ? '' : ` class="ex-top pick" data-act="selectex" data-ex="${orig.id}"`;
+    // A finished exercise can't become the active set, so don't offer it —
+    // and don't highlight it as selected either, even if `view.selectedExId`
+    // still names it (a stale selection is released lazily at render time,
+    // not by every call site that can finish an exercise).
+    const isSel = view.selectedExId === orig.id && !allDone;
+    const topCls = `ex-top${allDone ? '' : ' pick'}`;
+    const topAttrs = allDone ? '' : ` data-act="selectex" data-ex="${orig.id}"`;
     return `<div class="ex${isSel ? ' sel' : ''}">
-      <div${pick || ' class="ex-top"'}>
+      <div class="${topCls}"${topAttrs}>
         <div class="ex-name${allDone ? ' done' : ''}">${String(xi + 1).padStart(2, '0')} ${esc(ex.name)}</div>
         <div class="ex-right">
           ${EXERCISE_ALTERNATIVES[orig.id] ? `<button class="swap${swapped ? ' on' : ''}" data-act="swap" data-orig="${orig.id}" aria-label="Swap exercise">⇄</button>` : ''}
