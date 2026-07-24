@@ -2500,6 +2500,14 @@ function skipSet(dayId, exId, setIdx) {
     state[dayId].sets[exId][setIdx] = 'skipped';
   }
   saveState();
+  // `exId` here is the RESOLVED id, but `view.selectedExId` holds the
+  // ORIGINAL — a direct comparison would silently fail for any swapped
+  // exercise and strand the selection on a finished lift.
+  if (view.selectedExId) {
+    const day = DAYS.find(d => d.id === dayId);
+    const orig = day && day.exercises.find(o => resolveExercise(dayId, o).id === exId);
+    if (orig && orig.id === view.selectedExId && !hasPendingSet(day, orig)) view.selectedExId = null;
+  }
   refreshCurrentDay(dayId);
 }
 
@@ -3087,6 +3095,17 @@ function workoutHeaderHTML(day) {
   return stats + pr + btns + proto;
 }
 
+// First open (unlogged, unskipped) set index for `orig` (an ORIGINAL
+// day.exercises entry, resolved to whatever it's currently swapped to), or
+// -1 if none remain. Shared by activeSet() and the "did this selection just
+// run out of sets" checks in logActiveSet()/skipSet() so there's one place
+// that knows how to scan a set array.
+function openSetIndex(day, orig) {
+  const ex = resolveExercise(day.id, orig);
+  const arr = state[day.id].sets[ex.id] || [];
+  return arr.findIndex(v => v === false);
+}
+
 // A selected exercise wins over plan order, so sets can be logged in any
 // order. Stays PURE — it runs during render, so it must never write to
 // `view`; the handlers that complete an exercise clear the selection instead.
@@ -3094,19 +3113,22 @@ function activeSet(day) {
   if (view.selectedExId) {
     const sel = day.exercises.find(o => o.id === view.selectedExId);
     if (sel) {
-      const ex = resolveExercise(day.id, sel);
-      const arr = state[day.id].sets[ex.id] || [];
-      const i = arr.findIndex(v => v === false);
-      if (i !== -1) return { ex, orig: sel, i };
+      const i = openSetIndex(day, sel);
+      if (i !== -1) return { ex: resolveExercise(day.id, sel), orig: sel, i };
     }
   }
   for (const o of day.exercises) {
-    const ex = resolveExercise(day.id, o);
-    const arr = state[day.id].sets[ex.id] || [];
-    const i = arr.findIndex(v => v === false);
-    if (i !== -1) return { ex, orig: o, i };
+    const i = openSetIndex(day, o);
+    if (i !== -1) return { ex: resolveExercise(day.id, o), orig: o, i };
   }
   return null;
+}
+
+// True when the exercise (given by its ORIGINAL day.exercises entry) still
+// has a set waiting to be logged. Used to decide when a selection has been
+// used up and should be released.
+function hasPendingSet(day, orig) {
+  return openSetIndex(day, orig) !== -1;
 }
 
 function undoSet(dayId, exId, i) {
@@ -3132,6 +3154,7 @@ function logActiveSet() {
     ? { type: 'WEIGHT PR', text: `${ex.name} — ${w} lb beats your W${hist.find(h => h.weight === maxPrior).week} best of ${maxPrior} lb` }
     : null;
   view.pendKey = '';
+  if (view.selectedExId === act.orig.id && !hasPendingSet(day, act.orig)) view.selectedExId = null;
 
   if (!isDayComplete(day.id)) {
     view.restEnd = Date.now() + ex.rest * 1000;

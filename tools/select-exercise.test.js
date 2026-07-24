@@ -120,3 +120,81 @@ test('switching program clears the selection', () => {
     assert.strictEqual(app.view.selectedExId, null);
   });
 });
+
+test('logging a non-final set keeps the selection', () => {
+  withApp({}, app => {
+    const day = app.curDay();
+    const orig = day.exercises[2];
+    click(app, { act: 'selectex', ex: orig.id });
+    click(app, { act: 'log' });
+    assert.strictEqual(app.view.selectedExId, orig.id);
+    assert.strictEqual(app.state[day.id].sets[orig.id][0], true);
+  });
+});
+
+test('logging the final set clears the selection', () => {
+  withApp({}, app => {
+    const day = app.curDay();
+    const orig = day.exercises[2];
+    const n = app.state[day.id].sets[orig.id].length;
+    click(app, { act: 'selectex', ex: orig.id });
+    for (let k = 0; k < n; k++) click(app, { act: 'log' });
+    assert.strictEqual(app.view.selectedExId, null);
+    assert.ok(app.state[day.id].sets[orig.id].every(v => v === true));
+  });
+});
+
+test('skipping the final set clears the selection', () => {
+  withApp({}, app => {
+    const day = app.curDay();
+    const orig = day.exercises[2];
+    const n = app.state[day.id].sets[orig.id].length;
+    click(app, { act: 'selectex', ex: orig.id });
+    for (let k = 0; k < n; k++) click(app, { act: 'skipset', ex: orig.id, i: String(k) });
+    assert.strictEqual(app.view.selectedExId, null);
+  });
+});
+
+test('un-skipping a set keeps the exercise selectable and selected', () => {
+  withApp({}, app => {
+    const day = app.curDay();
+    const orig = day.exercises[2];
+    const n = app.state[day.id].sets[orig.id].length;
+    click(app, { act: 'selectex', ex: orig.id });
+    for (let k = 0; k < n; k++) click(app, { act: 'skipset', ex: orig.id, i: String(k) });
+    assert.strictEqual(app.view.selectedExId, null);
+    click(app, { act: 'selectex', ex: orig.id });
+    click(app, { act: 'skipset', ex: orig.id, i: '0' });   // toggles back to pending
+    assert.strictEqual(app.state[day.id].sets[orig.id][0], false);
+    assert.strictEqual(app.view.selectedExId, orig.id);
+  });
+});
+
+test('skipping the final set of a SWAPPED selected exercise clears the selection', () => {
+  withApp({}, app => {
+    const day = app.curDay();
+    const orig = day.exercises.find(o => (app.EXERCISE_ALTERNATIVES[o.id] || []).length);
+    assert.ok(orig, 'expected at least one swappable exercise on the first day');
+    const altId = app.EXERCISE_ALTERNATIVES[orig.id][0].id;
+    click(app, { act: 'swap', orig: orig.id });
+    click(app, { act: 'doswap', orig: orig.id, new: altId });
+    // doswap clears the selection, so re-select after swapping.
+    click(app, { act: 'selectex', ex: orig.id });
+    const resolvedId = app.state[day.id].swaps[orig.id];
+    assert.strictEqual(resolvedId, altId);
+    const n = app.state[day.id].sets[altId].length;
+    for (let k = 0; k < n; k++) click(app, { act: 'skipset', ex: altId, i: String(k) });
+    assert.strictEqual(app.view.selectedExId, null);
+  });
+});
+
+test('completing a different exercise leaves the selection alone', () => {
+  withApp({}, app => {
+    const day = app.curDay();
+    const other = day.exercises[0];
+    click(app, { act: 'selectex', ex: day.exercises[2].id });
+    const n = app.state[day.id].sets[other.id].length;
+    for (let k = 0; k < n; k++) click(app, { act: 'skipset', ex: other.id, i: String(k) });
+    assert.strictEqual(app.view.selectedExId, day.exercises[2].id);
+  });
+});
