@@ -2964,7 +2964,7 @@ function advanceToCurrentWeek() {
 
 const view = { name: 'day', dayId: null, openPhase: 2, tip: null, confirm: null, swap: null,
                importMsg: '', importOk: true, sessionStart: Date.now(), now: Date.now(),
-               pendW: 0, pendKey: '', latestPr: null,
+               pendW: 0, pendKey: '', latestPr: null, selectedExId: null,
                restEnd: null, restTotal: 0, restInfo: '', restNext: '', restRec: '', restMinimized: false };
 
 function esc(s) {
@@ -3087,7 +3087,19 @@ function workoutHeaderHTML(day) {
   return stats + pr + btns + proto;
 }
 
+// A selected exercise wins over plan order, so sets can be logged in any
+// order. Stays PURE — it runs during render, so it must never write to
+// `view`; the handlers that complete an exercise clear the selection instead.
 function activeSet(day) {
+  if (view.selectedExId) {
+    const sel = day.exercises.find(o => o.id === view.selectedExId);
+    if (sel) {
+      const ex = resolveExercise(day.id, sel);
+      const arr = state[day.id].sets[ex.id] || [];
+      const i = arr.findIndex(v => v === false);
+      if (i !== -1) return { ex, orig: sel, i };
+    }
+  }
   for (const o of day.exercises) {
     const ex = resolveExercise(day.id, o);
     const arr = state[day.id].sets[ex.id] || [];
@@ -3531,9 +3543,9 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
   if (!el) return;
   const act = el.dataset.act;
-  if (act === 'prog')     { switchProgram(Number(el.dataset.i)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; }
-  else if (act === 'wk')  { changeWeek(Number(el.dataset.d)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.restEnd = null; }
-  else if (act === 'day') { view.name = 'day'; view.dayId = el.dataset.id; view.pendKey = ''; }
+  if (act === 'prog')     { switchProgram(Number(el.dataset.i)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.selectedExId = null; }
+  else if (act === 'wk')  { changeWeek(Number(el.dataset.d)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.restEnd = null; view.selectedExId = null; }
+  else if (act === 'day') { view.name = 'day'; view.dayId = el.dataset.id; view.pendKey = ''; view.selectedExId = null; }
   else if (act === 'view'){ view.name = el.dataset.v; }
   else if (act === 'settings') { view.name = view.name === 'settings' ? 'day' : 'settings'; }
   else if (act === 'proto') { toggleProtocol(curDay().id, Number(el.dataset.i)); }
@@ -3547,6 +3559,11 @@ document.addEventListener('click', e => {
   else if (act === 'undo')    { undoSet(curDay().id, el.dataset.ex, Number(el.dataset.i)); }
   else if (act === 'skipset') { skipSet(curDay().id, el.dataset.ex, Number(el.dataset.i)); }
   else if (act === 'skipex')  { skipExercise(curDay().id, el.dataset.ex); }
+  else if (act === 'selectex') {
+    const id = el.dataset.ex;
+    view.selectedExId = view.selectedExId === id ? null : id;
+    view.pendKey = '';
+  }
   else if (act === 'eff')     { saveEffort(curDay().id, el.dataset.ex, el.dataset.l); }
   else if (act === 'swap')    { view.swap = { dayId: curDay().id, origId: el.dataset.orig }; }
   else if (act === 'log')     { logActiveSet(); }
@@ -3567,7 +3584,7 @@ document.addEventListener('click', e => {
   else if (act === 'preset')  { setRest(Number(el.dataset.s)); }
   else if (act === 'tipx')    { view.tip = null; }
   else if (act === 'swapx')   { view.swap = null; }
-  else if (act === 'doswap')  { performSwap(view.swap.dayId, el.dataset.orig, el.dataset.new); view.swap = null; view.pendKey = ''; }
+  else if (act === 'doswap')  { performSwap(view.swap.dayId, el.dataset.orig, el.dataset.new); view.swap = null; view.pendKey = ''; view.selectedExId = null; }
   else if (act === 'cfok')    {
     const c = view.confirm; view.confirm = null;
     if (c.act === 'skipday') skipDay(curDay().id);
