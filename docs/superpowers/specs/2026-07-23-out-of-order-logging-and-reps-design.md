@@ -110,12 +110,23 @@ Handler:
 else if (act === 'selectex') {
   const id = el.dataset.ex;
   view.selectedExId = (view.selectedExId === id) ? null : id;   // toggle
-  view.pendKey = '';
 }
 ```
 
-Clearing `view.pendKey` forces `syncPending()` to recompute the prefilled weight/reps for the
-newly targeted set.
+**Correction (found during implementation).** An earlier draft of this section also cleared
+`view.pendKey` here, on the theory that `syncPending()` needed forcing to recompute the prefill
+for the newly targeted set. That was wrong in both directions:
+
+- When the selection names a **different** exercise, the clear is redundant — `syncPending()` keys
+  on `prog:week:day:exercise:setIndex`, so a different exercise already produces a different key
+  and recomputes on its own.
+- When the selection names the exercise that is **already active**, the clear is harmful. The key
+  would otherwise match and `syncPending()` would early-return, preserving the weight the user had
+  dialed in on the stepper. Clearing it discards that and re-prefills from scratch. Verified
+  empirically: two taps of `+`, then a tap on the active card, reset `pendW` from 5 back to 0.
+
+So `selectex` must NOT touch `pendKey`. The navigation branches (`prog`/`wk`/`day`/`doswap`) still
+clear it, because those genuinely change context.
 
 An exercise whose sets are all resolved (`done + skipped === ex.sets`) is **not** selectable —
 emit no `data-act` on its header. Selecting it could not produce an active set anyway, and the
@@ -143,10 +154,30 @@ Undoing a completed set on some *other* exercise does not clear the selection; t
 wins. With no selection active, `activeSet()` falls back to plan order and jumps to the undone
 set — existing behavior, unchanged.
 
+**Amendment (found during implementation).** The two completion paths above are *not* the only
+ways to finish an exercise: `skipExercise()`, `skipDay()`, and `completeDay()` can all resolve the
+selected exercise's last set without going through `logActiveSet()` or `skipSet()`. Enumerating
+every mutation path and adding a release call to each is the wrong fix — it needs every future
+author who adds a way to finish an exercise to remember the call, which is the same stale-derived-
+state bug recurring with a new call site each time.
+
+Instead the **highlight is guarded at render time**: `isSel = view.selectedExId === orig.id &&
+!allDone`. Clickability was already gated on `allDone`, so deriving the highlight from the same
+check makes the two states incapable of drifting apart. A stale `view.selectedExId` is then
+harmless — `activeSet()` already falls through to plan order for a completed selection — so the
+explicit clears in `logActiveSet`/`skipSet` are state hygiene rather than correctness, and no
+further call sites need them.
+
 ### Visual
 
-The selected card gets a `.sel` modifier: an accent left-border and a lightly tinted header, using
-the existing `--accent` custom property. No new colors outside the three theme blocks.
+The selected card gets a `.sel` modifier: an inset accent left-bar and an accent-colored exercise
+name, using the existing `--accent` custom property. No new colors outside the three theme blocks.
+
+**No background tint.** An earlier draft also set `background: var(--surface)`, but `.grid-r.active`
+— the currently-open set's row — already uses `var(--surface)`. Since selecting a card is exactly
+what makes its next set active, the row's highlight would be absorbed into the card background in
+the common case, leaving `border-top: 2px solid var(--accent)` as its only differentiator. The
+inset bar plus accent name carry the selected state on their own.
 
 ---
 
@@ -296,5 +327,5 @@ No browser required; this follows the existing headless toolchain.
 |---|---|
 | Frozen bottom bar if `view.editing` is never cleared | Clear it on every overlay open and on day/week/program change; blur handler is the backstop. |
 | Selection points at a swapped-away exercise | Selection stores the **original** id and resolves through `resolveExercise()`; swap also clears it. |
-| Stale prefill after selection change | `selectex` clears `view.pendKey`, forcing `syncPending()` to recompute. |
+| Stale prefill after selection change | `syncPending()`'s key includes the exercise id and set index, so a changed selection recomputes on its own. `selectex` must NOT clear `pendKey` — see the correction above. |
 | `reps` breaking older importers | Additive key only; no version bump; absent key defaults to `{}`. |

@@ -10,7 +10,7 @@
     {
       "id": 1,
       "subject": "Task 2: Selection state and activeSet() preference",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         0
       ],
@@ -19,7 +19,7 @@
     {
       "id": 2,
       "subject": "Task 3: Clear the selection when the selected exercise completes",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         1
       ],
@@ -28,7 +28,7 @@
     {
       "id": 3,
       "subject": "Task 4: Make exercise cards selectable in the UI",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         2
       ],
@@ -37,7 +37,7 @@
     {
       "id": 4,
       "subject": "Task 5: Reps storage, history, and display",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         0
       ],
@@ -46,7 +46,7 @@
     {
       "id": 5,
       "subject": "Task 6: Reps prefill and the reps stepper",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         4
       ],
@@ -55,7 +55,7 @@
     {
       "id": 6,
       "subject": "Task 7: Inline numeric entry for weight and reps",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         5
       ],
@@ -64,7 +64,7 @@
     {
       "id": 7,
       "subject": "Task 8: Export/import round-trip and full regression",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         6,
         3
@@ -72,5 +72,5 @@
       "description": "**Goal:** Prove reps survive a real export/import cycle, that pre-reps backups still import cleanly, and that the whole suite is green.\n\n**Files:**\n- Test: `tools/reps.test.js`\n\n**Acceptance Criteria:**\n- [ ] A v3 export payload carries reps in its day objects.\n- [ ] Re-importing restores the same reps values.\n- [ ] A PRE-REPS v3 export loads without throwing and renders no x suffix.\n- [ ] node --test tools/*.test.js fully green, exact counts reported.\n- [ ] smoke-render passes for every program and week.\n- [ ] analyze-history.test.js count unchanged (analyzer ignores reps by design).\n\n**Verify:** `node --test tools/*.test.js` -> all pass; smoke command prints `smoke ok`.\n\n**Steps:**\n1. Append 3 round-trip tests (exportData writes through stubbed Blob/URL, so assert on the storage blobs it reads). 2. Run reps tests -> 25. 3. Full suite, report exact counts. 4. Smoke loop. 5. analyze-history count check. 6. Commit.\n\nSee `docs/superpowers/plans/2026-07-23-out-of-order-logging-and-reps.md` for exact code.\n\n```json:metadata\n{\"files\":[\"tools/reps.test.js\"],\"verifyCommand\":\"node --test tools/*.test.js\",\"acceptanceCriteria\":[\"v3 export payload carries reps\",\"re-import restores the same reps\",\"pre-reps backup imports and renders no suffix\",\"full suite green with exact counts\",\"smoke-render passes\",\"analyze-history count unchanged\"],\"modelTier\":\"standard\"}\n```"
     }
   ],
-  "lastUpdated": "2026-07-23T00:00:00.000Z"
+  "lastUpdated": "2026-07-23T18:30:00.000Z"
 }
