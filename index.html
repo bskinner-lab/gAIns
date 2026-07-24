@@ -3481,7 +3481,7 @@ function commitEdit(raw) {
     if (field === 'w') {
       const n = parseFloat(s);
       if (!isNaN(n)) view.pendW = Math.max(0, n);
-    } else {
+    } else if (field === 'r') {
       const n = parseInt(s, 10);
       if (!isNaN(n)) view.pendR = Math.max(0, n);
     }
@@ -3489,14 +3489,21 @@ function commitEdit(raw) {
   render();
 }
 
+// `change` and `focusout` intentionally overlap here: for a text input,
+// `change` is effectively a subset of `focusout`, so `focusout` alone would
+// cover every case in a desktop browser. `change` stays anyway because
+// soft-keyboard "Done"/"Go" behavior varies across mobile browsers, and this
+// is a phone-first app — the `view.editing` guard inside commitEdit already
+// makes the resulting double-fire a free no-op, so the redundancy costs
+// nothing and buys robustness.
 document.addEventListener('change', e => {
-  if (e.target && e.target.id === 'editfield') commitEdit(e.target.value);
+  if (e.target && e.target.id === EDIT_FIELD_ID) commitEdit(e.target.value);
 });
 document.addEventListener('focusout', e => {
-  if (e.target && e.target.id === 'editfield') commitEdit(e.target.value);
+  if (e.target && e.target.id === EDIT_FIELD_ID) commitEdit(e.target.value);
 });
 document.addEventListener('keydown', e => {
-  if (!view.editing || !e.target || e.target.id !== 'editfield') return;
+  if (!view.editing || !e.target || e.target.id !== EDIT_FIELD_ID) return;
   if (e.key === 'Enter') { e.preventDefault(); commitEdit(e.target.value); }
   else if (e.key === 'Escape') { view.editing = null; render(); }
 });
@@ -3509,7 +3516,11 @@ function renderBottomBar() {
   // correct under the headless test shim, whose getElementById never returns
   // null. Only the rest pill's DISPLAY pauses; the timer is timestamp-based
   // (view.restEnd vs Date.now()), so it catches up on the next real render.
-  if (view.editing && el.innerHTML.includes('id="editfield"')) return;
+  // This match is coupled to the EXACT attribute spelling the two <input>
+  // templates below emit (double-quoted `id="..."`) — reorder those
+  // attributes or switch quote style and this substring check must change
+  // with it, constant or not.
+  if (view.editing && el.innerHTML.includes(`id="${EDIT_FIELD_ID}"`)) return;
   if (view.name !== 'day') { el.innerHTML = ''; return; }
   const day = curDay(), act = activeSet(day), s = dayStats(day.id);
 
@@ -3542,14 +3553,14 @@ function renderBottomBar() {
           <div class="stepper">
             <button class="step-b" data-act="w-">−</button>
             <div class="step-v" data-act="editw">${view.editing === 'w'
-              ? `<input id="editfield" class="step-in" type="text" inputmode="decimal" value="${esc(view.pendW)}">`
+              ? `<input id="${EDIT_FIELD_ID}" class="step-in" type="text" inputmode="decimal" value="${esc(view.pendW)}">`
               : `<div>${view.pendW % 1 ? view.pendW.toFixed(1) : view.pendW}</div>`}<div>LB</div></div>
             <button class="step-b" data-act="w+">+</button>
           </div>
           <div class="stepper">
             <button class="step-b" data-act="r-">−</button>
             <div class="step-v" data-act="editr">${view.editing === 'r'
-              ? `<input id="editfield" class="step-in" type="text" inputmode="numeric" value="${esc(view.pendR)}">`
+              ? `<input id="${EDIT_FIELD_ID}" class="step-in" type="text" inputmode="numeric" value="${esc(view.pendR)}">`
               : `<div>${view.pendR === '' ? '—' : view.pendR}</div>`}<div>REPS</div></div>
             <button class="step-b" data-act="r+">+</button>
           </div>
@@ -3565,10 +3576,15 @@ function renderBottomBar() {
 
   el.innerHTML = `<div class="bar">${pill}${body}</div>`;
   if (view.editing) {
-    const f = document.getElementById('editfield');
+    const f = document.getElementById(EDIT_FIELD_ID);
     if (f) { f.focus(); if (f.select) f.select(); }
   }
 }
+// Single source of truth for the inline edit field's id — referenced by the
+// freeze guard, both input templates, the post-render focus lookup, and the
+// change/focusout/keydown listeners. Change it here only; every use site
+// below derives from it, so nothing can desync.
+const EDIT_FIELD_ID = 'editfield';
 const REST_PRESETS = [60, 90, 120, 180];
 const RING_C = 527.8;
 
