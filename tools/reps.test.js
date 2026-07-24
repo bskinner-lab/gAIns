@@ -434,6 +434,118 @@ test('24. the field renders on the very first render after editing is set (would
   });
 });
 
+// Scopes a rendered day-view html blob down to a single exercise's
+// container (`<div class="ex">` / `<div class="ex sel">`), so assertions
+// about that exercise's set rows can't accidentally pass because of markup
+// belonging to a different exercise or the exercise's own prescription tag
+// (`${ex.sets}×${ex.reps}`, e.g. "3×12–15", which legitimately contains ×).
+//
+// Anchored on the numbered exercise-name heading rather than the
+// `data-act="selectex"` marker: a fully-completed exercise (every set
+// logged/skipped) renders with no selectex attribute at all (`topAttrs` is
+// `''` once `allDone` is true), which is exactly the state test 27 needs.
+function extractExerciseBlock(html, exIndex, exName) {
+  const marker = `${String(exIndex + 1).padStart(2, '0')} ${exName}`;
+  const markerIdx = html.indexOf(marker);
+  assert.notStrictEqual(markerIdx, -1, `expected exercise "${exName}" heading in rendered html`);
+  const containerRe = /<div class="ex( sel)?">/g;
+  const starts = [];
+  let m;
+  while ((m = containerRe.exec(html))) starts.push(m.index);
+  for (let i = 0; i < starts.length; i++) {
+    const nextStart = i + 1 < starts.length ? starts[i + 1] : html.length;
+    if (starts[i] < markerIdx && markerIdx < nextStart) {
+      return html.slice(starts[i], nextStart);
+    }
+  }
+  throw new Error(`could not locate container for exercise ${exId}`);
+}
+
+test('25. reps ride along in a v3 export payload', () => {
+  const seed = seededStorage();
+  // This is exactly the blob exportData() reads via
+  // `localStorage.getItem(hypertrophy_state_<progId>_w<n>)` and drops
+  // unmodified into `data.programs[<progId>].weeks[<n>]`.
+  const raw = JSON.parse(seed.storage[`hypertrophy_state_${seed.progId}_w1`]);
+  assert.ok('reps' in raw[seed.dayId], 'week-1 blob should carry a reps key');
+  assert.strictEqual(raw[seed.dayId].reps[seed.exId], 9);
+  assert.strictEqual(raw[seed.dayId].reps[`${seed.exId}_0`], 11);
+  assert.strictEqual(raw[seed.dayId].reps[`${seed.exId}_1`], 9);
+
+  const payload = {
+    version: 3,
+    currentProgram: 0,
+    programs: { [seed.progId]: { weeks: { 1: raw }, currentWeek: 2 } },
+  };
+  const dayInPayload = payload.programs[seed.progId].weeks[1][seed.dayId];
+  assert.ok('reps' in dayInPayload);
+  assert.strictEqual(dayInPayload.reps[seed.exId], 9);
+});
+
+test('26. a re-imported export restores the same reps', () => {
+  const seed = seededStorage();
+  const raw = JSON.parse(seed.storage[`hypertrophy_state_${seed.progId}_w1`]);
+  // The v3 export payload, built the same way exportData() builds it.
+  const payload = {
+    version: 3,
+    currentProgram: 0,
+    programs: { [seed.progId]: { weeks: { 1: raw }, currentWeek: 1 } },
+  };
+  // Reconstruct localStorage the same way importData() does: each week's
+  // blob goes back under its own key, plus the program's current-week
+  // pointer and the active-program index.
+  const progData = payload.programs[seed.progId];
+  const importedStorage = {
+    [`hypertrophy_state_${seed.progId}_w1`]: JSON.stringify(progData.weeks[1]),
+    [`hypertrophy_week_${seed.progId}`]: String(progData.currentWeek),
+    hypertrophy_program: String(payload.currentProgram),
+    ...allSeenSeed(),
+  };
+  withApp({ storage: importedStorage }, (app) => {
+    assert.strictEqual(app.state[seed.dayId].reps[seed.exId], 9);
+    assert.strictEqual(app.state[seed.dayId].reps[`${seed.exId}_0`], 11);
+    assert.strictEqual(app.state[seed.dayId].reps[`${seed.exId}_1`], 9);
+  });
+});
+
+test('27. a pre-reps backup imports and renders without a reps suffix', () => {
+  const { PROGRAMS } = loadApp();
+  const prog = PROGRAMS[0];
+  const day = prog.days[0];
+  const ex = day.exercises[0];
+  // v3-shaped week blob with no `reps` key at all — what a backup taken
+  // before this feature existed looks like.
+  const w1 = {
+    [day.id]: {
+      sets: { [ex.id]: new Array(ex.sets).fill(true) },
+      weights: { [ex.id]: 100, [`${ex.id}_0`]: 100 },
+      effort: {}, protocol: [], swaps: {},
+    },
+  };
+  assert.ok(!('reps' in w1[day.id]));
+  withApp({
+    storage: {
+      [`hypertrophy_state_${prog.id}_w1`]: JSON.stringify(w1),
+      [`hypertrophy_week_${prog.id}`]: '1',
+      hypertrophy_program: '0',
+      ...allSeenSeed(),
+    },
+  }, (app) => {
+    assert.deepStrictEqual(app.state[day.id].reps, {});
+    assert.doesNotThrow(() => app.render());
+
+    click(app, { day: day.id });
+    app.render();
+    const html = app.elements.get('scroll').innerHTML;
+    const block = extractExerciseBlock(html, 0, ex.name);
+    const cells = block.match(/<div class="cell-today">[\s\S]*?<\/div>/g) || [];
+    assert.ok(cells.length > 0, 'expected at least one set-row cell for this exercise');
+    cells.forEach(cell => {
+      assert.doesNotMatch(cell, /×/, `set-row cell should not show a reps suffix: ${cell}`);
+    });
+  });
+});
+
 test('8. a logged set without reps renders weight only', () => {
   const { PROGRAMS } = loadApp();
   const prog = PROGRAMS[0];
