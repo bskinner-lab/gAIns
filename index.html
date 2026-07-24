@@ -200,13 +200,14 @@ body {
 .log-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .log-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .log-set { font-family: var(--font-mono); font-size: 8px; letter-spacing: 1px; color: rgba(242,239,232,.45); flex: none; }
-.log-ctl { display: flex; align-items: stretch; gap: 10px; }
-.stepper { display: flex; align-items: center; gap: 6px; flex: none; }
-.step-b { width: 44px; height: 52px; background: var(--bar-btn); border: 1px solid var(--bar-edge); border-radius: 8px; color: var(--on-dark); font-size: 20px; cursor: pointer; }
+.log-ctl { display: flex; flex-direction: column; gap: 8px; }
+.log-steps { display: flex; gap: 10px; }
+.stepper { display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; min-width: 0; }
+.step-b { width: 44px; height: 52px; background: var(--bar-btn); border: 1px solid var(--bar-edge); border-radius: 8px; color: var(--on-dark); font-size: 20px; cursor: pointer; flex: none; }
 .step-v { text-align: center; min-width: 50px; }
 .step-v div:first-child { font-family: var(--font-mono); font-size: 16px; font-weight: 600; }
 .step-v div:last-child { font-family: var(--font-mono); font-size: 7px; color: rgba(242,239,232,.4); }
-.log-go { flex: 1; min-width: 0; background: var(--accent); border: none; border-radius: 8px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 1px; height: 52px; cursor: pointer; }
+.log-go { width: 100%; background: var(--accent); border: none; border-radius: 8px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 1px; height: 48px; cursor: pointer; }
 .done-row { display: flex; align-items: center; justify-content: space-between; padding: 15px 2px 17px; }
 .done-t { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: 1.5px; color: var(--accent); }
 .done-s { font-family: var(--font-mono); font-size: 11px; color: rgba(242,239,232,.6); }
@@ -2986,7 +2987,7 @@ function advanceToCurrentWeek() {
 
 const view = { name: 'day', dayId: null, openPhase: 2, tip: null, confirm: null, swap: null,
                importMsg: '', importOk: true, sessionStart: Date.now(), now: Date.now(),
-               pendW: 0, pendKey: '', latestPr: null, selectedExId: null,
+               pendW: 0, pendR: '', pendKey: '', latestPr: null, selectedExId: null,
                restEnd: null, restTotal: 0, restInfo: '', restNext: '', restRec: '', restMinimized: false };
 
 function esc(s) {
@@ -3156,7 +3157,7 @@ function undoSet(dayId, exId, i) {
 function logActiveSet() {
   const day = curDay(), act = activeSet(day);
   if (!act) return;
-  const { ex, i } = act, w = view.pendW;
+  const { ex, i } = act, w = view.pendW, r = view.pendR;
 
   const hist = getExerciseHistory(day.id, ex.id).filter(h => h.week < currentWeek && h.weight != null);
   const maxPrior = hist.length ? Math.max(...hist.map(h => h.weight)) : 0;
@@ -3164,6 +3165,13 @@ function logActiveSet() {
   state[day.id].sets[ex.id][i] = true;
   state[day.id].weights[ex.id] = w;
   state[day.id].weights[`${ex.id}_${i}`] = w;
+  // Blank/invalid reps record nothing at all, so "not recorded" stays a single
+  // unambiguous state — exactly how every set logged before this feature reads.
+  const rn = (r === '' || r == null) ? NaN : Number(r);
+  if (!isNaN(rn)) {
+    state[day.id].reps[ex.id] = rn;
+    state[day.id].reps[`${ex.id}_${i}`] = rn;
+  }
   saveState();
 
   view.latestPr = (maxPrior > 0 && w > maxPrior)
@@ -3427,6 +3435,15 @@ function renderScroll() {
   const fi = document.getElementById('importFile');
   if (fi) fi.onchange = importData;
 }
+// The bottom of a prescribed range: the FIRST integer in the reps string.
+// Those strings vary a lot across programs — "6–10", "12–15", "10 each leg",
+// "8–12 each leg", "15 + LLP" — and the first integer is the right answer for
+// all of them (low end of a range, or the per-leg count), never an inflated one.
+function lowRep(repsStr) {
+  const m = /\d+/.exec(String(repsStr == null ? '' : repsStr));
+  return m ? Number(m[0]) : '';
+}
+
 function syncPending(day, act) {
   const key = `${curProg().id}:${currentWeek}:${day.id}:${act.ex.id}:${act.i}`;
   if (view.pendKey === key) return;
@@ -3435,6 +3452,13 @@ function syncPending(day, act) {
   const prev = act.i > 0 ? state[day.id].weights[`${act.ex.id}_${act.i - 1}`] : null;
   const prior = priorWeekEntry(day.id, act.ex.id);
   view.pendW = Number(prev != null ? prev : stored != null ? stored : (prior && prior.weight) || 0) || 0;
+
+  // Reps deliberately do NOT carry from the previous set the way weight does:
+  // reps drop set to set as fatigue accumulates, so set 1's number is a bad
+  // guess for set 3. Last week's number at the same set index is the anchor.
+  const priorSetR = prior && prior.setReps ? prior.setReps[act.i] : undefined;
+  view.pendR = priorSetR != null ? priorSetR
+    : (prior && prior.reps != null ? prior.reps : lowRep(act.ex.reps));
 }
 
 function renderBottomBar() {
@@ -3467,10 +3491,17 @@ function renderBottomBar() {
         <div class="log-set">SET ${act.i + 1}/${act.ex.sets} · ${esc(act.ex.reps)} REPS</div>
       </div>
       <div class="log-ctl">
-        <div class="stepper">
-          <button class="step-b" data-act="w-">−</button>
-          <div class="step-v"><div>${view.pendW % 1 ? view.pendW.toFixed(1) : view.pendW}</div><div>LB</div></div>
-          <button class="step-b" data-act="w+">+</button>
+        <div class="log-steps">
+          <div class="stepper">
+            <button class="step-b" data-act="w-">−</button>
+            <div class="step-v"><div>${view.pendW % 1 ? view.pendW.toFixed(1) : view.pendW}</div><div>LB</div></div>
+            <button class="step-b" data-act="w+">+</button>
+          </div>
+          <div class="stepper">
+            <button class="step-b" data-act="r-">−</button>
+            <div class="step-v"><div>${view.pendR === '' ? '—' : view.pendR}</div><div>REPS</div></div>
+            <button class="step-b" data-act="r+">+</button>
+          </div>
         </div>
         <button class="log-go" data-act="log">LOG SET</button>
       </div></div>`;
@@ -3628,6 +3659,8 @@ document.addEventListener('click', e => {
   else if (act === 'log')     { logActiveSet(); }
   else if (act === 'w-') { view.pendW = Math.max(0, view.pendW - 2.5); }
   else if (act === 'w+') { view.pendW = view.pendW + 2.5; }
+  else if (act === 'r-') { view.pendR = Math.max(0, (Number(view.pendR) || 0) - 1); }
+  else if (act === 'r+') { view.pendR = (Number(view.pendR) || 0) + 1; }
   else if (act === 'restexpand') { view.restMinimized = false; }
   else if (act === 'restskip')   { view.restEnd = null; view.restMinimized = false; }
   else if (act === 'rest+')      { addRest(30); }

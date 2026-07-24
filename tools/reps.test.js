@@ -174,6 +174,114 @@ test('7. a logged set with recorded reps renders weight × reps', () => {
   });
 });
 
+test('9. lowRep parses the first integer out of varied prescription strings', () => {
+  const { lowRep } = loadApp();
+  assert.strictEqual(lowRep('6–10'), 6);
+  assert.strictEqual(lowRep('12–15'), 12);
+  assert.strictEqual(lowRep('10 each leg'), 10);
+  assert.strictEqual(lowRep('8–12 each leg'), 8);
+  assert.strictEqual(lowRep('15 + LLP'), 15);
+  assert.strictEqual(lowRep(''), '');
+});
+
+test('10. reps prefill uses the low end of the prescribed range with no history', () => {
+  const { PROGRAMS } = loadApp();
+  const prog = PROGRAMS[0];
+  const day = prog.days[0];
+  const ex = day.exercises[0];
+  const expected = Number(/\d+/.exec(ex.reps)[0]);
+  withApp({ storage: { hypertrophy_program: '0', ...(() => {
+    const { PROGRAMS: P } = loadApp();
+    return { hypertrophy_seen_programs: JSON.stringify(P.map(p => p.id)) };
+  })() } }, (app) => {
+    click(app, { day: day.id });
+    app.render();
+    assert.strictEqual(app.view.pendR, expected);
+  });
+});
+
+test('11. reps prefill prefers last week reps at the same set index over the exercise-level figure', () => {
+  const seed = seededStorage();
+  withApp({ storage: seed.storage }, (app) => {
+    click(app, { day: seed.dayId });
+    app.render();
+    assert.strictEqual(app.view.pendR, 11);
+  });
+});
+
+test('12. the reps stepper adjusts by one and clamps at zero', () => {
+  const seed = seededStorage();
+  withApp({ storage: seed.storage }, (app) => {
+    click(app, { day: seed.dayId });
+    app.render();
+    app.view.pendR = 0;
+    click(app, { act: 'r-' });
+    assert.strictEqual(app.view.pendR, 0);
+    click(app, { act: 'r+' });
+    assert.strictEqual(app.view.pendR, 1);
+    click(app, { act: 'r+' });
+    assert.strictEqual(app.view.pendR, 2);
+    click(app, { act: 'r-' });
+    assert.strictEqual(app.view.pendR, 1);
+  });
+});
+
+test('13. logging writes reps at both the exercise and per-set keys', () => {
+  const { PROGRAMS } = loadApp();
+  const prog = PROGRAMS[0];
+  const day = prog.days[0];
+  const ex = day.exercises[0];
+  withApp({
+    storage: {
+      hypertrophy_program: '0',
+      hypertrophy_seen_programs: JSON.stringify(PROGRAMS.map(p => p.id)),
+    },
+  }, (app) => {
+    click(app, { day: day.id });
+    app.render();
+    app.view.pendR = 8;
+    app.logActiveSet();
+    assert.strictEqual(app.state[day.id].reps[ex.id], 8);
+    assert.strictEqual(app.state[day.id].reps[`${ex.id}_0`], 8);
+  });
+});
+
+test('14. logging with an empty pendR records no reps but still logs the set', () => {
+  const { PROGRAMS } = loadApp();
+  const prog = PROGRAMS[0];
+  const day = prog.days[0];
+  const ex = day.exercises[0];
+  withApp({
+    storage: {
+      hypertrophy_program: '0',
+      hypertrophy_seen_programs: JSON.stringify(PROGRAMS.map(p => p.id)),
+    },
+  }, (app) => {
+    click(app, { day: day.id });
+    app.render();
+    app.view.pendR = '';
+    app.logActiveSet();
+    assert.strictEqual(app.state[day.id].reps[ex.id], undefined);
+    assert.strictEqual(app.state[day.id].reps[`${ex.id}_0`], undefined);
+    assert.strictEqual(app.state[day.id].sets[ex.id][0], true);
+  });
+});
+
+test('15. the bottom bar renders both steppers and the LOG SET button', () => {
+  const seed = seededStorage();
+  withApp({ storage: seed.storage }, (app) => {
+    click(app, { day: seed.dayId });
+    app.render();
+    const html = app.elements.get('bottombar').innerHTML;
+    assert.match(html, /data-act="w-"/);
+    assert.match(html, /data-act="w\+"/);
+    assert.match(html, /data-act="r-"/);
+    assert.match(html, /data-act="r\+"/);
+    assert.match(html, /data-act="log"/);
+    assert.match(html, />LOG SET</);
+  });
+});
+
 test('8. a logged set without reps renders weight only', () => {
   const { PROGRAMS } = loadApp();
   const prog = PROGRAMS[0];
