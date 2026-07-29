@@ -2969,6 +2969,10 @@ function importData(event) {
           localStorage.setItem(`hypertrophy_week_${progId}`, progData.currentWeek);
           if (progData.startDate) {
             localStorage.setItem(programStartKey(progId), progData.startDate);
+          } else {
+            // Otherwise a start date from the pre-import state would survive and
+            // be shown against restored data it has nothing to do with.
+            localStorage.removeItem(programStartKey(progId));
           }
         }
         if (typeof data.currentProgram === 'number') {

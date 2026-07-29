@@ -341,6 +341,33 @@ test('14. a v3 backup carrying times round-trips with timestamps intact', () => 
   });
 });
 
+test('14b. importing a backup with no startDate clears the stored one', () => {
+  const { PROGRAMS } = loadApp();
+  const prog = PROGRAMS[0], day = prog.days[0], ex = day.exercises[0];
+  const seed = Object.assign(allSeenSeed(), {
+    [`hypertrophy_start_${prog.id}`]: '2026-01-05',
+  });
+  const backup = JSON.stringify({
+    version: 3,
+    currentProgram: 0,
+    programs: {
+      [prog.id]: {
+        currentWeek: 1,
+        weeks: { 1: { [day.id]: { sets: { [ex.id]: [true, false, false] }, weights: {}, effort: {} } } },
+      },
+    },
+  });
+  withApp({ storage: seed }, app => {
+    assert.strictEqual(app.storage.getItem(`hypertrophy_start_${prog.id}`), '2026-01-05');
+    app.importData(fileEvent(backup));
+    assert.strictEqual(
+      app.storage.getItem(`hypertrophy_start_${prog.id}`),
+      null,
+      'stale start date survived an import that carried none'
+    );
+  });
+});
+
 test('12b. export omits startDate when none is stored', () => {
   withApp({ storage: allSeenSeed() }, app => {
     app.exportData();
