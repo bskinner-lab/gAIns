@@ -155,3 +155,21 @@ test('7c. bulk ops do not overwrite an existing measured timestamp', () => {
     );
   });
 });
+
+test('7d. bulk skip does not clobber an individually-skipped set\'s timestamp', () => {
+  withApp({ storage: allSeenSeed() }, app => {
+    const day = app.curDay();
+    const ex = app.activeSet(day).ex;
+    app.setClock(() => FIXED);
+    app.skipSet(day.id, ex.id, 0);              // measured, individual skip
+    app.setClock(() => FIXED + 60000);
+    app.skipExercise(day.id, ex.id);            // bulk-skips the remainder
+    assert.deepStrictEqual(
+      app.state[day.id].times[`${ex.id}_0`],
+      { at: FIXED, src: 'skip' },
+      'bulk skip overwrote a measured skip timestamp'
+    );
+    // The genuinely-unresolved sets in the same exercise still get bulk stamps.
+    assert.strictEqual(app.state[day.id].times[`${ex.id}_1`].src, 'bulk');
+  });
+});

@@ -2560,7 +2560,7 @@ function skipExercise(dayId, exId) {
     for (let i = 0; i < sets.length; i++) { sets[i] = false; clearTime(dayId, exId, i); }
   } else {
     for (let i = 0; i < sets.length; i++) {
-      if (sets[i] !== true) { sets[i] = 'skipped'; markTime(dayId, exId, i, 'bulk'); }
+      if (sets[i] === false) { sets[i] = 'skipped'; markTime(dayId, exId, i, 'bulk'); }
     }
   }
   saveState();
