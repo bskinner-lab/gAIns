@@ -4,51 +4,64 @@
     {
       "id": 1,
       "subject": "Task 1: Clock seam and times plumbing",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** `times` exists on every day, survives save/load, and the clock is stubbable — with the prefill exclusion pinned before any write path can violate it.\n\n**Files:**\n- Modify: `index.html` — add clock seam + helpers near `saveState` (JS ~2010); add `times` to `initState` (JS ~1914)\n- Modify: `tools/app-shim.js` — expose new bindings\n- Create: `tools/timestamps.test.js`\n\n**Acceptance Criteria:**\n- [ ] `nowMs()` returns `Date.now()` by default; `setClock(fn)` replaces it; `setClock(null)` restores the default\n- [ ] Every day in `state` has a `times` object after `initState()`\n- [ ] Day state saved without a `times` key loads without throwing\n- [ ] `times` survives a `saveState()` → `loadState()` → `initState()` round trip\n- [ ] `prefillFromPreviousWeeks()` copies weights and effort forward but not `times`\n- [ ] The rest timer's `Date.now()` calls are unchanged\n\n**Verify:** `node --test tools/*.test.js` → 183 passing, 0 failing\n\n```json:metadata\n{\"files\": [\"index.html\", \"tools/app-shim.js\", \"tools/timestamps.test.js\"], \"verifyCommand\": \"node --test tools/*.test.js\", \"acceptanceCriteria\": [\"nowMs/setClock seam works and restores default\", \"every day has a times object after initState\", \"state without times key loads without throwing\", \"times survive save/load round trip\", \"prefillFromPreviousWeeks does not copy times\", \"rest timer Date.now calls unchanged\"], \"modelTier\": \"standard\", \"planPath\": \"docs/superpowers/plans/2026-07-29-set-timestamps.md\"}\n```"
     },
     {
       "id": 2,
       "subject": "Task 2: Write points for log and skip",
-      "status": "pending",
-      "blockedBy": [1],
+      "status": "completed",
+      "blockedBy": [
+        1
+      ],
       "description": "**Goal:** Individually-resolved sets record a precise, correctly-attributed timestamp.\n\n**Files:**\n- Modify: `index.html` — `logActiveSet` (JS ~2859), `toggleSet` (JS ~2105), `skipSet` (JS ~2208)\n- Modify: `tools/timestamps.test.js`\n\n**Acceptance Criteria:**\n- [ ] `logActiveSet` writes `{at, src: \"log\"}` at the stubbed clock's value\n- [ ] `toggleSet` writes `{at, src: \"log\"}` when marking a set done\n- [ ] `skipSet` writes `{at, src: \"skip\"}` when marking a set skipped\n- [ ] Each writes before `saveState()`, so the timestamp is persisted in the same write\n\n**Verify:** `node --test tools/*.test.js` → 186 passing, 0 failing\n\n```json:metadata\n{\"files\": [\"index.html\", \"tools/timestamps.test.js\"], \"verifyCommand\": \"node --test tools/*.test.js\", \"acceptanceCriteria\": [\"logActiveSet writes src log at stubbed clock value\", \"toggleSet writes src log when marking done\", \"skipSet writes src skip when marking skipped\", \"writes happen before saveState\"], \"modelTier\": \"standard\", \"planPath\": \"docs/superpowers/plans/2026-07-29-set-timestamps.md\"}\n```"
     },
     {
       "id": 3,
       "subject": "Task 3: Write points for bulk operations",
-      "status": "pending",
-      "blockedBy": [1],
+      "status": "completed",
+      "blockedBy": [
+        1
+      ],
       "description": "**Goal:** Sets resolved en masse record the day honestly without corrupting pacing analysis.\n\n**Files:**\n- Modify: `index.html` — `skipExercise` (JS ~2225), `skipDay` (JS ~2245), `completeDay` (JS ~2265)\n- Modify: `tools/timestamps.test.js`\n\n**Acceptance Criteria:**\n- [ ] `completeDay` writes `src: \"bulk\"` for every set it flips to `true`\n- [ ] `skipDay` writes `src: \"bulk\"` for every set it flips to `'skipped'`\n- [ ] `skipExercise` writes `src: \"bulk\"` for every set it flips to `'skipped'`\n- [ ] None of the three overwrite a timestamp on a set that was already resolved\n\n**Verify:** `node --test tools/*.test.js` → 189 passing, 0 failing\n\n```json:metadata\n{\"files\": [\"index.html\", \"tools/timestamps.test.js\"], \"verifyCommand\": \"node --test tools/*.test.js\", \"acceptanceCriteria\": [\"completeDay writes src bulk for every flipped set\", \"skipDay writes src bulk\", \"skipExercise writes src bulk\", \"bulk ops never overwrite an existing measured timestamp\"], \"modelTier\": \"standard\", \"planPath\": \"docs/superpowers/plans/2026-07-29-set-timestamps.md\"}\n```"
     },
     {
       "id": 4,
       "subject": "Task 4: Delete timestamps on un-resolve",
-      "status": "pending",
-      "blockedBy": [2, 3],
+      "status": "completed",
+      "blockedBy": [
+        2,
+        3
+      ],
       "description": "**Goal:** No timestamp outlives the set it describes.\n\n**Files:**\n- Modify: `index.html` — `undoSet` (JS ~2853), `toggleSet` un-done branch (JS ~2105), `skipSet` un-skip branch (JS ~2208)\n- Modify: `tools/timestamps.test.js`\n\n**Acceptance Criteria:**\n- [ ] `undoSet` removes the entry entirely (key absent, not set to `undefined`)\n- [ ] `toggleSet` on an already-done set removes the entry\n- [ ] `skipSet` on an already-skipped set removes the entry\n- [ ] `skipDay` / `skipExercise` un-skip branches remove entries (landed in Task 3)\n- [ ] Re-logging after an undo writes a fresh timestamp, not the stale one\n\n**Verify:** `node --test tools/*.test.js` → 192 passing, 0 failing\n\n```json:metadata\n{\"files\": [\"index.html\", \"tools/timestamps.test.js\"], \"verifyCommand\": \"node --test tools/*.test.js\", \"acceptanceCriteria\": [\"undoSet removes the key entirely\", \"toggleSet off removes the entry\", \"skipSet un-skip removes the entry\", \"skipDay and skipExercise un-skip branches remove entries\", \"re-logging after undo records a fresh timestamp\"], \"modelTier\": \"standard\", \"planPath\": \"docs/superpowers/plans/2026-07-29-set-timestamps.md\"}\n```"
     },
     {
       "id": 5,
       "subject": "Task 5: Export v4 and import compatibility",
       "status": "pending",
-      "blockedBy": [1],
+      "blockedBy": [
+        1
+      ],
       "description": "**Goal:** Backups carry timestamps, and old backups still import cleanly in both directions.\n\n**Files:**\n- Modify: `index.html` — `exportData` (JS ~2538), `importData` (JS ~2566), `settingsHTML` (JS ~3095)\n- Modify: `tools/app-shim.js` — content-capturing `Blob`, `FileReader` stub, add `FileReader` to `GLOBAL_KEYS`\n- Modify: `tools/timestamps.test.js`\n\n**Acceptance Criteria:**\n- [ ] Export emits `version: 4` and includes each day's `times`\n- [ ] Export includes per-program `startDate` when one is stored, and omits the key when not\n- [ ] A v3 backup imports cleanly, leaving `times` empty and fabricating zero dates\n- [ ] A v4 backup round-trips through export → import with timestamps intact\n- [ ] v2 and legacy v1 import branches are unmodified\n- [ ] Settings copy reads `v4` and \"v1, v2, v3 or v4\"\n\n**Verify:** `node --test tools/*.test.js` → 196 passing, 0 failing\n\n```json:metadata\n{\"files\": [\"index.html\", \"tools/app-shim.js\", \"tools/timestamps.test.js\"], \"verifyCommand\": \"node --test tools/*.test.js\", \"acceptanceCriteria\": [\"export emits version 4 including times\", \"export includes startDate when stored and omits when not\", \"v3 backup imports cleanly with times empty and no fabricated dates\", \"v4 backup round-trips with timestamps intact\", \"v2 and v1 import branches unmodified\", \"settings copy reads v4\"], \"modelTier\": \"standard\", \"planPath\": \"docs/superpowers/plans/2026-07-29-set-timestamps.md\"}\n```"
     },
     {
       "id": 6,
       "subject": "Task 6: Explicit backfill from start date",
       "status": "pending",
-      "blockedBy": [5],
+      "blockedBy": [
+        5
+      ],
       "description": "**Goal:** Recover approximate dates for ~1,568 historical sets without ever disguising an estimate as a measurement.\n\n**Files:**\n- Modify: `index.html` — add `backfillProgram` near `programStartKey`; Settings panel in `settingsHTML` (JS ~3095); click branch (JS ~3701)\n- Modify: `tools/app-shim.js` — expose `backfillProgram`, `programStartKey`\n- Modify: `tools/timestamps.test.js`\n\n**Acceptance Criteria:**\n- [ ] `backfillProgram(progId, startDate)` writes `{at, src: \"est\"}` for every resolved set across all stored weeks\n- [ ] `at` is local midnight of `startDate + (week − 1) × 7 + dayIndex` days, where `dayIndex` is the 0-based position in the program's `days` array\n- [ ] Re-running overwrites `est` entries and leaves `log` / `skip` / `bulk` untouched\n- [ ] A program with more than 7 days is refused with `{ok: false}` and writes nothing\n- [ ] An unparseable date is refused with `{ok: false}` and writes nothing\n- [ ] The start date is persisted under `hypertrophy_start_<progId>`\n- [ ] Settings exposes a date field and a button; using it re-runs `initState()` so the current week reflects the new data\n- [ ] Migration and import still never trigger backfill on their own\n\n**Verify:** `node --test tools/*.test.js` → 200 passing, 0 failing\n\n```json:metadata\n{\"files\": [\"index.html\", \"tools/app-shim.js\", \"tools/timestamps.test.js\"], \"verifyCommand\": \"node --test tools/*.test.js\", \"acceptanceCriteria\": [\"backfillProgram writes est entries for every resolved set\", \"at is local midnight of startDate plus week and dayIndex offsets\", \"re-running overwrites est but never log skip or bulk\", \"program with more than 7 days is refused and writes nothing\", \"unparseable date is refused and writes nothing\", \"start date persisted under hypertrophy_start_progId\", \"settings date field and button re-run initState\", \"migration and import never trigger backfill\"], \"modelTier\": \"frontier\", \"planPath\": \"docs/superpowers/plans/2026-07-29-set-timestamps.md\"}\n```"
     },
     {
       "id": 7,
       "subject": "Task 7: Update TODO.md",
       "status": "pending",
-      "blockedBy": [6],
+      "blockedBy": [
+        6
+      ],
       "description": "**Goal:** The backlog reflects what shipped and corrects the item-4 overstatement found during design.\n\n**Files:**\n- Modify: `TODO.md`\n\n**Acceptance Criteria:**\n- [ ] Tier 0 item 1 marked complete, with a note that no UI consumes the data yet\n- [ ] Item 4 corrected: per-set weights already exist in `toggleSet` and `logActiveSet`; only `saveWeight()` writes exercise-level only\n- [ ] Item 6 notes that timestamps are now available as an input\n\n**Verify:** `git diff --stat TODO.md` shows only `TODO.md` changed; `node --test tools/*.test.js` → 200 passing\n\n```json:metadata\n{\"files\": [\"TODO.md\"], \"verifyCommand\": \"node --test tools/*.test.js\", \"acceptanceCriteria\": [\"tier 0 item 1 marked done with data-model-only note\", \"item 4 corrected to reflect existing per-set weights\", \"item 6 notes timestamps available as input\"], \"modelTier\": \"mechanical\", \"planPath\": \"docs/superpowers/plans/2026-07-29-set-timestamps.md\"}\n```"
     }
   ],
-  "lastUpdated": "2026-07-29T17:41:37Z"
+  "lastUpdated": "2026-07-29T18:12:56Z"
 }
