@@ -3506,7 +3506,7 @@ function settingsHTML() {
 
     <div class="panel" style="margin-left:0;margin-right:0">
       <div class="panel-h">EXPORT</div>
-      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Download every logged set, weight, effort rating, swap and protocol check across all programs and weeks as a JSON file.</div>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Download every logged set, weight, rep count, effort rating, timestamp, swap and protocol check across all programs and weeks as a JSON file.</div>
       <button class="big-btn" data-act="export">↓ EXPORT DATA</button>
     </div>
 
@@ -3851,7 +3851,7 @@ document.addEventListener('click', e => {
   else if (act === 'export') { exportData(); }
   else if (act === 'import') { document.getElementById('importFile').click(); return; }
   else if (act === 'clearweek') {
-    view.confirm = { title: 'Clear Week?', msg: "This week's logged sets, weights and effort will be reset.", act: 'clearweek' };
+    view.confirm = { title: 'Clear Week?', msg: "This week's logged sets, weights, reps, effort, timestamps and protocol checks will be reset.", act: 'clearweek' };
   }
   else if (act === 'restmin') { view.restMinimized = true; }
   else if (act === 'preset')  { setRest(Number(el.dataset.s)); }
