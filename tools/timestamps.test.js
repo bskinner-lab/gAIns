@@ -259,7 +259,7 @@ function fileEvent(content) {
   return { target: { files: [{ _content: content }], value: '' } };
 }
 
-test('12. export emits version 4 including times', () => {
+test('12. export emits version 3 including times', () => {
   const { PROGRAMS } = loadApp();
   const prog = PROGRAMS[0], day = prog.days[0], ex = day.exercises[0];
   const seed = Object.assign(allSeenSeed(), {
@@ -276,7 +276,10 @@ test('12. export emits version 4 including times', () => {
   withApp({ storage: seed }, app => {
     app.exportData();
     const out = JSON.parse(app.lastBlob);
-    assert.strictEqual(out.version, 4);
+    // Deliberately 3: the version integer is the import gate, and the format is
+    // a structural superset, so a 3-labelled file still imports into pre-`times`
+    // builds. Bumping this would silently break the only backup path.
+    assert.strictEqual(out.version, 3);
     assert.deepStrictEqual(
       out.programs[prog.id].weeks['1'][day.id].times[`${ex.id}_0`],
       { at: FIXED, src: 'log' }
@@ -304,11 +307,13 @@ test('13. a v3 backup imports cleanly and fabricates no dates', () => {
   });
 });
 
-test('14. a v4 backup round-trips with timestamps intact', () => {
+// The emitted shape: labelled 3, carrying the extra `times` and `startDate`
+// keys that older builds ignore.
+test('14. a v3 backup carrying times round-trips with timestamps intact', () => {
   const { PROGRAMS } = loadApp();
   const prog = PROGRAMS[0], day = prog.days[0], ex = day.exercises[0];
   const backup = JSON.stringify({
-    version: 4,
+    version: 3,
     currentProgram: 0,
     programs: {
       [prog.id]: {

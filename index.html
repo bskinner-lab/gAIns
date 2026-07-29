@@ -2934,7 +2934,11 @@ function exportData() {
       ? { weeks, currentWeek: weekNum, startDate }
       : { weeks, currentWeek: weekNum };
   });
-  const data = { programs: allPrograms, currentProgram: savedProgIdx, version: 4 };
+  // Stays labelled 3 deliberately. The version integer is the import gate, so a
+  // file labelled 4 is rejected outright by builds that predate `times`. The
+  // format is a structural superset of v3 — `times` and `startDate` are extra
+  // keys older builds ignore — so a 3-labelled file imports into both.
+  const data = { programs: allPrograms, currentProgram: savedProgIdx, version: 3 };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2955,6 +2959,8 @@ function importData(event) {
     try {
       const data = JSON.parse(e.target.result);
 
+      // Nothing emits 4 any more (see exportData), but accepting it costs
+      // nothing and handles any file written by an interim build.
       if ((data.version === 4 || data.version === 3) && data.programs) {
         for (const [progId, progData] of Object.entries(data.programs)) {
           for (const [w, wState] of Object.entries(progData.weeks)) {
@@ -3487,7 +3493,7 @@ function settingsHTML() {
   const tb = (v, l) => `<button class="theme-b${cur === v ? ' on' : ''}" data-act="theme" data-v="${v}">${l}</button>`;
 
   return `<div class="vw">
-    <div class="vw-sub">BACKUP &amp; RESTORE · v4 · ALL PROGRAMS &amp; WEEKS</div>
+    <div class="vw-sub">BACKUP &amp; RESTORE · v3 · ALL PROGRAMS &amp; WEEKS</div>
 
     <div class="panel" style="margin-left:0;margin-right:0">
       <div class="panel-h">APPEARANCE</div>
@@ -3502,7 +3508,7 @@ function settingsHTML() {
 
     <div class="panel" style="margin-left:0;margin-right:0">
       <div class="panel-h">IMPORT</div>
-      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Restore from a v1, v2, v3 or v4 gAIns backup. Legacy files are migrated automatically.</div>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Restore from a v1, v2 or v3 gAIns backup. Legacy files are migrated automatically.</div>
       <button class="big-btn ghost" data-act="import">↑ IMPORT DATA</button>
       <input type="file" id="importFile" accept="application/json,.json" style="display:none">
       ${view.importMsg ? `<div style="margin-top:10px;font-family:var(--font-mono);font-size:10px;color:${view.importOk ? 'var(--ok)' : 'var(--danger)'}">${esc(view.importMsg)}</div>` : ''}

@@ -134,6 +134,9 @@ A set that was un-done was not performed. A stale timestamp is worse than none.
 - `undoSet` (JS ~2853)
 - The toggle-off branch in `toggleSet` (`wasDone` early return)
 - The un-skip branches in `skipSet`, `skipExercise`, `skipDay`
+- `resetWeek` — clears the whole week's `times` map alongside `weights` and
+  `effort`. Omitting it leaves a `src: "log"` orphan that backfill can never
+  repair, since backfill only ever overwrites `est` entries.
 
 ### Must NOT write timestamps
 
@@ -148,14 +151,17 @@ Timestamps route through a single `nowMs()` helper the test shim can stub.
 Used **only** by this feature. The rest timer's existing `Date.now()` calls stay
 untouched — that logic works, is sensitive to backgrounding, and is out of scope.
 
-## Export v4
+## Export: a v3-labelled superset
 
-v4 is a structural superset of v3. The v3 import branch writes each week's day
-state to `localStorage` verbatim, so `times` rides along for free.
+The export format gains `times` and per-program `startDate`, but the version
+integer **stays at 3**. The new format is a structural superset of v3 — both
+additions are extra keys older builds never read — and the v3 import branch
+writes each week's day state to `localStorage` verbatim, so `times` rides along
+for free.
 
 ```js
 {
-  version: 4,
+  version: 3,
   programs: {
     meso1: { weeks: {...}, currentWeek: 8, startDate: "2026-03-02" }
   },
@@ -165,19 +171,31 @@ state to `localStorage` verbatim, so `times` rides along for free.
 
 Changes:
 
-- `exportData` emits `version: 4` and per-program `startDate` when set
+- `exportData` includes each day's `times` and per-program `startDate` when set,
+  keeping `version: 3`
 - `importData` branch becomes
   `if ((data.version === 4 || data.version === 3) && data.programs)`,
-  plus reading optional `progData.startDate`
+  plus reading optional `progData.startDate`. Nothing emits 4; accepting it is
+  defensive cover for files written by an interim build.
 - `migrateDayState` gains `times: savedDay.times || {}`, matching how `reps` is
   already handled
 - v2 and legacy (v1) import branches are not touched
 
 ### Compatibility
 
-- A v3 backup imports into v4 cleanly, with `times` empty
-- A v4 backup imports into the **current shipped version** as well, because
-  `times` is an unread extra key. No one-way door.
+The **version integer is the import gate**, not the day-state shape. A file
+labelled 4 misses `=== 3`, misses `=== 2`, misses the legacy
+`data.state && data.currentWeek` branch, and falls through to
+`alert('Invalid backup file.')` — zero data imported. Keeping the label at 3 is
+precisely what preserves both directions:
+
+- A pre-`times` v3 backup imports into this build cleanly, with `times` empty
+- A backup from this build imports into the **currently shipped build** as well:
+  the label matches its `=== 3` branch, and `times`/`startDate` are extra keys
+  it ignores. No one-way door.
+
+This matters because export/import is the only backup path off the phone
+holding the real training log.
 
 ## Backfill
 
@@ -248,9 +266,9 @@ fails on the installed Node version; use the glob.
 
 *Export/import*
 
-12. Export emits `version: 4` with `times` and `startDate`
-13. A v3 backup imports cleanly, `times` empty, zero fabricated dates
-14. A v4 backup round-trips through export → import intact
+12. Export emits `version: 3` carrying `times` and `startDate`
+13. A pre-`times` v3 backup imports cleanly, `times` empty, zero fabricated dates
+14. A v3 backup carrying `times` round-trips through export → import intact
 
 Tests 10 and 11 are the highest-value cases. Both encode "do not fabricate or
 destroy real training data," both would fail silently and invisibly, and both

@@ -4,7 +4,7 @@
 
 **Goal:** Record when every set was performed, with provenance, so the app stops permanently losing the dates of training sessions.
 
-**Architecture:** A parallel `state[dayId].times` map keyed `${exId}_${setIdx}`, holding `{at, src}`. Purely additive — no existing field changes shape, so the ~9 functions that compare `sets[]` scalars identity-wise are untouched. Two helpers (`markTime`/`clearTime`) keep all six write points to one line each. Export goes to v4 as a structural superset of v3.
+**Architecture:** A parallel `state[dayId].times` map keyed `${exId}_${setIdx}`, holding `{at, src}`. Purely additive — no existing field changes shape, so the ~9 functions that compare `sets[]` scalars identity-wise are untouched. Two helpers (`markTime`/`clearTime`) keep all six write points to one line each. Export gains `times` as a structural superset of v3, keeping the `version: 3` label so backups still restore onto older builds.
 
 **Tech Stack:** Vanilla JS in a single `index.html`. Tests are `node:test` against `tools/app-shim.js`, which evals the app's `<script>` block under a DOM shim.
 
@@ -609,7 +609,15 @@ git commit -m "fix: delete timestamps when a set is un-resolved"
 
 ---
 
-### Task 5: Export v4 and import compatibility
+### Task 5: Export a v3-labelled superset, and import compatibility
+
+> **Amended after final review.** This task originally specified `version: 4`.
+> That breaks restore onto any build predating this branch: the version integer
+> is the import gate, so a 4-labelled file matches none of the import branches
+> and hits `alert('Invalid backup file.')`. The shipped code emits `version: 3`
+> carrying `times` and `startDate` as extra keys older builds ignore. The
+> `=== 4 || === 3` import condition is kept as defensive cover for interim
+> files. Criteria and tests below read as shipped.
 
 **Goal:** Backups carry timestamps, and old backups still import cleanly in both directions.
 
@@ -619,12 +627,12 @@ git commit -m "fix: delete timestamps when a set is un-resolved"
 - Modify: `tools/timestamps.test.js`
 
 **Acceptance Criteria:**
-- [ ] Export emits `version: 4` and includes each day's `times`
+- [ ] Export keeps `version: 3` and includes each day's `times`
 - [ ] Export includes per-program `startDate` when one is stored, and omits the key when not
-- [ ] A v3 backup imports cleanly, leaving `times` empty and fabricating zero dates
-- [ ] A v4 backup round-trips through export → import with timestamps intact
+- [ ] A pre-`times` v3 backup imports cleanly, leaving `times` empty and fabricating zero dates
+- [ ] A v3 backup carrying `times` round-trips through export → import with timestamps intact
 - [ ] v2 and legacy v1 import branches are unmodified
-- [ ] Settings copy reads `v4` and "v1, v2, v3 or v4"
+- [ ] Settings copy reads `v3` and "v1, v2 or v3"
 
 **Verify:** `node --test tools/*.test.js` → 196 passing, 0 failing
 
@@ -687,7 +695,7 @@ function fileEvent(content) {
   return { target: { files: [{ _content: content }], value: '' } };
 }
 
-test('12. export emits version 4 including times', () => {
+test('12. export emits version 3 including times', () => {
   const { PROGRAMS } = loadApp();
   const prog = PROGRAMS[0], day = prog.days[0], ex = day.exercises[0];
   const seed = Object.assign(allSeenSeed(), {
@@ -704,7 +712,7 @@ test('12. export emits version 4 including times', () => {
   withApp({ storage: seed }, app => {
     app.exportData();
     const out = JSON.parse(app.lastBlob);
-    assert.strictEqual(out.version, 4);
+    assert.strictEqual(out.version, 3);
     assert.deepStrictEqual(
       out.programs[prog.id].weeks['1'][day.id].times[`${ex.id}_0`],
       { at: FIXED, src: 'log' }
@@ -732,11 +740,11 @@ test('13. a v3 backup imports cleanly and fabricates no dates', () => {
   });
 });
 
-test('14. a v4 backup round-trips with timestamps intact', () => {
+test('14. a v3 backup carrying times round-trips with timestamps intact', () => {
   const { PROGRAMS } = loadApp();
   const prog = PROGRAMS[0], day = prog.days[0], ex = day.exercises[0];
   const backup = JSON.stringify({
-    version: 4,
+    version: 3,
     currentProgram: 0,
     programs: {
       [prog.id]: {
@@ -778,7 +786,7 @@ test('12b. export omits startDate when none is stored', () => {
 - [ ] **Step 3: Run tests to verify they fail**
 
 Run: `node --test tools/timestamps.test.js`
-Expected: FAIL — export still reports `version: 3`; v4 import falls through to "Invalid backup file."
+Expected: FAIL — export does not yet include `times`, and the import branch does not yet read `startDate`.
 
 - [ ] **Step 4: Add the start-date key helper**
 
@@ -797,14 +805,14 @@ function programStartKey(progId) { return `hypertrophy_start_${progId}`; }
       ? { weeks, currentWeek: weekNum, startDate }
       : { weeks, currentWeek: weekNum };
   });
-  const data = { programs: allPrograms, currentProgram: savedProgIdx, version: 4 };
+  const data = { programs: allPrograms, currentProgram: savedProgIdx, version: 3 };
 ```
 
 `times` needs no explicit handling — the week blobs are copied wholesale from `localStorage`.
 
 - [ ] **Step 6: Update `importData`**
 
-v4 is a structural superset of v3, so one shared branch handles both:
+The new format is a structural superset of v3, so one shared branch handles both labels:
 
 ```js
       if ((data.version === 4 || data.version === 3) && data.programs) {
@@ -826,13 +834,13 @@ Do not touch the `version === 2` or legacy branches.
 In `settingsHTML()`:
 
 ```js
-    <div class="vw-sub">BACKUP &amp; RESTORE · v4 · ALL PROGRAMS &amp; WEEKS</div>
+    <div class="vw-sub">BACKUP &amp; RESTORE · v3 · ALL PROGRAMS &amp; WEEKS</div>
 ```
 
 and:
 
 ```js
-      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Restore from a v1, v2, v3 or v4 gAIns backup. Legacy files are migrated automatically.</div>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Restore from a v1, v2 or v3 gAIns backup. Legacy files are migrated automatically.</div>
 ```
 
 - [ ] **Step 8: Run tests to verify they pass**
@@ -844,7 +852,7 @@ Expected: 196 passing, 0 failing.
 
 ```bash
 git add index.html tools/app-shim.js tools/timestamps.test.js
-git commit -m "feat: export v4 carrying timestamps, compatible both directions"
+git commit -m "feat: export carries timestamps, compatible both directions"
 ```
 
 ---
@@ -1168,7 +1176,7 @@ git commit -m "docs: mark timestamps done, correct per-set weight scope"
 
 ## Self-Review
 
-**Spec coverage:** Every spec section maps to a task — data shape and clock seam → Task 1; write points → Tasks 2 and 3; deletion → Task 4; export v4 → Task 5; backfill → Task 6. The spec's "Related" note about item 4 → Task 7. One gap found and closed: the spec's test list had no case asserting backfill *generates* correct `est` entries, only idempotency and refusal; added as test 15 in Task 6.
+**Spec coverage:** Every spec section maps to a task — data shape and clock seam → Task 1; write points → Tasks 2 and 3; deletion → Task 4; export superset → Task 5; backfill → Task 6. The spec's "Related" note about item 4 → Task 7. One gap found and closed: the spec's test list had no case asserting backfill *generates* correct `est` entries, only idempotency and refusal; added as test 15 in Task 6.
 
 **Placeholder scan:** No TBD/TODO markers. Every code step carries real code. No "similar to Task N" references.
 
