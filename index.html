@@ -37,6 +37,11 @@
   --font-display: 'Oswald', sans-serif;
   --font-mono:    'IBM Plex Mono', monospace;
   --font-body:    'Archivo', sans-serif;
+  /* Touch targets. --tap is the baseline every control must reach;
+     --tap-lg is for the high-frequency in-workout actions. Size tokens,
+     not colors, so they live here only — the dark blocks stay color-only. */
+  --tap:    44px;
+  --tap-lg: 48px;
 }
 
 :root[data-theme="dark"] {
@@ -83,6 +88,36 @@
 
 * { box-sizing: border-box; }
 
+/* Touch hygiene for every control. `manipulation` drops the 300ms double-tap
+   delay; the tap-highlight and user-select suppression stop a firm gym-hand
+   press from flashing a blue box or starting a text selection. */
+[data-act], button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+[data-act] { transition: opacity .12s ease; }
+[data-act]:active { opacity: .55; transition: none; }
+[data-act]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* The tip overlay's scrim is itself a tap target (tap anywhere to close) —
+   dimming the whole screen on press would read as a bug. */
+.ov[data-act]:active { opacity: 1; }
+/* The inline weight/reps edit field must stay selectable. */
+.step-in { user-select: text; -webkit-user-select: text; }
+
+/* Invisible centered hit rect: lifts a small glyph control to a full tap
+   target without changing how it looks. Pseudo-elements are never event
+   targets, so the delegated closest('[data-act]') lookup still resolves to
+   the button itself. No ancestor of a .hit element clips overflow. */
+.hit { position: relative; }
+.hit::after {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%; height: 100%;
+  min-width: var(--tap); min-height: var(--tap);
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -99,21 +134,26 @@ body {
 
 #masthead { padding: 18px 20px 0; position: sticky; top: 0; background: var(--bg); z-index: 5; }
 .mh-top { display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 3px solid var(--ink); padding-bottom: 9px; }
-.mh-title { font-family: var(--font-display); font-size: 34px; font-weight: 600; line-height: .95; letter-spacing: 1px; text-transform: uppercase; }
+.mh-title { font-family: var(--font-display); font-size: 34px; font-weight: 600; line-height: .95; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mh-title span { color: var(--accent); }
 .mh-sub { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.2px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mh-right { display: flex; align-items: flex-start; gap: 10px; flex: none; }
-.wk-row { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
-.wk-btn { border: none; background: none; cursor: pointer; color: var(--muted-2); font-size: 16px; line-height: 1; padding: 2px; }
-.wk-lbl { font-family: var(--font-display); font-size: 19px; font-weight: 600; color: var(--accent); min-width: 44px; text-align: center; }
+.mh-right { display: flex; align-items: flex-start; gap: 12px; flex: none; }
+.wk-row { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
+/* Narrower than tall on purpose: .hit supplies the full 44px tap width, so
+   the visible box stays slim and leaves the masthead title its room. */
+.wk-btn { border: none; background: none; cursor: pointer; color: var(--muted-2); font-size: 22px; line-height: 1; padding: 0; width: 26px; height: 36px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+.wk-lbl { font-family: var(--font-display); font-size: 19px; font-weight: 600; color: var(--accent); min-width: 42px; text-align: center; }
 .phase-line { font-family: var(--font-mono); font-size: 8px; letter-spacing: .5px; color: var(--muted); margin-top: 2px; text-align: right; }
-.gear { width: 34px; height: 34px; flex: none; border: 1.5px solid var(--ink); background: transparent; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--ink); font-size: 16px; }
+/* 38px visible, 44px tap via .hit. The masthead's width budget is set by
+   .phase-line, so every px the gear grows comes straight out of the title. */
+.gear { width: 38px; height: 38px; flex: none; border: 1.5px solid var(--ink); background: transparent; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--ink); font-size: 18px; }
 .gear.on { background: var(--ink); color: var(--accent); }
-.prog-chips { display: flex; gap: 6px; padding: 9px 0 8px; }
-.chip { font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; padding: 5px 11px; border-radius: 3px; cursor: pointer; border: 1.5px solid var(--border); background: transparent; color: var(--muted-2); }
+.prog-chips { display: flex; gap: 8px; padding: 8px 0; }
+.chip { font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; display: inline-flex; align-items: center; justify-content: center; min-height: var(--tap); padding: 0 14px; border-radius: 3px; cursor: pointer; border: 1.5px solid var(--border); background: transparent; color: var(--muted-2); }
 .chip.on { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
-.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); overflow-x: auto; }
-.tab { background: transparent; border: none; cursor: pointer; padding: 12px 7px; min-height: 42px; white-space: nowrap; font-family: var(--font-mono); font-size: 9px; letter-spacing: .8px; font-weight: 600; color: var(--muted-2); }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { background: transparent; border: none; cursor: pointer; padding: 0 12px; min-height: 46px; white-space: nowrap; font-family: var(--font-mono); font-size: 9px; letter-spacing: .8px; font-weight: 600; color: var(--muted-2); }
 .tab.on { background: var(--ink); color: var(--on-ink); }
 .tab i { color: var(--accent); font-style: normal; }
 
@@ -127,32 +167,35 @@ body {
 .pr { margin: 14px 20px 0; background: var(--ink); color: var(--on-ink); border-radius: 4px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
 .pr b { font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 1.5px; background: var(--accent); padding: 3px 7px; border-radius: 2px; flex: none; }
 .pr span { font-size: 12px; line-height: 1.4; }
-.daybtns { display: flex; gap: 8px; margin: 14px 20px 0; }
-.dbtn { flex: 1; background: transparent; border: 1px dashed var(--faint); border-radius: 4px; color: var(--muted-2); font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1px; padding: 8px; min-height: 38px; cursor: pointer; }
+.daybtns { display: flex; gap: 10px; margin: 14px 20px 0; }
+.dbtn { flex: 1; background: transparent; border: 1px dashed var(--faint); border-radius: 4px; color: var(--muted-2); font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1px; padding: 0 10px; min-height: var(--tap-lg); cursor: pointer; }
 .dbtn.strong { border-color: var(--ink); color: var(--ink); }
 .panel { margin: 16px 20px 0; border: 1px solid var(--ink); border-radius: 4px; padding: 12px 14px; }
 .panel-h { font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 8px; }
-.proto { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 3.5px 0; }
-.proto-box { width: 15px; height: 15px; border: 1.5px solid var(--ink); flex: none; display: flex; align-items: center; justify-content: center; color: var(--on-ink); font-size: 10px; font-weight: 700; }
+.proto { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 6px 0; min-height: var(--tap); }
+.proto-box { width: 20px; height: 20px; border: 1.5px solid var(--ink); flex: none; display: flex; align-items: center; justify-content: center; color: var(--on-ink); font-size: 12px; font-weight: 700; }
 .proto-box.on { background: var(--ink); }
-.proto span { font-size: 12px; color: var(--ink-soft); }
+.proto span { font-size: 12px; line-height: 1.35; color: var(--ink-soft); }
 .proto.on span { color: var(--muted-2); }
 
 .ex { padding: 18px 20px 0; }
-.ex-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ex-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: var(--tap-lg); }
 .ex-name { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: .5px; min-width: 0; }
 .ex-name.done { color: var(--muted-2); }
 .ex.sel { box-shadow: inset 3px 0 0 var(--accent); }
 .ex.sel .ex-name { color: var(--accent); }
 .ex-top.pick { cursor: pointer; }
 .ex-right { display: flex; align-items: center; gap: 8px; flex: none; }
-.swap { border: 1px solid var(--border); background: transparent; color: var(--muted-2); border-radius: 3px; width: 26px; height: 26px; cursor: pointer; font-size: 13px; }
+.swap { border: 1px solid var(--border); background: transparent; color: var(--muted-2); border-radius: 4px; width: 36px; height: 36px; cursor: pointer; font-size: 16px; }
 .swap.on { border-color: var(--accent); color: var(--accent); background: rgba(227,79,30,.1); }
 .ex-count { font-family: var(--font-mono); font-size: 9px; color: var(--muted); }
-.tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
-.tag { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: .5px; padding: 2px 7px; border-radius: 2px; border: 1px solid var(--border); color: var(--muted); }
-.tag.ink { border-color: var(--ink); color: var(--ink); cursor: help; }
-.tag.acc { border-color: var(--accent); color: var(--accent); cursor: help; }
+/* 12px gap so adjacent tags' expanded .hit rects clear each other: the
+   narrowest tappable tag ("LLP", ~37px) bleeds ~3.5px per side to reach 44. */
+.tags { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+.tag { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: .5px; display: inline-flex; align-items: center; min-height: 26px; padding: 0 9px; border-radius: 2px; border: 1px solid var(--border); color: var(--muted); }
+.tag[data-act] { cursor: help; }
+.tag.ink { border-color: var(--ink); color: var(--ink); }
+.tag.acc { border-color: var(--accent); color: var(--accent); }
 .ex-note { font-family: var(--font-mono); font-size: 9.5px; color: var(--muted-2); margin-top: 6px; line-height: 1.5; }
 .trend { display: flex; align-items: flex-end; gap: 14px; margin-top: 10px; }
 .bars { display: flex; align-items: flex-end; gap: 6px; height: 46px; }
@@ -162,7 +205,7 @@ body {
 .bar.now { background: var(--accent); }
 .trend-empty { font-family: var(--font-mono); font-size: 9px; color: var(--faint); margin-top: 8px; }
 .grid { margin-top: 12px; border: 1px solid var(--ink); border-radius: 4px; overflow: hidden; }
-.grid-h, .grid-r { display: grid; grid-template-columns: 34px 1fr 1fr 104px; align-items: center; }
+.grid-h, .grid-r { display: grid; grid-template-columns: 34px 1fr 1fr 112px; align-items: center; }
 .grid-h { background: var(--ink); color: var(--on-ink); font-family: var(--font-mono); font-size: 8px; letter-spacing: .8px; }
 .grid-h span { padding: 6px 0; }
 .grid-h span:first-child { padding-left: 8px; }
@@ -175,36 +218,38 @@ body {
 .grid-r.active .n { color: var(--accent); font-weight: 600; }
 .grid-r.done .n { color: var(--muted-2); }
 .grid-r .last { color: var(--muted-2); }
-.cell-today { padding: 5px 8px 5px 0; display: flex; align-items: center; justify-content: flex-end; min-height: 44px; }
-.log-btn { display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: var(--on-dark); font-weight: 600; font-size: 11px; letter-spacing: 1px; min-height: 32px; padding: 0 14px; border-radius: 4px; cursor: pointer; border: none; }
+/* 2px vertical padding, not 5px, so a full 44px .log-btn fits inside the
+   48px cell without pushing every set row taller. */
+.cell-today { padding: 2px 8px 2px 0; display: flex; align-items: center; justify-content: flex-end; min-height: var(--tap-lg); }
+.log-btn { display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: var(--on-dark); font-weight: 600; font-size: 11.5px; letter-spacing: 1px; min-height: var(--tap); padding: 0 18px; border-radius: 4px; cursor: pointer; border: none; }
 .t-done { color: var(--ink); font-weight: 600; cursor: pointer; }
 .t-skip { color: var(--muted); text-decoration: line-through; cursor: pointer; }
 .t-pend { color: var(--muted); cursor: pointer; font-size: 10px; }
-.effort { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
+.effort { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .effort-k { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--muted-2); }
-.eff { font-family: var(--font-mono); font-size: 9px; padding: 4px 11px; min-height: 30px; border-radius: 3px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); }
+.eff { font-family: var(--font-mono); font-size: 9px; padding: 0 14px; min-height: var(--tap); border-radius: 3px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); }
 .eff.on { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
-.skipex { margin-top: 8px; background: transparent; border: 1px dashed var(--border); border-radius: 4px; color: var(--muted); font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; padding: 5px 12px; cursor: pointer; }
+.skipex { margin-top: 12px; background: transparent; border: 1px dashed var(--border); border-radius: 4px; color: var(--muted); font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; padding: 0 16px; min-height: var(--tap); cursor: pointer; }
 
 #bottombar:empty { display: none; }
 .barbar { background: var(--bar-dark); color: var(--on-dark); padding: 0 16px; flex: none; }
 .pill { display: flex; align-items: center; justify-content: space-between; padding: 10px 2px; border-bottom: 1px solid var(--bar-line); }
-.pill-l { display: flex; align-items: center; gap: 9px; cursor: pointer; min-width: 0; }
+.pill-l { display: flex; align-items: center; gap: 9px; cursor: pointer; min-width: 0; min-height: var(--tap); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
 .dot.urgent { background: var(--danger); }
 .pill-k { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: rgba(242,239,232,.5); }
 .pill-t { font-family: var(--font-mono); font-size: 17px; font-weight: 600; color: var(--accent); }
 .pill-t.urgent { color: var(--danger); }
-.pill-b { background: none; border: 1px solid var(--bar-edge); border-radius: 8px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; min-height: 44px; padding: 0 16px; cursor: pointer; }
+.pill-b { background: none; border: 1px solid var(--bar-edge); border-radius: 8px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; min-height: 46px; padding: 0 18px; cursor: pointer; }
 .log-row { padding: 11px 0 14px; }
 .log-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .log-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .log-set { font-family: var(--font-mono); font-size: 8px; letter-spacing: 1px; color: rgba(242,239,232,.45); flex: none; }
 .log-ctl { display: flex; flex-direction: column; gap: 8px; }
-.log-steps { display: flex; gap: 10px; }
+.log-steps { display: flex; gap: 12px; }
 .stepper { display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; min-width: 0; }
 .step-b { width: 44px; height: 52px; background: var(--bar-btn); border: 1px solid var(--bar-edge); border-radius: 8px; color: var(--on-dark); font-size: 20px; cursor: pointer; flex: none; }
-.step-v { text-align: center; min-width: 0; flex: 1; }
+.step-v { text-align: center; min-width: 0; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 52px; }
 .step-v div:first-child { font-family: var(--font-mono); font-size: 16px; font-weight: 600; }
 .step-v div:last-child { font-family: var(--font-mono); font-size: 7px; color: rgba(242,239,232,.4); }
 .step-in { width: 100%; min-width: 0; box-sizing: border-box; background: var(--bar-btn); border: 1px solid var(--accent); border-radius: 6px; color: var(--on-dark); font-family: var(--font-mono); font-size: 16px; font-weight: 600; text-align: center; padding: 3px 2px; }
@@ -221,8 +266,8 @@ body {
 .tbl-h span:last-child { padding-right: 10px; text-align: right; }
 .ph { border-top: 1px solid var(--border); }
 .ph.now { background: var(--surface); }
-.ph-r { display: grid; grid-template-columns: 78px 1fr 78px; align-items: center; font-family: var(--font-mono); font-size: 10.5px; cursor: pointer; }
-.ph-r > span { padding: 9px 0; }
+.ph-r { display: grid; grid-template-columns: 78px 1fr 78px; align-items: center; font-family: var(--font-mono); font-size: 10.5px; cursor: pointer; min-height: var(--tap-lg); }
+.ph-r > span { padding: 12px 0; }
 .ph-r .w { padding-left: 10px; color: var(--muted-2); }
 .ph-r .l { font-family: var(--font-body); font-weight: 500; color: var(--muted); }
 .ph.now .ph-r .l { font-weight: 700; color: var(--ink); }
@@ -253,14 +298,14 @@ body {
 .big-btn { width: 100%; min-height: 48px; background: var(--ink); border: none; border-radius: 4px; color: var(--on-ink); font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; cursor: pointer; }
 .big-btn.ghost { background: transparent; border: 1.5px solid var(--ink); color: var(--ink); }
 .kv { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); padding: 3px 0; }
-.theme-row { display: flex; gap: 6px; margin-top: 8px; }
-.theme-b { flex: 1; padding: 9px; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; }
+.theme-row { display: flex; gap: 8px; margin-top: 8px; }
+.theme-b { flex: 1; min-height: var(--tap); padding: 0 8px; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; }
 .theme-b.on { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
 .ov { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 28px; }
 .ov.rest { background: var(--bg); flex-direction: column; }
 .ov.scrim { background: rgba(25,24,19,.55); }
 .ov.sheet { align-items: flex-end; padding: 0; }
-.mini { position: absolute; top: 16px; right: 16px; border: 1px solid var(--border); background: none; color: var(--muted-2); font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; padding: 7px 12px; border-radius: 6px; cursor: pointer; }
+.mini { position: absolute; top: 16px; right: 16px; border: 1px solid var(--border); background: none; color: var(--muted-2); font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; min-height: var(--tap); padding: 0 14px; border-radius: 6px; cursor: pointer; }
 .rest-k { font-family: var(--font-mono); font-size: 10px; letter-spacing: 3px; color: var(--muted-2); text-transform: uppercase; }
 .rest-i { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: var(--accent); margin-top: 8px; text-align: center; }
 .rest-r { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--muted-2); margin-top: 4px; }
@@ -269,17 +314,17 @@ body {
 .ring-t { font-family: var(--font-display); font-size: 58px; font-weight: 600; line-height: 1; }
 .ring-t.urgent { color: var(--danger); }
 .ring-s { font-family: var(--font-mono); font-size: 8px; letter-spacing: 2px; color: var(--muted-2); text-transform: uppercase; }
-.preset { font-family: var(--font-mono); font-size: 10px; padding: 6px 12px; border-radius: 3px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); }
+.preset { font-family: var(--font-mono); font-size: 10px; min-height: var(--tap); padding: 0 12px; border-radius: 3px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); }
 .preset.on { border-color: var(--ink); color: var(--ink); }
 .rest-actions { display: flex; gap: 10px; margin-top: 16px; }
-.ra { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1px; padding: 11px 22px; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); }
+.ra { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1px; min-height: var(--tap-lg); padding: 0 20px; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); }
 .ra.ink { border-color: var(--ink); color: var(--ink); }
 .ra.solid { border: none; background: var(--ink); color: var(--on-ink); }
 .rest-next { margin-top: 20px; font-size: 12px; color: var(--muted); text-align: center; }
 .sheet-in { background: var(--bg); width: 100%; border-radius: 16px 16px 0 0; max-height: 88%; overflow-y: auto; padding: 18px 18px 22px; }
 .sheet-h { font-family: var(--font-display); font-size: 22px; font-weight: 600; }
 .sheet-s { font-family: var(--font-mono); font-size: 10px; color: var(--muted-2); margin: 4px 0 14px; }
-.opt { border: 1px solid var(--border); background: var(--surface); border-radius: 6px; padding: 11px 12px; margin-bottom: 8px; cursor: pointer; }
+.opt { border: 1px solid var(--border); background: var(--surface); border-radius: 6px; padding: 13px 12px; margin-bottom: 8px; cursor: pointer; min-height: var(--tap-lg); }
 .opt.on { border-color: var(--accent); background: rgba(227,79,30,.06); }
 .opt-n { font-size: 13.5px; font-weight: 600; }
 .opt.on .opt-n { color: var(--accent); }
@@ -293,6 +338,18 @@ body {
 .tip-t { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; color: var(--accent); }
 .tip-d { font-size: 12.5px; line-height: 1.55; margin-top: 8px; }
 .tip-c { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--on-ink); opacity: .45; margin-top: 12px; text-align: right; }
+
+/* On a 320px-wide screen the two 44px steppers plus their gaps leave the
+   weight/reps readout under 44px. Claw back the horizontal padding rather
+   than shrink the buttons. */
+@media (max-width: 360px) {
+  .barbar { padding: 0 12px; }
+  .log-steps { gap: 8px; }
+  .stepper { gap: 4px; }
+  /* Long titles ("FULL BODY.", "WEAK POINT.") have never fit at this width;
+     dropping the display size keeps the common ones off the ellipsis. */
+  .mh-title { font-size: 27px; }
+}
 </style>
 </head>
 <body>
@@ -1634,372 +1691,806 @@ const EXERCISE_ALTERNATIVES = {
     {
       id: 'm3_alt_incline_smith',
       name: 'Incline Smith Press',
+      sets: 4,
+      reps: '6–10',
+      rpe: '7–9',
       note: 'Fixed path, easier to load heavy',
+      llp: false,
+      compound: true,
+      rest: 150,
+      restLabel: '2–3 min',
     },
     {
       id: 'm3_alt_incline_hammer',
       name: 'Incline Hammer Strength',
+      sets: 4,
+      reps: '6–10',
+      rpe: '7–9',
       note: 'Neutral handles, shoulder-friendly',
+      llp: false,
+      compound: true,
+      rest: 150,
+      restLabel: '2–3 min',
     },
   ],
   m3_machine_chest_press: [
     {
       id: 'm3_alt_flat_db_press',
       name: 'Flat DB Press',
+      sets: 3,
+      reps: '8–12',
+      rpe: '7–8',
       note: 'Free-weight stabilizer demand',
+      llp: false,
+      compound: false,
+      rest: 135,
+      restLabel: '2–2.5 min',
     },
     {
       id: 'm3_alt_pec_deck',
       name: 'Pec Deck',
+      sets: 3,
+      reps: '10–15',
+      rpe: '8',
       note: 'Pure chest, no triceps limit',
+      llp: false,
+      compound: false,
+      rest: 90,
+      restLabel: '1.5–2 min',
     },
   ],
   m3_cable_fly: [
     {
       id: 'm3_alt_incline_db_fly',
       name: 'Incline DB Fly',
+      sets: 3,
+      reps: '12–15',
+      rpe: '8',
       note: 'Deeper stretch at the bottom',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
     {
       id: 'm3_alt_pec_deck_d1',
       name: 'Pec Deck',
+      sets: 3,
+      reps: '12–15',
+      rpe: '8',
       note: 'Constant tension, easy to progress',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
   ],
   m3_db_lateral_raise: [
     {
       id: 'm3_alt_machine_lat_raise',
       name: 'Machine Lateral Raise',
+      sets: 4,
+      reps: '12–20',
+      rpe: '8–9',
       note: 'Constant tension through the whole ROM',
+      llp: true,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
     {
       id: 'm3_alt_cable_lat_raise_alt',
       name: 'Single-Arm Cable Lateral Raise',
+      sets: 4,
+      reps: '12–20',
+      rpe: '8–9',
       note: 'Most tension in the lengthened position',
+      llp: true,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
   ],
   m3_cable_lat_raise_d1: [
     {
       id: 'm3_alt_db_lat_raise_d1',
       name: 'DB Lateral Raise',
+      sets: 3,
+      reps: '12–20',
+      rpe: '8–9',
       note: 'Simple, heavy at the top',
+      llp: true,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
     {
       id: 'm3_alt_lean_away_d1',
       name: 'Lean-Away Lateral Raise',
+      sets: 3,
+      reps: '12–20',
+      rpe: '8–9',
       note: 'Longer lever at the bottom',
+      llp: true,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
   ],
   m3_rope_pushdown: [
     {
       id: 'm3_alt_vbar_pushdown',
       name: 'V-Bar Pushdown',
+      sets: 3,
+      reps: '12–15',
+      rpe: '8',
       note: 'Straighter wrist path',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
     {
       id: 'm3_alt_single_pushdown',
       name: 'Single-Arm Pushdown',
+      sets: 3,
+      reps: '12–15',
+      rpe: '8',
       note: 'Fixes side-to-side differences',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
   ],
   m3_oh_cable_ext: [
     {
       id: 'm3_alt_skull_crusher',
       name: 'Skull Crushers (EZ Bar)',
+      sets: 2,
+      reps: '8–12',
+      rpe: '8',
       note: 'Heavier long-head loading',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
     {
       id: 'm3_alt_db_oh_ext',
       name: 'DB Overhead Extension',
+      sets: 2,
+      reps: '10–12',
+      rpe: '8',
       note: 'One dumbbell, both hands',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
   ],
   m3_single_arm_pulldown: [
     {
       id: 'm3_alt_neutral_pulldown',
       name: 'Neutral-Grip Pulldown',
+      sets: 4,
+      reps: '8–12',
+      rpe: '7–9',
       note: 'Both arms, heavier load',
+      llp: false,
+      compound: true,
+      rest: 135,
+      restLabel: '2–2.5 min',
     },
     {
       id: 'm3_alt_assisted_pullup',
       name: 'Assisted Pull-Up Machine',
+      sets: 4,
+      reps: '8–12',
+      rpe: '7–9',
       note: 'Bodyweight pattern with assistance',
+      llp: false,
+      compound: true,
+      rest: 150,
+      restLabel: '2–3 min',
     },
   ],
   m3_chest_supported_row: [
     {
       id: 'm3_alt_tbar_row',
       name: 'T-Bar Row',
+      sets: 4,
+      reps: '8–12',
+      rpe: '7–9',
       note: 'Heavier, more upper-back load',
+      llp: false,
+      compound: true,
+      rest: 135,
+      restLabel: '2–2.5 min',
     },
     {
       id: 'm3_alt_machine_row_d2',
       name: 'Machine Row',
+      sets: 4,
+      reps: '8–12',
+      rpe: '7–9',
       note: 'Fixed path, easy to progress',
+      llp: false,
+      compound: true,
+      rest: 135,
+      restLabel: '2–2.5 min',
     },
   ],
   m3_seal_row: [
     {
       id: 'm3_alt_db_row',
       name: 'Single-Arm DB Row',
+      sets: 3,
+      reps: '10–12',
+      rpe: '8',
       note: 'Longer ROM per side',
+      llp: false,
+      compound: false,
+      rest: 90,
+      restLabel: '1.5–2 min',
     },
     {
       id: 'm3_alt_cable_row_d2',
       name: 'Seated Cable Row',
+      sets: 3,
+      reps: '10–12',
+      rpe: '8',
       note: 'Constant tension',
+      llp: false,
+      compound: true,
+      rest: 120,
+      restLabel: '2 min',
     },
   ],
   m3_face_pull: [
     {
       id: 'm3_alt_band_pull_apart',
       name: 'Band Pull-Aparts',
+      sets: 3,
+      reps: '15–20',
+      rpe: '6–7',
       note: 'Same prehab function, no cable needed',
+      llp: false,
+      compound: false,
+      rest: 60,
+      restLabel: '1 min',
     },
     {
       id: 'm3_alt_reverse_pec_deck_d2',
       name: 'Reverse Pec Deck',
+      sets: 3,
+      reps: '15–20',
+      rpe: '8',
       note: 'Rear delt with less setup',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
   ],
   m3_rear_delt_row: [
     {
       id: 'm3_alt_bent_rear_fly',
       name: 'Bent-Over Rear Delt Fly',
+      sets: 3,
+      reps: '12–15',
+      rpe: '8',
       note: 'More isolation, less trap',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
     {
       id: 'm3_alt_cable_rear_fly',
       name: 'Rear Delt Cable Fly',
+      sets: 3,
+      reps: '12–15',
+      rpe: '8',
       note: 'Constant tension across the ROM',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
   ],
   m3_incline_db_curl: [
     {
       id: 'm3_alt_bayesian_curl',
       name: 'Bayesian Cable Curl',
+      sets: 3,
+      reps: '10–15',
+      rpe: '8–9',
       note: 'Lengthened position with cable tension',
+      llp: true,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
     {
       id: 'm3_alt_preacher_curl',
       name: 'Preacher Curl',
+      sets: 3,
+      reps: '10–12',
+      rpe: '8–9',
       note: 'Strict, no swing',
+      llp: true,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
   ],
   m3_hack_squat: [
     {
       id: 'm3_alt_ssb_squat',
       name: 'Safety Bar Squat',
+      sets: 4,
+      reps: '6–10',
+      rpe: '7–9',
       note: 'Free-weight version, no shoulder load',
+      llp: false,
+      compound: true,
+      rest: 210,
+      restLabel: '2.5–3.5 min',
     },
     {
       id: 'm3_alt_pendulum_squat',
       name: 'Pendulum / Belt Squat',
+      sets: 4,
+      reps: '6–10',
+      rpe: '7–9',
       note: 'No spinal loading at all',
+      llp: false,
+      compound: true,
+      rest: 180,
+      restLabel: '2.5–3 min',
     },
   ],
   m3_leg_press: [
     {
       id: 'm3_alt_v_squat',
       name: 'V-Squat Machine',
+      sets: 3,
+      reps: '10–15',
+      rpe: '8',
       note: 'More upright torso',
+      llp: false,
+      compound: false,
+      rest: 135,
+      restLabel: '2–2.5 min',
     },
     {
       id: 'm3_alt_smith_squat',
       name: 'Smith Machine Squat',
+      sets: 3,
+      reps: '8–12',
+      rpe: '8',
       note: 'Fixed path, easy to overload',
+      llp: false,
+      compound: false,
+      rest: 150,
+      restLabel: '2–3 min',
     },
   ],
   m3_walking_lunge: [
     {
       id: 'm3_alt_reverse_lunge',
       name: 'Reverse Lunges',
+      sets: 3,
+      reps: '10 each leg',
+      rpe: '8',
       note: 'Easier on the knees',
+      llp: false,
+      compound: false,
+      rest: 120,
+      restLabel: '2 min',
     },
     {
       id: 'm3_alt_step_up',
       name: 'Step-Ups',
+      sets: 3,
+      reps: '10 each leg',
+      rpe: '8',
       note: 'More glute, less knee travel',
+      llp: false,
+      compound: false,
+      rest: 120,
+      restLabel: '2 min',
     },
   ],
   m3_seated_leg_curl: [
     {
       id: 'm3_alt_lying_curl_d3',
       name: 'Lying Leg Curl',
+      sets: 3,
+      reps: '10–15',
+      rpe: '8–9',
       note: 'Different hip angle',
+      llp: true,
+      compound: false,
+      rest: 90,
+      restLabel: '1.5–2 min',
     },
     {
       id: 'm3_alt_nordic_curl',
       name: 'Nordic Curl (assisted)',
+      sets: 3,
+      reps: '5–8',
+      rpe: '7–8',
       note: 'Heavy eccentric emphasis',
+      llp: false,
+      compound: false,
+      rest: 90,
+      restLabel: '1.5–2 min',
     },
   ],
   m3_standing_calf: [
     {
       id: 'm3_alt_leg_press_calf',
       name: 'Leg Press Calf Raise',
+      sets: 4,
+      reps: '8–12',
+      rpe: '8–9',
       note: 'Easy to load heavy, no balance demand',
+      llp: true,
+      compound: false,
+      rest: 90,
+      restLabel: '1.5–2 min',
     },
     {
       id: 'm3_alt_smith_calf',
       name: 'Smith Machine Calf Raise',
+      sets: 4,
+      reps: '8–12',
+      rpe: '8–9',
       note: 'Stable, good for pauses',
+      llp: true,
+      compound: false,
+      rest: 90,
+      restLabel: '1.5–2 min',
     },
   ],
   m3_hanging_leg_raise: [
     {
       id: 'm3_alt_captains_chair',
       name: 'Captain\'s Chair Leg Raise',
+      sets: 3,
+      reps: '10–15',
+      rpe: '8',
       note: 'No grip limitation',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
     {
       id: 'm3_alt_ab_wheel',
       name: 'Ab Wheel Rollout',
+      sets: 3,
+      reps: '8–12',
+      rpe: '7–8',
       note: 'Anti-extension, lengthened loading',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
   ],
   m3_db_shoulder_press: [
     {
       id: 'm3_alt_machine_ohp',
       name: 'Machine Shoulder Press',
+      sets: 4,
+      reps: '8–12',
+      rpe: '7–8',
       note: 'Neutral handles, fixed path',
+      llp: false,
+      compound: true,
+      rest: 135,
+      restLabel: '2–2.5 min',
     },
     {
       id: 'm3_alt_landmine_press',
       name: 'Landmine Press',
+      sets: 4,
+      reps: '8–10',
+      rpe: '7–8',
       note: 'Lowest-stress overhead angle',
+      llp: false,
+      compound: true,
+      rest: 120,
+      restLabel: '2 min',
     },
   ],
   m3_machine_row: [
     {
       id: 'm3_alt_chest_row_d4',
       name: 'Chest-Supported Row',
+      sets: 3,
+      reps: '10–12',
+      rpe: '8–9',
       note: 'Same pattern, free weight',
+      llp: false,
+      compound: true,
+      rest: 135,
+      restLabel: '2–2.5 min',
     },
     {
       id: 'm3_alt_wide_cable_row',
       name: 'Wide-Grip Cable Row',
+      sets: 3,
+      reps: '10–12',
+      rpe: '8–9',
       note: 'More upper back, less lat',
+      llp: false,
+      compound: true,
+      rest: 120,
+      restLabel: '2 min',
     },
   ],
   m3_lean_away_lat_raise: [
     {
       id: 'm3_alt_machine_lat_raise_d4',
       name: 'Machine Lateral Raise',
+      sets: 4,
+      reps: '12–20',
+      rpe: '8–9',
       note: 'Constant tension, no lean needed',
+      llp: true,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
     {
       id: 'm3_alt_db_lat_raise_d4',
       name: 'DB Lateral Raise',
+      sets: 4,
+      reps: '12–20',
+      rpe: '8–9',
       note: 'Straightforward, heavier top end',
+      llp: true,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
   ],
   m3_rear_delt_fly: [
     {
       id: 'm3_alt_reverse_pec_deck_d4',
       name: 'Reverse Pec Deck',
+      sets: 3,
+      reps: '12–15',
+      rpe: '8',
       note: 'Fixed path, easy to progress',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
     {
       id: 'm3_alt_cable_rear_fly_d4',
       name: 'Rear Delt Cable Fly',
+      sets: 3,
+      reps: '12–15',
+      rpe: '8',
       note: 'Constant tension',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
   ],
   m3_neutral_cg_press: [
     {
       id: 'm3_alt_cg_smith',
       name: 'Close-Grip Smith Press',
+      sets: 3,
+      reps: '8–12',
+      rpe: '8',
       note: 'Heavier loading, fixed path',
+      llp: false,
+      compound: true,
+      rest: 120,
+      restLabel: '2 min',
     },
     {
       id: 'm3_alt_machine_dip',
       name: 'Machine Dip',
+      sets: 3,
+      reps: '8–12',
+      rpe: '8',
       note: 'Tricep-dominant, no shoulder extension stress',
+      llp: false,
+      compound: true,
+      rest: 120,
+      restLabel: '2 min',
     },
   ],
   m3_rope_hammer_curl: [
     {
       id: 'm3_alt_cross_body_hammer',
       name: 'Cross-Body Hammer Curl',
+      sets: 3,
+      reps: '12–15',
+      rpe: '8',
       note: 'More brachialis',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
     {
       id: 'm3_alt_cable_curl_d4',
       name: 'Cable Curl',
+      sets: 3,
+      reps: '12–15',
+      rpe: '8',
       note: 'Constant tension',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
   ],
   m3_rdl: [
     {
       id: 'm3_alt_stiff_leg_dl',
       name: 'Stiff-Leg Deadlift',
+      sets: 4,
+      reps: '8–12',
+      rpe: '7–8',
       note: 'Slightly more range from a deficit',
+      llp: false,
+      compound: true,
+      rest: 150,
+      restLabel: '2–3 min',
     },
     {
       id: 'm3_alt_single_leg_rdl',
       name: 'Single-Leg RDL',
+      sets: 4,
+      reps: '8–10 each leg',
+      rpe: '7',
       note: 'Less spinal load, more stability',
+      llp: false,
+      compound: true,
+      rest: 135,
+      restLabel: '2–2.5 min',
     },
   ],
   m3_lying_leg_curl: [
     {
       id: 'm3_alt_seated_curl_d5',
       name: 'Seated Leg Curl',
+      sets: 3,
+      reps: '10–12',
+      rpe: '8–9',
       note: 'Hamstring loaded at longer hip angle',
+      llp: true,
+      compound: false,
+      rest: 90,
+      restLabel: '1.5–2 min',
     },
     {
       id: 'm3_alt_glute_ham_raise',
       name: 'Glute-Ham Raise',
+      sets: 3,
+      reps: '5–8',
+      rpe: '7–8',
       note: 'Bodyweight eccentric strength',
+      llp: false,
+      compound: false,
+      rest: 90,
+      restLabel: '1.5–2 min',
     },
   ],
   m3_hip_thrust: [
     {
       id: 'm3_alt_cable_pull_through',
       name: 'Cable Pull-Through',
+      sets: 3,
+      reps: '8–12',
+      rpe: '8',
       note: 'Same hinge, lighter spinal load',
+      llp: false,
+      compound: true,
+      rest: 120,
+      restLabel: '2 min',
     },
     {
       id: 'm3_alt_kb_swing',
       name: 'Kettlebell Swing',
+      sets: 3,
+      reps: '15–20',
+      rpe: '7',
       note: 'Explosive hip extension',
+      llp: false,
+      compound: false,
+      rest: 90,
+      restLabel: '1.5–2 min',
     },
   ],
   m3_seated_calf: [
     {
       id: 'm3_alt_standing_calf_d5',
       name: 'Standing Calf Raise',
+      sets: 4,
+      reps: '8–12',
+      rpe: '8–9',
       note: 'Gastroc bias instead of soleus',
+      llp: true,
+      compound: false,
+      rest: 90,
+      restLabel: '1.5–2 min',
     },
     {
       id: 'm3_alt_donkey_calf',
       name: 'Donkey Calf Raise',
+      sets: 4,
+      reps: '12–20',
+      rpe: '8–9',
       note: 'Hip-flexed position, deep stretch',
+      llp: true,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
   ],
   m3_cable_crunch: [
     {
       id: 'm3_alt_machine_crunch',
       name: 'Machine Crunch',
+      sets: 3,
+      reps: '10–15',
+      rpe: '8',
       note: 'Fixed path, easy to load',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
     {
       id: 'm3_alt_pallof_press',
       name: 'Pallof Press',
+      sets: 3,
+      reps: '10–15 each side',
+      rpe: '7',
       note: 'Anti-rotation instead of flexion',
+      llp: false,
+      compound: false,
+      rest: 60,
+      restLabel: '1 min',
     },
   ],
   m3_bulgarian_split: [
     {
       id: 'm3_alt_split_squat',
       name: 'Stationary Split Squat',
+      sets: 3,
+      reps: '8–12 each leg',
+      rpe: '8',
       note: 'Less balance demand',
+      llp: false,
+      compound: false,
+      rest: 120,
+      restLabel: '2 min',
     },
     {
       id: 'm3_alt_leg_extension',
       name: 'Leg Extension',
+      sets: 3,
+      reps: '12–15',
+      rpe: '8',
       note: 'Pure quad, no stability limit',
+      llp: false,
+      compound: false,
+      rest: 75,
+      restLabel: '1–1.5 min',
     },
   ],
 };
@@ -2199,7 +2690,9 @@ function resolveExercise(dayId, ex) {
   if (!altId) return ex;
   const alts = EXERCISE_ALTERNATIVES[ex.id];
   if (!alts) return ex;
-  return alts.find(a => a.id === altId) || ex;
+  const alt = alts.find(a => a.id === altId);
+  if (!alt) return ex;
+  return { ...ex, ...alt };
 }
 
 function syncProgramGlobals() {
@@ -3130,13 +3623,13 @@ function renderMasthead() {
       <div class="mh-right">
         <div>
           <div class="wk-row">
-            <button class="wk-btn" data-act="wk" data-d="-1" aria-label="Previous week">‹</button>
+            <button class="wk-btn hit" data-act="wk" data-d="-1" aria-label="Previous week">‹</button>
             <div class="wk-lbl">W${currentWeek}/${prog.totalWeeks}</div>
-            <button class="wk-btn" data-act="wk" data-d="1" aria-label="Next week">›</button>
+            <button class="wk-btn hit" data-act="wk" data-d="1" aria-label="Next week">›</button>
           </div>
           <div class="phase-line">${esc(phase.label.toUpperCase())} · ${esc(phase.rpe.replace('RPE ', ''))}${phase.llp ? ' · LLP' : ''}</div>
         </div>
-        <button class="gear${view.name === 'settings' ? ' on' : ''}" data-act="settings" aria-label="Settings">⚙</button>
+        <button class="gear hit${view.name === 'settings' ? ' on' : ''}" data-act="settings" aria-label="Settings">⚙</button>
       </div>
     </div>
     <div class="prog-chips">${chips}</div>
@@ -3320,10 +3813,10 @@ function exercisesHTML(day) {
     const curR = state[day.id].reps[ex.id];
 
     let tags = `<span class="tag">${ex.sets}×${esc(ex.reps)}</span>`
-      + `<span class="tag ink" data-act="tip" data-t="RPE">RPE ${esc(ex.rpe)}</span>`;
+      + `<span class="tag ink hit" data-act="tip" data-t="RPE">RPE ${esc(ex.rpe)}</span>`;
     if (ex.restLabel) tags += `<span class="tag">⏱ ${esc(ex.restLabel)}</span>`;
-    if (ex.llp) tags += `<span class="tag acc" data-act="tip" data-t="LLP">LLP</span>`;
-    if (ex.compound) tags += `<span class="tag" data-act="tip" data-t="compounds" style="cursor:help">COMPOUND</span>`;
+    if (ex.llp) tags += `<span class="tag acc hit" data-act="tip" data-t="LLP">LLP</span>`;
+    if (ex.compound) tags += `<span class="tag hit" data-act="tip" data-t="compounds">COMPOUND</span>`;
 
     const hist = getExerciseHistory(day.id, ex.id).filter(h => h.weight != null);
     let trend = `<div class="trend-empty">▂ LOG 2+ WEEKS TO SEE A TREND</div>`;
@@ -3385,7 +3878,7 @@ function exercisesHTML(day) {
       <div class="${topCls}"${topAttrs}>
         <div class="ex-name${allDone ? ' done' : ''}">${String(xi + 1).padStart(2, '0')} ${esc(ex.name)}</div>
         <div class="ex-right">
-          ${EXERCISE_ALTERNATIVES[orig.id] ? `<button class="swap${swapped ? ' on' : ''}" data-act="swap" data-orig="${orig.id}" aria-label="Swap exercise">⇄</button>` : ''}
+          ${EXERCISE_ALTERNATIVES[orig.id] ? `<button class="swap hit${swapped ? ' on' : ''}" data-act="swap" data-orig="${orig.id}" aria-label="Swap exercise">⇄</button>` : ''}
           <div class="ex-count">${dh + sk}/${ex.sets}</div>
         </div>
       </div>
@@ -3396,7 +3889,7 @@ function exercisesHTML(day) {
         <div class="grid-h"><span>SET</span><span>${esc(lastCol)}</span><span>REPS</span><span>TODAY</span></div>
         ${rows}
       </div>
-      <div class="effort"><span class="effort-k">EFFORT</span><div style="display:flex;gap:5px">${effort}</div></div>
+      <div class="effort"><span class="effort-k">EFFORT</span><div style="display:flex;gap:8px">${effort}</div></div>
       <button class="skipex" data-act="skipex" data-ex="${ex.id}">${arr.every(v => v === 'skipped') ? 'UNSKIP EXERCISE' : 'SKIP EXERCISE'}</button>
     </div>`;
   }).join('') + `<div style="height:20px"></div>`;
@@ -3764,7 +4257,7 @@ function renderOverlays() {
           <div class="ring-s">remaining</div>
         </div>
       </div>
-      <div style="display:flex;gap:7px">${presets}</div>
+      <div style="display:flex;gap:8px">${presets}</div>
       <div class="rest-actions">
         <button class="ra" data-act="rest-">−15s</button>
         <button class="ra ink" data-act="rest+">+30s</button>
