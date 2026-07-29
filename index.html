@@ -2557,10 +2557,10 @@ function skipExercise(dayId, exId) {
   const sets = state[dayId].sets[exId];
   const allSkipped = sets.every(v => v === 'skipped');
   if (allSkipped) {
-    for (let i = 0; i < sets.length; i++) sets[i] = false;
+    for (let i = 0; i < sets.length; i++) { sets[i] = false; clearTime(dayId, exId, i); }
   } else {
     for (let i = 0; i < sets.length; i++) {
-      if (sets[i] !== true) sets[i] = 'skipped';
+      if (sets[i] !== true) { sets[i] = 'skipped'; markTime(dayId, exId, i, 'bulk'); }
     }
   }
   saveState();
@@ -2583,9 +2583,9 @@ function skipDay(dayId) {
     if (!arr) return;
     for (let i = 0; i < arr.length; i++) {
       if (allResolved && hasSkipped) {
-        if (arr[i] === 'skipped') arr[i] = false;
+        if (arr[i] === 'skipped') { arr[i] = false; clearTime(dayId, id, i); }
       } else {
-        if (arr[i] === false) arr[i] = 'skipped';
+        if (arr[i] === false) { arr[i] = 'skipped'; markTime(dayId, id, i, 'bulk'); }
       }
     }
   });
@@ -2599,7 +2599,7 @@ function completeDay(dayId) {
     const arr = state[dayId].sets[id];
     if (!arr) return;
     for (let i = 0; i < arr.length; i++) {
-      if (arr[i] !== true) arr[i] = true;
+      if (arr[i] !== true) { arr[i] = true; markTime(dayId, id, i, 'bulk'); }
     }
   });
   saveState();

@@ -116,3 +116,42 @@ test('6. skipSet writes src "skip", not "log"', () => {
     assert.deepStrictEqual(app.state[day.id].times[`${ex.id}_0`], { at: FIXED, src: 'skip' });
   });
 });
+
+test('7a. completeDay writes src "bulk" for every set it flips', () => {
+  withApp({ storage: allSeenSeed() }, app => {
+    app.setClock(() => FIXED);
+    const day = app.curDay();
+    app.completeDay(day.id);
+    const times = app.state[day.id].times;
+    const keys = Object.keys(times);
+    assert.ok(keys.length > 0, 'completeDay wrote no timestamps');
+    keys.forEach(k => assert.strictEqual(times[k].src, 'bulk', `${k} is not bulk`));
+  });
+});
+
+test('7b. skipDay writes src "bulk"', () => {
+  withApp({ storage: allSeenSeed() }, app => {
+    app.setClock(() => FIXED);
+    const day = app.curDay();
+    app.skipDay(day.id);
+    const times = app.state[day.id].times;
+    assert.ok(Object.keys(times).length > 0);
+    Object.keys(times).forEach(k => assert.strictEqual(times[k].src, 'bulk'));
+  });
+});
+
+test('7c. bulk ops do not overwrite an existing measured timestamp', () => {
+  withApp({ storage: allSeenSeed() }, app => {
+    const day = app.curDay();
+    const ex = app.activeSet(day).ex;
+    app.setClock(() => FIXED);
+    app.toggleSet(day.id, ex.id, 0);          // real log at FIXED
+    app.setClock(() => FIXED + 60000);
+    app.completeDay(day.id);                   // bulk-resolves the rest
+    assert.deepStrictEqual(
+      app.state[day.id].times[`${ex.id}_0`],
+      { at: FIXED, src: 'log' },
+      'completeDay clobbered a measured log timestamp'
+    );
+  });
+});
