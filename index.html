@@ -3772,6 +3772,8 @@ function resetWeek() {
     state[day.id].protocol = [];
     state[day.id].weights = {};
     state[day.id].effort = {};
+    state[day.id].reps = {};
+    state[day.id].times = {};
     day.exercises.forEach(o => {
       const ex = resolveExercise(day.id, o);
       state[day.id].sets[ex.id] = Array(ex.sets).fill(false);

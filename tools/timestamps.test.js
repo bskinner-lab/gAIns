@@ -234,6 +234,27 @@ test('9c. re-logging after undo records a fresh timestamp', () => {
   });
 });
 
+test('9d. clearing the week removes every timestamp', () => {
+  withApp({ storage: allSeenSeed() }, app => {
+    app.setClock(() => FIXED);
+    const day = app.curDay();
+    const ex = app.activeSet(day).ex;
+    app.toggleSet(day.id, ex.id, 0);
+    assert.ok(app.state[day.id].times[`${ex.id}_0`], 'precondition: a timestamp exists');
+
+    // Drive the real user path — Settings → CLEAR THIS WEEK'S LOG → confirm —
+    // rather than calling resetWeek() directly.
+    app.view.confirm = { act: 'clearweek' };
+    click(app, { act: 'cfok' });
+
+    assert.strictEqual(app.state[day.id].sets[ex.id][0], false, 'week was not cleared');
+    app.DAYS.forEach(d => {
+      assert.deepStrictEqual(app.state[d.id].times, {}, `${d.id} kept orphaned timestamps`);
+      assert.deepStrictEqual(app.state[d.id].reps, {}, `${d.id} kept orphaned reps`);
+    });
+  });
+});
+
 function fileEvent(content) {
   return { target: { files: [{ _content: content }], value: '' } };
 }
