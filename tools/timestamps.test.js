@@ -79,3 +79,40 @@ test('10. prefillFromPreviousWeeks carries weights forward but never times', () 
     assert.deepStrictEqual(app.state[day.id].times, {});
   });
 });
+
+function click(app, dataset) {
+  app.clickHandler({ target: { closest: sel => (sel === '[data-act]' ? { dataset } : null) } });
+}
+
+test('4. logActiveSet writes src "log" at the stubbed clock value', () => {
+  withApp({ storage: allSeenSeed() }, app => {
+    app.setClock(() => FIXED);
+    const day = app.curDay();
+    const act = app.activeSet(day);
+    app.logActiveSet();
+    assert.deepStrictEqual(
+      app.state[day.id].times[`${act.ex.id}_${act.i}`],
+      { at: FIXED, src: 'log' }
+    );
+  });
+});
+
+test('5. toggleSet writes src "log"', () => {
+  withApp({ storage: allSeenSeed() }, app => {
+    app.setClock(() => FIXED);
+    const day = app.curDay();
+    const ex = app.activeSet(day).ex;
+    app.toggleSet(day.id, ex.id, 0);
+    assert.deepStrictEqual(app.state[day.id].times[`${ex.id}_0`], { at: FIXED, src: 'log' });
+  });
+});
+
+test('6. skipSet writes src "skip", not "log"', () => {
+  withApp({ storage: allSeenSeed() }, app => {
+    app.setClock(() => FIXED);
+    const day = app.curDay();
+    const ex = app.activeSet(day).ex;
+    app.skipSet(day.id, ex.id, 0);
+    assert.deepStrictEqual(app.state[day.id].times[`${ex.id}_0`], { at: FIXED, src: 'skip' });
+  });
+});

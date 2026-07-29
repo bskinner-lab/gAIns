@@ -2452,6 +2452,7 @@ function toggleSet(dayId, exId, setIdx) {
   }
 
   state[dayId].sets[exId][setIdx] = true;
+  markTime(dayId, exId, setIdx, 'log');
   saveState();
   refreshCurrentDay(dayId);
 
@@ -2540,6 +2541,7 @@ function skipSet(dayId, exId, setIdx) {
     state[dayId].sets[exId][setIdx] = false;
   } else if (current === false) {
     state[dayId].sets[exId][setIdx] = 'skipped';
+    markTime(dayId, exId, setIdx, 'skip');
   }
   saveState();
   // Release the selection once the selected exercise has no set left to log.
@@ -3203,6 +3205,7 @@ function logActiveSet() {
     state[day.id].reps[ex.id] = rn;
     state[day.id].reps[`${ex.id}_${i}`] = rn;
   }
+  markTime(day.id, ex.id, i, 'log');
   saveState();
 
   view.latestPr = (maxPrior > 0 && w > maxPrior)
