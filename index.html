@@ -2026,6 +2026,52 @@ function weekKey() {
 
 function programStartKey(progId) { return `hypertrophy_start_${progId}`; }
 
+// Derive approximate dates for historical sets logged before timestamps
+// existed. Everything written here is src:"est" and must stay distinguishable
+// from measured data forever — see the design spec. Returns {ok, written} or
+// {ok:false, reason}.
+function backfillProgram(progId, startDate) {
+  const prog = PROGRAMS.find(p => p.id === progId);
+  if (!prog) return { ok: false, reason: 'unknown program' };
+  // dayIndex is added as a day offset within the week, so a program longer
+  // than a week would spill into the next week's dates. Refuse rather than
+  // silently produce wrong dates.
+  if (prog.days.length > 7) return { ok: false, reason: 'program has more than 7 days' };
+  const base = Date.parse(String(startDate) + 'T00:00:00');
+  if (isNaN(base)) return { ok: false, reason: 'invalid date' };
+
+  let written = 0;
+  for (let w = 1; w <= prog.totalWeeks; w++) {
+    const key = `${STORAGE_KEY}_${progId}_w${w}`;
+    let raw;
+    try { raw = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { continue; }
+    if (!raw || !Object.keys(raw).length) continue;
+
+    prog.days.forEach((day, dayIndex) => {
+      const sd = raw[day.id];
+      if (!sd || !sd.sets) return;
+      const at = base + ((w - 1) * 7 + dayIndex) * 86400000;
+      if (!sd.times) sd.times = {};
+      Object.keys(sd.sets).forEach(exId => {
+        const arr = sd.sets[exId];
+        if (!Array.isArray(arr)) return;
+        arr.forEach((v, i) => {
+          if (v !== true && v !== 'skipped') return;
+          const k = `${exId}_${i}`;
+          const existing = sd.times[k];
+          // The safety property: only ever write over our own estimates.
+          if (existing && existing.src !== 'est') return;
+          sd.times[k] = { at, src: 'est' };
+          written++;
+        });
+      });
+    });
+    localStorage.setItem(key, JSON.stringify(raw));
+  }
+  localStorage.setItem(programStartKey(progId), String(startDate));
+  return { ok: true, written };
+}
+
 // WEEK TRACKING
 let currentWeek = 1;
 
@@ -3462,6 +3508,13 @@ function settingsHTML() {
       ${view.importMsg ? `<div style="margin-top:10px;font-family:var(--font-mono);font-size:10px;color:${view.importOk ? 'var(--ok)' : 'var(--danger)'}">${esc(view.importMsg)}</div>` : ''}
     </div>
 
+    <div class="panel" style="margin-left:0;margin-right:0">
+      <div class="panel-h">TRAINING START DATE</div>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Sets logged before dates were recorded have no date. Setting a start date for <strong>${esc(prog.name)}</strong> fills in estimated dates, marked as estimates. Real logged times are never changed, so you can revise this freely.</div>
+      <input type="date" id="startDate-${esc(prog.id)}" value="${esc(localStorage.getItem(programStartKey(prog.id)) || '')}" style="width:100%;margin-bottom:10px;font-family:var(--font-mono);font-size:12px;padding:8px;background:var(--surface);color:var(--ink);border:1px solid var(--border)">
+      <button class="big-btn ghost" data-act="backfill" data-p="${esc(prog.id)}">SET START DATE</button>
+    </div>
+
     <div class="panel" style="margin-left:0;margin-right:0;border-color:var(--border)">
       <div class="panel-h" style="color:var(--muted-2)">THIS WEEK · WEEK ${currentWeek}/${prog.totalWeeks}</div>
       <div class="kv"><span>Sets done</span><span>${s.done}/${s.total}</span></div>
@@ -3800,6 +3853,18 @@ document.addEventListener('click', e => {
     else if (c.act === 'clearweek') { resetWeek(); view.importMsg = "This week's log cleared."; view.importOk = true; }
   }
   else if (act === 'cfx')     { view.confirm = null; }
+  else if (act === 'backfill') {
+    const pid = el.dataset.p;
+    const input = document.getElementById(`startDate-${pid}`);
+    const res = backfillProgram(pid, input ? input.value : '');
+    // Backfill writes straight to localStorage across all weeks; reload so the
+    // in-memory current week reflects it.
+    if (res.ok) initState();
+    view.importMsg = res.ok
+      ? `Estimated dates written for ${res.written} sets.`
+      : `Could not set start date: ${res.reason}.`;
+    view.importOk = res.ok;
+  }
   else return;
   render();
 });

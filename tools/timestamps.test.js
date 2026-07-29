@@ -324,3 +324,126 @@ test('12b. export omits startDate when none is stored', () => {
     });
   });
 });
+
+function seedTwoWeeks(prog) {
+  const d0 = prog.days[0], d1 = prog.days[1];
+  const e0 = d0.exercises[0], e1 = d1.exercises[0];
+  return Object.assign(allSeenSeed(), {
+    hypertrophy_program: '0',
+    [`hypertrophy_week_${prog.id}`]: '1',
+    [`hypertrophy_state_${prog.id}_w1`]: JSON.stringify({
+      [d0.id]: { sets: { [e0.id]: [true, 'skipped', false] }, weights: {}, effort: {} },
+      [d1.id]: { sets: { [e1.id]: [true, true, true] }, weights: {}, effort: {} },
+    }),
+    [`hypertrophy_state_${prog.id}_w2`]: JSON.stringify({
+      [d0.id]: { sets: { [e0.id]: [true, false, false] }, weights: {}, effort: {} },
+    }),
+  });
+}
+
+const DAY_MS = 86400000;
+const midnight = iso => Date.parse(iso + 'T00:00:00');
+
+test('15. backfill writes est entries at the derived day-level date', () => {
+  const { PROGRAMS } = loadApp();
+  const prog = PROGRAMS[0];
+  withApp({ storage: seedTwoWeeks(prog) }, app => {
+    const res = app.backfillProgram(prog.id, '2026-03-02');
+    assert.strictEqual(res.ok, true);
+
+    const raw1 = JSON.parse(app.storage.getItem(`hypertrophy_state_${prog.id}_w1`));
+    const d0 = prog.days[0], e0 = d0.exercises[0];
+    // Week 1, day index 0 → the start date itself, at local midnight.
+    assert.deepStrictEqual(
+      raw1[d0.id].times[`${e0.id}_0`],
+      { at: midnight('2026-03-02'), src: 'est' }
+    );
+    // Skipped sets are resolved too, so they are dated.
+    assert.strictEqual(raw1[d0.id].times[`${e0.id}_1`].src, 'est');
+    // Unresolved sets get nothing.
+    assert.ok(!(`${e0.id}_2` in raw1[d0.id].times));
+
+    // Week 1, day index 1 → one day later.
+    const d1 = prog.days[1], e1 = d1.exercises[0];
+    assert.strictEqual(
+      raw1[d1.id].times[`${e1.id}_0`].at,
+      midnight('2026-03-02') + DAY_MS
+    );
+
+    // Week 2, day index 0 → seven days later.
+    const raw2 = JSON.parse(app.storage.getItem(`hypertrophy_state_${prog.id}_w2`));
+    assert.strictEqual(
+      raw2[d0.id].times[`${e0.id}_0`].at,
+      midnight('2026-03-02') + 7 * DAY_MS
+    );
+
+    assert.strictEqual(app.storage.getItem(`hypertrophy_start_${prog.id}`), '2026-03-02');
+  });
+});
+
+test('11. re-running backfill overwrites est but never measured timestamps', () => {
+  const { PROGRAMS } = loadApp();
+  const prog = PROGRAMS[0], d0 = prog.days[0], e0 = d0.exercises[0];
+  const seed = seedTwoWeeks(prog);
+  // Set 0 was really logged; set 1 was really skipped. Both must be immune.
+  const w1 = JSON.parse(seed[`hypertrophy_state_${prog.id}_w1`]);
+  w1[d0.id].times = {
+    [`${e0.id}_0`]: { at: FIXED, src: 'log' },
+    [`${e0.id}_1`]: { at: FIXED, src: 'skip' },
+  };
+  seed[`hypertrophy_state_${prog.id}_w1`] = JSON.stringify(w1);
+
+  withApp({ storage: seed }, app => {
+    app.backfillProgram(prog.id, '2026-03-02');
+    app.backfillProgram(prog.id, '2026-05-04'); // revise the estimate
+
+    const raw = JSON.parse(app.storage.getItem(`hypertrophy_state_${prog.id}_w1`));
+    assert.deepStrictEqual(raw[d0.id].times[`${e0.id}_0`], { at: FIXED, src: 'log' });
+    assert.deepStrictEqual(raw[d0.id].times[`${e0.id}_1`], { at: FIXED, src: 'skip' });
+
+    // A genuinely estimated entry elsewhere did move to the revised date.
+    const d1 = prog.days[1], e1 = d1.exercises[0];
+    assert.deepStrictEqual(
+      raw[d1.id].times[`${e1.id}_0`],
+      { at: midnight('2026-05-04') + DAY_MS, src: 'est' }
+    );
+  });
+});
+
+test('11b. backfill refuses a program with more than 7 days', () => {
+  const { PROGRAMS } = loadApp();
+  const prog = PROGRAMS[0];
+  withApp({ storage: seedTwoWeeks(prog) }, app => {
+    // withApp re-evals the script, so it has its own PROGRAMS array —
+    // backfillProgram reads that one, not the loadApp copy `prog` came from.
+    const live = app.PROGRAMS.find(p => p.id === prog.id);
+    const original = live.days.slice();
+    // Grow the program past a week so dayIndex would overlap the next week.
+    while (live.days.length <= 7) live.days.push(original[0]);
+    try {
+      const res = app.backfillProgram(prog.id, '2026-03-02');
+      assert.strictEqual(res.ok, false);
+      const raw = JSON.parse(app.storage.getItem(`hypertrophy_state_${prog.id}_w1`));
+      // boot()'s initState() already gives every day an empty times map, so the
+      // map's presence proves nothing — the property is that it stayed empty.
+      assert.deepStrictEqual(
+        raw[prog.days[0].id].times || {}, {},
+        'refused backfill still wrote data'
+      );
+      assert.strictEqual(app.storage.getItem(`hypertrophy_start_${prog.id}`), null);
+    } finally {
+      live.days.length = 0;
+      original.forEach(d => live.days.push(d));
+    }
+  });
+});
+
+test('11c. backfill refuses an unparseable date', () => {
+  const { PROGRAMS } = loadApp();
+  const prog = PROGRAMS[0];
+  withApp({ storage: seedTwoWeeks(prog) }, app => {
+    const res = app.backfillProgram(prog.id, 'not-a-date');
+    assert.strictEqual(res.ok, false);
+    assert.strictEqual(app.storage.getItem(`hypertrophy_start_${prog.id}`), null);
+  });
+});

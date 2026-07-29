@@ -194,6 +194,7 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       ' toggleSet, undoSet, skipExercise, skipDay, completeDay,' +
       ' initState, saveState, loadState, prefillFromPreviousWeeks,' +
       ' exportData, importData,' +
+      ' backfillProgram, programStartKey,' +
       // commitEdit is a forward reference: it does not exist in index.html yet
       // (Task 7 adds it). `typeof commitEdit` is legal even on an undeclared
       // identifier — it evaluates to "undefined" — whereas a bare `commitEdit`
