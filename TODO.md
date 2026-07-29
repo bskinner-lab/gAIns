@@ -1,7 +1,7 @@
 # gAIns — Improvement Backlog
 
 Ordered by what it costs to defer, not by effort. Findings are grounded in the
-state of `index.html` as of 2026-07-29 (3,790 lines / 176 KB).
+state of `index.html` as of 2026-07-29 (3893 lines / 177 KB).
 
 Hosting decision: **staying on GitHub Pages** for now. Private-hosting options
 (Cloudflare Pages, GitHub Pro) were evaluated and deferred — revisit only if the
@@ -18,14 +18,16 @@ custom domain on it so it never has to happen twice.
 **Status:** done — 2026-07-29. Data model only; nothing in the UI reads the
 timestamps yet. See `docs/superpowers/specs/2026-07-29-set-timestamps-design.md`.
 
-Nothing in the persisted model knows when anything happened. `state` is keyed
+*The problem this solved, as it stood before 2026-07-29:*
+
+Nothing in the persisted model knew when anything happened. `state` was keyed
 `program → week → day → {sets, weights, reps, effort, protocol, swaps}` with no
 timestamp anywhere. `advanceToCurrentWeek()` bumps the week when the previous one
-is *fully complete*, so "Week 5" is an ordinal counter disconnected from the
-calendar. The export (`version: 3`) carries no dates either — the only date in
-the whole system is the export filename.
+is *fully complete*, so "Week 5" was an ordinal counter disconnected from the
+calendar. The export (then `version: 3`) carried no dates either — the only date
+in the whole system was the export filename.
 
-Can't currently answer: when did I last train legs, what's my actual training
+Couldn't answer: when did I last train legs, what's my actual training
 frequency, was this mesocycle run over 8 weeks or dragged across 5 months, is
 this a deload or a vacation.
 
