@@ -218,6 +218,13 @@ test('9c. re-logging after undo records a fresh timestamp', () => {
     app.setClock(() => FIXED);
     app.toggleSet(day.id, ex.id, 0);
     app.undoSet(day.id, ex.id, 0);
+    // Pin the deletion mid-sequence: without this the final assertion passes
+    // even if undo never deleted anything, because the re-log's markTime
+    // overwrites unconditionally.
+    assert.ok(
+      !(`${ex.id}_0` in app.state[day.id].times),
+      'undo did not delete the entry before re-logging'
+    );
     app.setClock(() => FIXED + 120000);
     app.toggleSet(day.id, ex.id, 0);
     assert.deepStrictEqual(
