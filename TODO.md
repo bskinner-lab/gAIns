@@ -15,7 +15,8 @@ custom domain on it so it never has to happen twice.
 
 ### 1. Record timestamps
 
-**Status:** not started
+**Status:** done — 2026-07-29. Data model only; nothing in the UI reads the
+timestamps yet. See `docs/superpowers/specs/2026-07-29-set-timestamps-design.md`.
 
 Nothing in the persisted model knows when anything happened. `state` is keyed
 `program → week → day → {sets, weights, reps, effort, protocol, swaps}` with no
@@ -32,9 +33,9 @@ this a deload or a vacation.
 unrecoverable. Everything else can be built six months from now against data that
 still exists. Every session logged without a date loses its date permanently.
 
-- [ ] Add `completedAt` per set (minimum: per day)
-- [ ] Bump export to v4 with a migration from v3
-- [ ] Keep v1/v2/v3 import paths working
+- [x] Add `completedAt` per set (minimum: per day)
+- [x] Bump export to v4 with a migration from v3
+- [x] Keep v1/v2/v3 import paths working
 
 ---
 
@@ -74,10 +75,11 @@ export you have to remember to run.
 
 **Status:** not started
 
-Reps are stored per set (`reps[exId_i]`), but weight is one value per exercise
-(`weights[exId] = val`). You can log 12/10/8 reps but not the 135/155/175 that
-produced them. Top sets, back-off sets, and drop sets are unrecordable. Unlocks
-item 5.
+Partially done already. Both `toggleSet` and `logActiveSet` write
+`weights[exId_i]` alongside `weights[exId]` — only `saveWeight()` (the text
+input path) writes exercise-level only. Remaining work is narrower than first
+written up: make `saveWeight()` per-set and make the progress view read per-set
+weights.
 
 - [ ] Store weight per set, mirroring the reps shape
 - [ ] Migrate existing per-exercise weights forward
@@ -109,6 +111,8 @@ become available — both better hypertrophy signals.
 
 - [ ] Volume load per exercise per week
 - [ ] Estimated 1RM trend
+- [ ] Plot against real dates now that `times` exists (filter to `src: "log"`
+      for pacing; exclude `est` from anything claiming precision)
 
 ---
 
