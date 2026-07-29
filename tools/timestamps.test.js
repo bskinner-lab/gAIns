@@ -173,3 +173,56 @@ test('7d. bulk skip does not clobber an individually-skipped set\'s timestamp', 
     assert.strictEqual(app.state[day.id].times[`${ex.id}_1`].src, 'bulk');
   });
 });
+
+test('8. undoSet removes the timestamp entirely', () => {
+  withApp({ storage: allSeenSeed() }, app => {
+    app.setClock(() => FIXED);
+    const day = app.curDay();
+    const ex = app.activeSet(day).ex;
+    app.toggleSet(day.id, ex.id, 0);
+    assert.ok(app.state[day.id].times[`${ex.id}_0`]);
+    app.undoSet(day.id, ex.id, 0);
+    assert.ok(
+      !(`${ex.id}_0` in app.state[day.id].times),
+      'key must be absent, not undefined'
+    );
+  });
+});
+
+test('9a. toggling a done set off removes its timestamp', () => {
+  withApp({ storage: allSeenSeed() }, app => {
+    app.setClock(() => FIXED);
+    const day = app.curDay();
+    const ex = app.activeSet(day).ex;
+    app.toggleSet(day.id, ex.id, 0);
+    app.toggleSet(day.id, ex.id, 0);
+    assert.ok(!(`${ex.id}_0` in app.state[day.id].times));
+  });
+});
+
+test('9b. un-skipping a set removes its timestamp', () => {
+  withApp({ storage: allSeenSeed() }, app => {
+    app.setClock(() => FIXED);
+    const day = app.curDay();
+    const ex = app.activeSet(day).ex;
+    app.skipSet(day.id, ex.id, 0);
+    app.skipSet(day.id, ex.id, 0);
+    assert.ok(!(`${ex.id}_0` in app.state[day.id].times));
+  });
+});
+
+test('9c. re-logging after undo records a fresh timestamp', () => {
+  withApp({ storage: allSeenSeed() }, app => {
+    const day = app.curDay();
+    const ex = app.activeSet(day).ex;
+    app.setClock(() => FIXED);
+    app.toggleSet(day.id, ex.id, 0);
+    app.undoSet(day.id, ex.id, 0);
+    app.setClock(() => FIXED + 120000);
+    app.toggleSet(day.id, ex.id, 0);
+    assert.deepStrictEqual(
+      app.state[day.id].times[`${ex.id}_0`],
+      { at: FIXED + 120000, src: 'log' }
+    );
+  });
+});

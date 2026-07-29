@@ -2436,6 +2436,7 @@ function toggleSet(dayId, exId, setIdx) {
 
   if (wasDone) {
     state[dayId].sets[exId][setIdx] = false;
+    clearTime(dayId, exId, setIdx);
     saveState();
     refreshCurrentDay(dayId);
     return;
@@ -2539,6 +2540,7 @@ function skipSet(dayId, exId, setIdx) {
   const current = state[dayId].sets[exId][setIdx];
   if (current === 'skipped') {
     state[dayId].sets[exId][setIdx] = false;
+    clearTime(dayId, exId, setIdx);
   } else if (current === false) {
     state[dayId].sets[exId][setIdx] = 'skipped';
     markTime(dayId, exId, setIdx, 'skip');
@@ -3183,6 +3185,7 @@ function hasPendingSet(day, orig) {
 
 function undoSet(dayId, exId, i) {
   state[dayId].sets[exId][i] = false;
+  clearTime(dayId, exId, i);
   saveState();
   view.pendKey = '';
 }
