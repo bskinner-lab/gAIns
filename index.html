@@ -2226,6 +2226,7 @@ function initState() {
       sets: {},
       weights: savedDay.weights || {},
       reps: savedDay.reps || {},
+      times: savedDay.times || {},
       effort: savedDay.effort || {},
       protocol: savedDay.protocol || [],
       swaps: savedDay.swaps || {}
@@ -2310,6 +2311,29 @@ function priorWeekEntry(dayId, exId) {
     if (hist[i].week < currentWeek) return hist[i];
   }
   return null;
+}
+
+// Clock seam. Every timestamp this feature writes goes through nowMs() so
+// tests can pin the clock. The rest timer's own Date.now() calls are
+// deliberately left alone — that logic works and is backgrounding-sensitive.
+let clockNow = () => Date.now();
+function nowMs() { return clockNow(); }
+function setClock(fn) { clockNow = fn || (() => Date.now()); }
+
+// A set was performed at a moment, by one of four routes. `src` is what keeps
+// a bulk tap or an estimated backfill from ever being mistaken for a measured
+// log — see docs/superpowers/specs/2026-07-29-set-timestamps-design.md.
+function markTime(dayId, exId, setIdx, src) {
+  if (!state[dayId]) return;
+  if (!state[dayId].times) state[dayId].times = {};
+  state[dayId].times[`${exId}_${setIdx}`] = { at: nowMs(), src };
+}
+
+// A set that was un-done was not performed. A stale timestamp is worse than
+// no timestamp, so every un-resolve path deletes rather than leaving it.
+function clearTime(dayId, exId, setIdx) {
+  if (!state[dayId] || !state[dayId].times) return;
+  delete state[dayId].times[`${exId}_${setIdx}`];
 }
 
 function saveState() {
