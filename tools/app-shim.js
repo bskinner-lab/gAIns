@@ -68,7 +68,7 @@ function makeElement(id) {
 
 const GLOBAL_KEYS = [
   'window', 'document', 'localStorage', 'navigator', 'Notification',
-  'AudioContext', 'webkitAudioContext', 'Blob', 'URL',
+  'AudioContext', 'webkitAudioContext', 'Blob', 'URL', 'FileReader',
   'setInterval', 'setTimeout', 'clearInterval', 'clearTimeout',
   'requestAnimationFrame', 'alert',
 ];
@@ -150,8 +150,18 @@ function setupApp({ htmlPath, storage: seed } = {}) {
   };
   setGlobal('AudioContext', AudioContextStub);
   setGlobal('webkitAudioContext', AudioContextStub);
-  setGlobal('Blob', function () {});
+  // Capture what exportData serialises so tests can assert on it.
+  let lastBlob = null;
+  setGlobal('Blob', function (parts) { lastBlob = parts && parts[0]; });
   setGlobal('URL', { createObjectURL: () => 'blob:stub', revokeObjectURL() {} });
+  // Synchronous FileReader: importData calls readAsText and acts in onload.
+  // Test files are plain objects carrying a `_content` string.
+  setGlobal('FileReader', function () {
+    this.onload = null;
+    this.readAsText = file => {
+      if (this.onload) this.onload({ target: { result: file._content } });
+    };
+  });
   setGlobal('setInterval', () => 0);
   setGlobal('setTimeout', () => 0);
   setGlobal('clearInterval', () => {});
@@ -183,6 +193,7 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       ' nowMs, setClock, markTime, clearTime,' +
       ' toggleSet, undoSet, skipExercise, skipDay, completeDay,' +
       ' initState, saveState, loadState, prefillFromPreviousWeeks,' +
+      ' exportData, importData,' +
       // commitEdit is a forward reference: it does not exist in index.html yet
       // (Task 7 adds it). `typeof commitEdit` is legal even on an undeclared
       // identifier — it evaluates to "undefined" — whereas a bare `commitEdit`
@@ -203,7 +214,16 @@ function setupApp({ htmlPath, storage: seed } = {}) {
     throw e;
   }
 
-  Object.assign(api, { storage, elements, get clickHandler() { return clickHandler; } });
+  // Object.assign would invoke these getters immediately and copy the
+  // resulting *value* onto api as a frozen data property — fine for
+  // clickHandler (already set by the time boot() has run), but wrong for
+  // lastBlob, which is still null here and only gets set later when a test
+  // calls exportData(). defineProperties keeps both as live accessors.
+  Object.assign(api, { storage, elements });
+  Object.defineProperties(api, {
+    lastBlob: { get: () => lastBlob, enumerable: true, configurable: true },
+    clickHandler: { get: () => clickHandler, enumerable: true, configurable: true },
+  });
   return { api, teardown };
 }
 

@@ -233,3 +233,94 @@ test('9c. re-logging after undo records a fresh timestamp', () => {
     );
   });
 });
+
+function fileEvent(content) {
+  return { target: { files: [{ _content: content }], value: '' } };
+}
+
+test('12. export emits version 4 including times', () => {
+  const { PROGRAMS } = loadApp();
+  const prog = PROGRAMS[0], day = prog.days[0], ex = day.exercises[0];
+  const seed = Object.assign(allSeenSeed(), {
+    hypertrophy_program: '0',
+    [`hypertrophy_week_${prog.id}`]: '1',
+    [`hypertrophy_state_${prog.id}_w1`]: JSON.stringify({
+      [day.id]: {
+        sets: { [ex.id]: [true, false, false] },
+        weights: {}, effort: {},
+        times: { [`${ex.id}_0`]: { at: FIXED, src: 'log' } },
+      },
+    }),
+  });
+  withApp({ storage: seed }, app => {
+    app.exportData();
+    const out = JSON.parse(app.lastBlob);
+    assert.strictEqual(out.version, 4);
+    assert.deepStrictEqual(
+      out.programs[prog.id].weeks['1'][day.id].times[`${ex.id}_0`],
+      { at: FIXED, src: 'log' }
+    );
+  });
+});
+
+test('13. a v3 backup imports cleanly and fabricates no dates', () => {
+  const { PROGRAMS } = loadApp();
+  const prog = PROGRAMS[0], day = prog.days[0], ex = day.exercises[0];
+  const backup = JSON.stringify({
+    version: 3,
+    currentProgram: 0,
+    programs: {
+      [prog.id]: {
+        currentWeek: 1,
+        weeks: { 1: { [day.id]: { sets: { [ex.id]: [true, true, false] }, weights: {}, effort: {} } } },
+      },
+    },
+  });
+  withApp({ storage: allSeenSeed() }, app => {
+    app.importData(fileEvent(backup));
+    assert.deepStrictEqual(app.state[day.id].times, {}, 'import invented dates');
+    assert.strictEqual(app.state[day.id].sets[ex.id][0], true, 'import lost set data');
+  });
+});
+
+test('14. a v4 backup round-trips with timestamps intact', () => {
+  const { PROGRAMS } = loadApp();
+  const prog = PROGRAMS[0], day = prog.days[0], ex = day.exercises[0];
+  const backup = JSON.stringify({
+    version: 4,
+    currentProgram: 0,
+    programs: {
+      [prog.id]: {
+        currentWeek: 1,
+        startDate: '2026-03-02',
+        weeks: {
+          1: {
+            [day.id]: {
+              sets: { [ex.id]: [true, false, false] },
+              weights: {}, effort: {},
+              times: { [`${ex.id}_0`]: { at: FIXED, src: 'log' } },
+            },
+          },
+        },
+      },
+    },
+  });
+  withApp({ storage: allSeenSeed() }, app => {
+    app.importData(fileEvent(backup));
+    assert.deepStrictEqual(
+      app.state[day.id].times[`${ex.id}_0`],
+      { at: FIXED, src: 'log' }
+    );
+    assert.strictEqual(app.storage.getItem(`hypertrophy_start_${prog.id}`), '2026-03-02');
+  });
+});
+
+test('12b. export omits startDate when none is stored', () => {
+  withApp({ storage: allSeenSeed() }, app => {
+    app.exportData();
+    const out = JSON.parse(app.lastBlob);
+    Object.values(out.programs).forEach(p => {
+      assert.ok(!('startDate' in p), 'startDate present with no stored value');
+    });
+  });
+});

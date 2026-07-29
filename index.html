@@ -2024,6 +2024,8 @@ function weekKey() {
   return `hypertrophy_week_${currentProgramId()}`;
 }
 
+function programStartKey(progId) { return `hypertrophy_start_${progId}`; }
+
 // WEEK TRACKING
 let currentWeek = 1;
 
@@ -2881,9 +2883,12 @@ function exportData() {
       } catch(e) {}
     }
     const weekNum = parseInt(localStorage.getItem(`hypertrophy_week_${prog.id}`) || '1');
-    allPrograms[prog.id] = { weeks, currentWeek: weekNum };
+    const startDate = localStorage.getItem(programStartKey(prog.id));
+    allPrograms[prog.id] = startDate
+      ? { weeks, currentWeek: weekNum, startDate }
+      : { weeks, currentWeek: weekNum };
   });
-  const data = { programs: allPrograms, currentProgram: savedProgIdx, version: 3 };
+  const data = { programs: allPrograms, currentProgram: savedProgIdx, version: 4 };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2904,12 +2909,15 @@ function importData(event) {
     try {
       const data = JSON.parse(e.target.result);
 
-      if (data.version === 3 && data.programs) {
+      if ((data.version === 4 || data.version === 3) && data.programs) {
         for (const [progId, progData] of Object.entries(data.programs)) {
           for (const [w, wState] of Object.entries(progData.weeks)) {
             localStorage.setItem(`${STORAGE_KEY}_${progId}_w${w}`, JSON.stringify(wState));
           }
           localStorage.setItem(`hypertrophy_week_${progId}`, progData.currentWeek);
+          if (progData.startDate) {
+            localStorage.setItem(programStartKey(progId), progData.startDate);
+          }
         }
         if (typeof data.currentProgram === 'number') {
           currentProgramIdx = data.currentProgram;
@@ -3433,7 +3441,7 @@ function settingsHTML() {
   const tb = (v, l) => `<button class="theme-b${cur === v ? ' on' : ''}" data-act="theme" data-v="${v}">${l}</button>`;
 
   return `<div class="vw">
-    <div class="vw-sub">BACKUP &amp; RESTORE · v3 · ALL PROGRAMS &amp; WEEKS</div>
+    <div class="vw-sub">BACKUP &amp; RESTORE · v4 · ALL PROGRAMS &amp; WEEKS</div>
 
     <div class="panel" style="margin-left:0;margin-right:0">
       <div class="panel-h">APPEARANCE</div>
@@ -3448,7 +3456,7 @@ function settingsHTML() {
 
     <div class="panel" style="margin-left:0;margin-right:0">
       <div class="panel-h">IMPORT</div>
-      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Restore from a v1, v2 or v3 gAIns backup. Legacy files are migrated automatically.</div>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Restore from a v1, v2, v3 or v4 gAIns backup. Legacy files are migrated automatically.</div>
       <button class="big-btn ghost" data-act="import">↑ IMPORT DATA</button>
       <input type="file" id="importFile" accept="application/json,.json" style="display:none">
       ${view.importMsg ? `<div style="margin-top:10px;font-family:var(--font-mono);font-size:10px;color:${view.importOk ? 'var(--ok)' : 'var(--danger)'}">${esc(view.importMsg)}</div>` : ''}
