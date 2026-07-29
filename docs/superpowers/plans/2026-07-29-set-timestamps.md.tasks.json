@@ -56,12 +56,12 @@
     {
       "id": 7,
       "subject": "Task 7: Update TODO.md",
-      "status": "pending",
+      "status": "completed",
       "blockedBy": [
         6
       ],
       "description": "**Goal:** The backlog reflects what shipped and corrects the item-4 overstatement found during design.\n\n**Files:**\n- Modify: `TODO.md`\n\n**Acceptance Criteria:**\n- [ ] Tier 0 item 1 marked complete, with a note that no UI consumes the data yet\n- [ ] Item 4 corrected: per-set weights already exist in `toggleSet` and `logActiveSet`; only `saveWeight()` writes exercise-level only\n- [ ] Item 6 notes that timestamps are now available as an input\n\n**Verify:** `git diff --stat TODO.md` shows only `TODO.md` changed; `node --test tools/*.test.js` → 200 passing\n\n```json:metadata\n{\"files\": [\"TODO.md\"], \"verifyCommand\": \"node --test tools/*.test.js\", \"acceptanceCriteria\": [\"tier 0 item 1 marked done with data-model-only note\", \"item 4 corrected to reflect existing per-set weights\", \"item 6 notes timestamps available as input\"], \"modelTier\": \"mechanical\", \"planPath\": \"docs/superpowers/plans/2026-07-29-set-timestamps.md\"}\n```"
     }
   ],
-  "lastUpdated": "2026-07-29T18:12:56Z"
+  "lastUpdated": "2026-07-29T18:31:42Z"
 }
