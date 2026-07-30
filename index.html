@@ -2515,6 +2515,54 @@ function weekKey() {
   return `hypertrophy_week_${currentProgramId()}`;
 }
 
+function programStartKey(progId) { return `hypertrophy_start_${progId}`; }
+
+// Derive approximate dates for historical sets logged before timestamps
+// existed. Everything written here is src:"est" and must stay distinguishable
+// from measured data forever — see the design spec. Returns {ok, written} or
+// {ok:false, reason}.
+function backfillProgram(progId, startDate) {
+  const prog = PROGRAMS.find(p => p.id === progId);
+  if (!prog) return { ok: false, reason: 'unknown program' };
+  // dayIndex is added as a day offset within the week, so a program longer
+  // than a week would spill into the next week's dates. Refuse rather than
+  // silently produce wrong dates.
+  if (prog.days.length > 7) return { ok: false, reason: 'program has more than 7 days' };
+  const base = Date.parse(String(startDate) + 'T00:00:00');
+  if (isNaN(base)) return { ok: false, reason: 'invalid date' };
+
+  let written = 0;
+  for (let w = 1; w <= prog.totalWeeks; w++) {
+    const key = `${STORAGE_KEY}_${progId}_w${w}`;
+    let raw;
+    try { raw = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { continue; }
+    if (!raw || !Object.keys(raw).length) continue;
+
+    prog.days.forEach((day, dayIndex) => {
+      const sd = raw[day.id];
+      if (!sd || !sd.sets) return;
+      const at = base + ((w - 1) * 7 + dayIndex) * 86400000;
+      if (!sd.times) sd.times = {};
+      Object.keys(sd.sets).forEach(exId => {
+        const arr = sd.sets[exId];
+        if (!Array.isArray(arr)) return;
+        arr.forEach((v, i) => {
+          if (v !== true && v !== 'skipped') return;
+          const k = `${exId}_${i}`;
+          const existing = sd.times[k];
+          // The safety property: only ever write over our own estimates.
+          if (existing && existing.src !== 'est') return;
+          sd.times[k] = { at, src: 'est' };
+          written++;
+        });
+      });
+    });
+    localStorage.setItem(key, JSON.stringify(raw));
+  }
+  localStorage.setItem(programStartKey(progId), String(startDate));
+  return { ok: true, written };
+}
+
 // WEEK TRACKING
 let currentWeek = 1;
 
@@ -2719,6 +2767,7 @@ function initState() {
       sets: {},
       weights: savedDay.weights || {},
       reps: savedDay.reps || {},
+      times: savedDay.times || {},
       effort: savedDay.effort || {},
       protocol: savedDay.protocol || [],
       swaps: savedDay.swaps || {}
@@ -2803,6 +2852,29 @@ function priorWeekEntry(dayId, exId) {
     if (hist[i].week < currentWeek) return hist[i];
   }
   return null;
+}
+
+// Clock seam. Every timestamp this feature writes goes through nowMs() so
+// tests can pin the clock. The rest timer's own Date.now() calls are
+// deliberately left alone — that logic works and is backgrounding-sensitive.
+let clockNow = () => Date.now();
+function nowMs() { return clockNow(); }
+function setClock(fn) { clockNow = fn || (() => Date.now()); }
+
+// A set was performed at a moment, by one of four routes. `src` is what keeps
+// a bulk tap or an estimated backfill from ever being mistaken for a measured
+// log — see docs/superpowers/specs/2026-07-29-set-timestamps-design.md.
+function markTime(dayId, exId, setIdx, src) {
+  if (!state[dayId]) return;
+  if (!state[dayId].times) state[dayId].times = {};
+  state[dayId].times[`${exId}_${setIdx}`] = { at: nowMs(), src };
+}
+
+// A set that was un-done was not performed. A stale timestamp is worse than
+// no timestamp, so every un-resolve path deletes rather than leaving it.
+function clearTime(dayId, exId, setIdx) {
+  if (!state[dayId] || !state[dayId].times) return;
+  delete state[dayId].times[`${exId}_${setIdx}`];
 }
 
 function saveState() {
@@ -2905,6 +2977,7 @@ function toggleSet(dayId, exId, setIdx) {
 
   if (wasDone) {
     state[dayId].sets[exId][setIdx] = false;
+    clearTime(dayId, exId, setIdx);
     saveState();
     refreshCurrentDay(dayId);
     return;
@@ -2921,6 +2994,7 @@ function toggleSet(dayId, exId, setIdx) {
   }
 
   state[dayId].sets[exId][setIdx] = true;
+  markTime(dayId, exId, setIdx, 'log');
   saveState();
   refreshCurrentDay(dayId);
 
@@ -3007,8 +3081,10 @@ function skipSet(dayId, exId, setIdx) {
   const current = state[dayId].sets[exId][setIdx];
   if (current === 'skipped') {
     state[dayId].sets[exId][setIdx] = false;
+    clearTime(dayId, exId, setIdx);
   } else if (current === false) {
     state[dayId].sets[exId][setIdx] = 'skipped';
+    markTime(dayId, exId, setIdx, 'skip');
   }
   saveState();
   // Release the selection once the selected exercise has no set left to log.
@@ -3024,10 +3100,10 @@ function skipExercise(dayId, exId) {
   const sets = state[dayId].sets[exId];
   const allSkipped = sets.every(v => v === 'skipped');
   if (allSkipped) {
-    for (let i = 0; i < sets.length; i++) sets[i] = false;
+    for (let i = 0; i < sets.length; i++) { sets[i] = false; clearTime(dayId, exId, i); }
   } else {
     for (let i = 0; i < sets.length; i++) {
-      if (sets[i] !== true) sets[i] = 'skipped';
+      if (sets[i] === false) { sets[i] = 'skipped'; markTime(dayId, exId, i, 'bulk'); }
     }
   }
   saveState();
@@ -3050,9 +3126,9 @@ function skipDay(dayId) {
     if (!arr) return;
     for (let i = 0; i < arr.length; i++) {
       if (allResolved && hasSkipped) {
-        if (arr[i] === 'skipped') arr[i] = false;
+        if (arr[i] === 'skipped') { arr[i] = false; clearTime(dayId, id, i); }
       } else {
-        if (arr[i] === false) arr[i] = 'skipped';
+        if (arr[i] === false) { arr[i] = 'skipped'; markTime(dayId, id, i, 'bulk'); }
       }
     }
   });
@@ -3066,7 +3142,7 @@ function completeDay(dayId) {
     const arr = state[dayId].sets[id];
     if (!arr) return;
     for (let i = 0; i < arr.length; i++) {
-      if (arr[i] !== true) arr[i] = true;
+      if (arr[i] !== true) { arr[i] = true; markTime(dayId, id, i, 'bulk'); }
     }
   });
   saveState();
@@ -3346,8 +3422,15 @@ function exportData() {
       } catch(e) {}
     }
     const weekNum = parseInt(localStorage.getItem(`hypertrophy_week_${prog.id}`) || '1');
-    allPrograms[prog.id] = { weeks, currentWeek: weekNum };
+    const startDate = localStorage.getItem(programStartKey(prog.id));
+    allPrograms[prog.id] = startDate
+      ? { weeks, currentWeek: weekNum, startDate }
+      : { weeks, currentWeek: weekNum };
   });
+  // Stays labelled 3 deliberately. The version integer is the import gate, so a
+  // file labelled 4 is rejected outright by builds that predate `times`. The
+  // format is a structural superset of v3 — `times` and `startDate` are extra
+  // keys older builds ignore — so a 3-labelled file imports into both.
   const data = { programs: allPrograms, currentProgram: savedProgIdx, version: 3 };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -3369,12 +3452,21 @@ function importData(event) {
     try {
       const data = JSON.parse(e.target.result);
 
-      if (data.version === 3 && data.programs) {
+      // Nothing emits 4 any more (see exportData), but accepting it costs
+      // nothing and handles any file written by an interim build.
+      if ((data.version === 4 || data.version === 3) && data.programs) {
         for (const [progId, progData] of Object.entries(data.programs)) {
           for (const [w, wState] of Object.entries(progData.weeks)) {
             localStorage.setItem(`${STORAGE_KEY}_${progId}_w${w}`, JSON.stringify(wState));
           }
           localStorage.setItem(`hypertrophy_week_${progId}`, progData.currentWeek);
+          if (progData.startDate) {
+            localStorage.setItem(programStartKey(progId), progData.startDate);
+          } else {
+            // Otherwise a start date from the pre-import state would survive and
+            // be shown against restored data it has nothing to do with.
+            localStorage.removeItem(programStartKey(progId));
+          }
         }
         if (typeof data.currentProgram === 'number') {
           currentProgramIdx = data.currentProgram;
@@ -3650,6 +3742,7 @@ function hasPendingSet(day, orig) {
 
 function undoSet(dayId, exId, i) {
   state[dayId].sets[exId][i] = false;
+  clearTime(dayId, exId, i);
   saveState();
   view.pendKey = '';
 }
@@ -3672,6 +3765,7 @@ function logActiveSet() {
     state[day.id].reps[ex.id] = rn;
     state[day.id].reps[`${ex.id}_${i}`] = rn;
   }
+  markTime(day.id, ex.id, i, 'log');
   saveState();
 
   view.latestPr = (maxPrior > 0 && w > maxPrior)
@@ -3905,7 +3999,7 @@ function settingsHTML() {
 
     <div class="panel" style="margin-left:0;margin-right:0">
       <div class="panel-h">EXPORT</div>
-      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Download every logged set, weight, effort rating, swap and protocol check across all programs and weeks as a JSON file.</div>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Download every logged set, weight, rep count, effort rating, timestamp, swap and protocol check across all programs and weeks as a JSON file.</div>
       <button class="big-btn" data-act="export">↓ EXPORT DATA</button>
     </div>
 
@@ -3915,6 +4009,13 @@ function settingsHTML() {
       <button class="big-btn ghost" data-act="import">↑ IMPORT DATA</button>
       <input type="file" id="importFile" accept="application/json,.json" style="display:none">
       ${view.importMsg ? `<div style="margin-top:10px;font-family:var(--font-mono);font-size:10px;color:${view.importOk ? 'var(--ok)' : 'var(--danger)'}">${esc(view.importMsg)}</div>` : ''}
+    </div>
+
+    <div class="panel" style="margin-left:0;margin-right:0">
+      <div class="panel-h">TRAINING START DATE</div>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Sets logged before dates were recorded have no date. Setting a start date for <strong>${esc(prog.name)}</strong> fills in estimated dates, marked as estimates. Real logged times are never changed, so you can revise this freely.</div>
+      <input type="date" id="startDate-${esc(prog.id)}" value="${esc(localStorage.getItem(programStartKey(prog.id)) || '')}" style="width:100%;margin-bottom:10px;font-family:var(--font-mono);font-size:12px;padding:8px;background:var(--surface);color:var(--ink);border:1px solid var(--border)">
+      <button class="big-btn ghost" data-act="backfill" data-p="${esc(prog.id)}">SET START DATE</button>
     </div>
 
     <div class="panel" style="margin-left:0;margin-right:0;border-color:var(--border)">
@@ -4174,6 +4275,8 @@ function resetWeek() {
     state[day.id].protocol = [];
     state[day.id].weights = {};
     state[day.id].effort = {};
+    state[day.id].reps = {};
+    state[day.id].times = {};
     day.exercises.forEach(o => {
       const ex = resolveExercise(day.id, o);
       state[day.id].sets[ex.id] = Array(ex.sets).fill(false);
@@ -4241,7 +4344,7 @@ document.addEventListener('click', e => {
   else if (act === 'export') { exportData(); }
   else if (act === 'import') { document.getElementById('importFile').click(); return; }
   else if (act === 'clearweek') {
-    view.confirm = { title: 'Clear Week?', msg: "This week's logged sets, weights and effort will be reset.", act: 'clearweek' };
+    view.confirm = { title: 'Clear Week?', msg: "This week's logged sets, weights, reps, effort, timestamps and protocol checks will be reset.", act: 'clearweek' };
   }
   else if (act === 'restmin') { view.restMinimized = true; }
   else if (act === 'preset')  { setRest(Number(el.dataset.s)); }
@@ -4255,6 +4358,18 @@ document.addEventListener('click', e => {
     else if (c.act === 'clearweek') { resetWeek(); view.importMsg = "This week's log cleared."; view.importOk = true; }
   }
   else if (act === 'cfx')     { view.confirm = null; }
+  else if (act === 'backfill') {
+    const pid = el.dataset.p;
+    const input = document.getElementById(`startDate-${pid}`);
+    const res = backfillProgram(pid, input ? input.value : '');
+    // Backfill writes straight to localStorage across all weeks; reload so the
+    // in-memory current week reflects it.
+    if (res.ok) initState();
+    view.importMsg = res.ok
+      ? `Estimated dates written for ${res.written} sets.`
+      : `Could not set start date: ${res.reason}.`;
+    view.importOk = res.ok;
+  }
   else return;
   render();
 });
