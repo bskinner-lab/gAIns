@@ -1,0 +1,54 @@
+{
+  "planPath": "docs/superpowers/plans/2026-07-30-service-worker.md",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "SW Task 1: Self-host the fonts",
+      "status": "pending",
+      "description": "**Goal:** The three font families load from our own origin, with no third-party request on the critical path.\n\n**Files:**\n- Create: `fonts/oswald-var.woff2`, `fonts/archivo-var.woff2`, `fonts/ibm-plex-mono-{400,500,600}.woff2`\n- Create: `fonts/LICENSE.txt`\n- Modify: `index.html` — remove lines 13–15 (`preconnect` ×2 + CDN stylesheet); add `@font-face` blocks at the top of the `<style>` block\n- Modify: `README.md` — font names are stale\n- Create: `tools/offline-ui.test.js` (first test lands here)\n\n**Acceptance Criteria:**\n- [ ] Five `.woff2` files exist under `fonts/`, each non-empty and beginning with the `wOF2` magic bytes\n- [ ] `index.html` contains no reference to `fonts.googleapis.com` or `fonts.gstatic.com`\n- [ ] Exactly five `@font-face` blocks, all `src`ing `./fonts/*.woff2`\n- [ ] Oswald and Archivo declare `font-weight: 400 700`; the three IBM Plex Mono blocks declare `400`, `500`, `600`\n- [ ] No `@font-face` block declares `unicode-range`\n- [ ] Every block declares `font-display: swap`\n- [ ] `fonts/LICENSE.txt` contains the full OFL 1.1 text plus a source URL per file\n- [ ] `README.md` names Oswald, IBM Plex Mono, Archivo\n\n**Verify:** `node --test tools/*.test.js` → 205 passing, 0 failing\n\n```json:metadata\n{\"files\": [\"fonts/\", \"index.html\", \"README.md\", \"tools/offline-ui.test.js\"], \"verifyCommand\": \"node --test tools/*.test.js\", \"acceptanceCriteria\": [\"five woff2 files with wOF2 magic bytes\", \"no fonts.googleapis.com or fonts.gstatic.com in index.html\", \"exactly five @font-face blocks sourced locally\", \"variable families declare 400 700, mono statics 400/500/600\", \"no unicode-range on any block\", \"font-display swap on every block\", \"LICENSE.txt has full OFL 1.1 text and source URLs\", \"README names the correct three families\"], \"modelTier\": \"standard\", \"planPath\": \"docs/superpowers/plans/2026-07-30-service-worker.md\"}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "SW Task 2: SW harness, install and activate",
+      "status": "pending",
+      "blockedBy": [1],
+      "description": "**Goal:** `sw.js` precaches the shell atomically and cleans up stale caches, with a harness that can drive it headlessly.\n\n**Files:**\n- Create: `sw.js`\n- Create: `tools/sw-shim.js`\n- Create: `tools/sw.test.js`\n\n**Acceptance Criteria:**\n- [ ] `install` precaches exactly the 7 `PRECACHE` entries\n- [ ] A single failing entry aborts the whole install — the cache is left empty, not partial\n- [ ] `install` calls `skipWaiting()`\n- [ ] `activate` deletes every cache whose name is not `gains-v1` and keeps that one\n- [ ] `activate` calls `clients.claim()`\n- [ ] All `PRECACHE` paths are relative\n\n**Verify:** `node --test tools/*.test.js` → 208 passing, 0 failing\n\n```json:metadata\n{\"files\": [\"sw.js\", \"tools/sw-shim.js\", \"tools/sw.test.js\"], \"verifyCommand\": \"node --test tools/*.test.js\", \"acceptanceCriteria\": [\"install precaches exactly 7 entries\", \"one failed entry aborts the whole install leaving no partial cache\", \"install calls skipWaiting\", \"activate deletes foreign caches and keeps gains-v1\", \"activate calls clients.claim\", \"all PRECACHE paths relative\"], \"modelTier\": \"standard\", \"planPath\": \"docs/superpowers/plans/2026-07-30-service-worker.md\"}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "SW Task 3: Fetch routing",
+      "status": "pending",
+      "blockedBy": [2],
+      "description": "**Goal:** Navigations serve instantly from cache and refresh in the background; fonts are cache-first; nothing else is intercepted.\n\n**Files:**\n- Modify: `sw.js` — add the `fetch` listener and its two helpers\n- Modify: `tools/sw.test.js` — six more cases\n\n**Acceptance Criteria:**\n- [ ] A navigation request is answered from the cached `./index.html`\n- [ ] After a navigation, the cache holds the newly fetched body (background revalidation ran)\n- [ ] A navigation while the network is down still resolves to the cached response and does not reject\n- [ ] A non-200 network response is never written to the cache\n- [ ] A `./fonts/*.woff2` request is answered from cache without hitting the network\n- [ ] Cross-origin requests are not intercepted (`respondWith` not called)\n- [ ] Non-`GET` requests are not intercepted\n\n**Verify:** `node --test tools/*.test.js` → 214 passing, 0 failing\n\n```json:metadata\n{\"files\": [\"sw.js\", \"tools/sw.test.js\"], \"verifyCommand\": \"node --test tools/*.test.js\", \"acceptanceCriteria\": [\"navigation served from cached index.html\", \"background revalidation updates the cache\", \"offline navigation resolves from cache without rejecting\", \"non-200 response never cached\", \"fonts served cache-first with no network hit\", \"cross-origin not intercepted\", \"non-GET not intercepted\"], \"modelTier\": \"standard\", \"planPath\": \"docs/superpowers/plans/2026-07-30-service-worker.md\"}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "SW Task 4: Register the service worker",
+      "status": "pending",
+      "blockedBy": [3],
+      "description": "**Goal:** The app installs the service worker on load, and degrades silently where the API is unavailable.\n\n**Files:**\n- Modify: `index.html` — registration inside `boot()`\n- Modify: `tools/app-shim.js` — add `caches` and `navigator.serviceWorker` to the shim\n- Modify: `tools/offline-ui.test.js` — one case\n\n**Acceptance Criteria:**\n- [ ] `boot()` registers `./sw.js` when `navigator.serviceWorker` exists\n- [ ] The path is relative, so scope resolves under `/gAIns/`\n- [ ] A missing `navigator.serviceWorker` does not throw — the app boots normally\n- [ ] A rejected registration does not throw\n- [ ] `GLOBAL_KEYS` includes `caches`, so the stub is torn down between tests\n\n**Verify:** `node --test tools/*.test.js` → 215 passing, 0 failing\n\n```json:metadata\n{\"files\": [\"index.html\", \"tools/app-shim.js\", \"tools/offline-ui.test.js\"], \"verifyCommand\": \"node --test tools/*.test.js\", \"acceptanceCriteria\": [\"boot registers ./sw.js when serviceWorker exists\", \"path is relative for /gAIns/ scope\", \"missing navigator.serviceWorker does not throw\", \"rejected registration does not throw\", \"GLOBAL_KEYS includes caches\"], \"modelTier\": \"standard\", \"planPath\": \"docs/superpowers/plans/2026-07-30-service-worker.md\"}\n```"
+    },
+    {
+      "id": 5,
+      "subject": "SW Task 5: Settings build-version readout",
+      "status": "pending",
+      "blockedBy": [4],
+      "description": "**Goal:** Settings shows which build is cached, so \"did my push land?\" is answerable on the phone.\n\n**Files:**\n- Modify: `index.html` — `view.buildTime`, async read in `boot()`, new panel in `settingsHTML()`\n- Modify: `tools/offline-ui.test.js` — three cases\n\n**Acceptance Criteria:**\n- [ ] Settings renders `Build <local date and time>` when a cached response carries `last-modified`\n- [ ] Renders `Offline cache: preparing` when `caches` exists but nothing matches, or the match has no `last-modified`\n- [ ] Renders `Offline cache: unavailable` when `caches` is absent\n- [ ] The timestamp is rendered in device-local time, not the raw GMT string\n- [ ] The lookup uses the global `caches.match()`, so the cache name is not duplicated into `index.html`\n\n**Verify:** `node --test tools/*.test.js` → 218 passing, 0 failing\n\n```json:metadata\n{\"files\": [\"index.html\", \"tools/offline-ui.test.js\"], \"verifyCommand\": \"node --test tools/*.test.js\", \"acceptanceCriteria\": [\"renders Build plus local date/time when last-modified present\", \"renders preparing when caches exists but no match or no last-modified\", \"renders unavailable when caches absent\", \"timestamp in device-local time not raw GMT\", \"uses global caches.match so cache name is not duplicated\"], \"modelTier\": \"standard\", \"planPath\": \"docs/superpowers/plans/2026-07-30-service-worker.md\"}\n```"
+    },
+    {
+      "id": 6,
+      "subject": "SW Task 6: Force-update escape hatch",
+      "status": "pending",
+      "blockedBy": [5],
+      "description": "**Goal:** A bad cached version can be recovered from inside the app, without losing training data.\n\n**Files:**\n- Modify: `index.html` — button, confirm branch, `forceUpdate()`\n- Modify: `tools/offline-ui.test.js` — two cases\n\n**Acceptance Criteria:**\n- [ ] Settings has a `data-act=\"forceupdate\"` button\n- [ ] Tapping it opens the existing confirm dialog rather than acting immediately\n- [ ] Confirm copy states that logged data is not affected\n- [ ] Confirming deletes every cache and unregisters every service worker\n- [ ] **`localStorage` is untouched** — every key present before is present after with the same value\n- [ ] The page reloads afterwards\n\n**Verify:** `node --test tools/*.test.js` → 220 passing, 0 failing\n\n```json:metadata\n{\"files\": [\"index.html\", \"tools/offline-ui.test.js\"], \"verifyCommand\": \"node --test tools/*.test.js\", \"acceptanceCriteria\": [\"settings has a forceupdate button\", \"tapping opens the confirm dialog first\", \"confirm copy states logged data is not affected\", \"confirming deletes all caches and unregisters all service workers\", \"localStorage is untouched\", \"page reloads afterwards\"], \"modelTier\": \"standard\", \"planPath\": \"docs/superpowers/plans/2026-07-30-service-worker.md\"}\n```"
+    },
+    {
+      "id": 7,
+      "subject": "SW Task 7: Update TODO.md",
+      "status": "pending",
+      "blockedBy": [6],
+      "description": "**Goal:** The backlog reflects what shipped.\n\n**Files:**\n- Modify: `TODO.md`\n\n**Acceptance Criteria:**\n- [ ] Tier 1 item 2 marked done with the date\n- [ ] Its four checklist items are ticked\n- [ ] The problem description is past-tensed or bridged, so it does not contradict its own `done` status\n- [ ] Item 7's checklist notes that `data/programs.json` must be added to `PRECACHE` when it lands\n- [ ] Items 1, 3, 4, 5, 6, 8 are untouched\n\n**Verify:** `git diff --stat TODO.md` shows only `TODO.md`; `node --test tools/*.test.js` → 220 passing\n\n```json:metadata\n{\"files\": [\"TODO.md\"], \"verifyCommand\": \"node --test tools/*.test.js\", \"acceptanceCriteria\": [\"item 2 marked done with date\", \"its four checklist items ticked\", \"problem description past-tensed so it does not contradict done status\", \"item 7 notes the PRECACHE addition and cache bump\", \"items 1 3 4 5 6 8 untouched\"], \"modelTier\": \"mechanical\", \"planPath\": \"docs/superpowers/plans/2026-07-30-service-worker.md\"}\n```"
+    }
+  ],
+  "lastUpdated": "2026-07-30T06:30:00Z"
+}
