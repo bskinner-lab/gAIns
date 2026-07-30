@@ -37,3 +37,53 @@ self.addEventListener('activate', event => {
       .then(() => self.clients.claim())
   );
 });
+
+function cacheable(res) {
+  return !!res && res.ok && res.status === 200;
+}
+
+// Serve the cached shell immediately, then refresh it in the background so the
+// NEXT launch gets the new build. Two details are load-bearing:
+//   1. `cached` is returned before the network settles, so an offline launch is
+//      instant rather than waiting on a doomed fetch.
+//   2. the network promise carries its own .catch — uncaught, an offline
+//      launch would reject and the app would fail to open at all.
+function staleWhileRevalidate(request, cacheKey) {
+  return caches.open(CACHE).then(cache =>
+    cache.match(cacheKey).then(cached => {
+      const network = fetch(request)
+        .then(res => {
+          // Never cache a 404: GitHub Pages serves one during a bad deploy and
+          // it would become a permanent broken shell.
+          if (cacheable(res)) cache.put(cacheKey, res.clone());
+          return res;
+        })
+        .catch(() => null);
+      return cached || network.then(res => res || Response.error());
+    })
+  );
+}
+
+function cacheFirst(request) {
+  return caches.open(CACHE).then(cache =>
+    cache.match(request).then(cached => cached || fetch(request).then(res => {
+      if (cacheable(res)) cache.put(request, res.clone());
+      return res;
+    }))
+  );
+}
+
+self.addEventListener('fetch', event => {
+  const req = event.request;
+  // No opinion on anything we do not own.
+  if (req.method !== 'GET') return;
+  if (new URL(req.url).origin !== self.location.origin) return;
+
+  if (req.mode === 'navigate') {
+    event.respondWith(staleWhileRevalidate(req, './index.html'));
+    return;
+  }
+  if (/\/fonts\/[^/]+\.woff2$/.test(new URL(req.url).pathname)) {
+    event.respondWith(cacheFirst(req));
+  }
+});

@@ -45,3 +45,74 @@ test('3. activate deletes foreign caches and keeps the current one', async () =>
   assert.deepStrictEqual([...sw.caches._dump().keys()], ['gains-v1']);
   assert.strictEqual(sw.calls.claim, 1, 'activate did not call clients.claim()');
 });
+
+const { makeRequest } = require('./sw-shim');
+
+function navigate(url = './') {
+  return makeRequest(url, { mode: 'navigate' });
+}
+
+test('4. a navigation is served from the cached shell', async () => {
+  const sw = loadSW({ fetchImpl: () => Promise.resolve(makeResponse({ body: 'NETWORK' })) });
+  await sw.fire('install');
+  sw.caches._seed('gains-v1', './index.html', makeResponse({ body: 'CACHED' }));
+  const res = await sw.fetchEvent(navigate());
+  assert.ok(res, 'sw declined to handle a navigation');
+  assert.strictEqual((await res).body, 'CACHED');
+});
+
+test('5. a navigation refreshes the cache in the background', async () => {
+  const sw = loadSW({ fetchImpl: () => Promise.resolve(makeResponse({ body: 'NEW BUILD' })) });
+  await sw.fire('install');
+  sw.caches._seed('gains-v1', './index.html', makeResponse({ body: 'OLD BUILD' }));
+  const res = await sw.fetchEvent(navigate());
+  assert.strictEqual((await res).body, 'OLD BUILD', 'should serve stale immediately');
+  // Let the revalidation microtasks settle, then confirm the next launch wins.
+  await new Promise(r => setImmediate(r));
+  const stored = await sw.caches.match('./index.html');
+  assert.strictEqual(stored.body, 'NEW BUILD', 'background revalidation did not update the cache');
+});
+
+test('6. an offline navigation still resolves from cache and does not reject', async () => {
+  // The whole point of the feature. If the network promise is not caught, this
+  // is where an offline launch breaks.
+  const sw = loadSW({ fetchImpl: () => Promise.reject(new TypeError('offline')) });
+  sw.caches._seed('gains-v1', './index.html', makeResponse({ body: 'CACHED' }));
+  const res = await sw.fetchEvent(navigate());
+  const settled = await res;   // must not throw
+  assert.strictEqual(settled.body, 'CACHED');
+  await new Promise(r => setImmediate(r));
+});
+
+test('7. a non-200 response is never cached', async () => {
+  // Guards the worst deploy failure: caching GitHub Pages' 404 page as the app
+  // shell, then serving it offline forever.
+  const sw = loadSW({ fetchImpl: () => Promise.resolve(makeResponse({ status: 404, body: 'NOT FOUND' })) });
+  sw.caches._seed('gains-v1', './index.html', makeResponse({ body: 'GOOD SHELL' }));
+  await sw.fetchEvent(navigate());
+  await new Promise(r => setImmediate(r));
+  const stored = await sw.caches.match('./index.html');
+  assert.strictEqual(stored.body, 'GOOD SHELL', 'a 404 response overwrote the cached shell');
+});
+
+test('8. fonts are served cache-first without touching the network', async () => {
+  let hits = 0;
+  const sw = loadSW({ fetchImpl: () => { hits++; return Promise.resolve(makeResponse({ body: 'NET' })); } });
+  await sw.fire('install');
+  hits = 0;
+  const res = await sw.fetchEvent(makeRequest('./fonts/oswald-var.woff2'));
+  assert.ok(res, 'sw declined to handle a font request');
+  await res;
+  assert.strictEqual(hits, 0, 'font request hit the network despite being cached');
+});
+
+test('9. cross-origin and non-GET requests pass through untouched', async () => {
+  const sw = loadSW();
+  await sw.fire('install');
+  assert.strictEqual(
+    await sw.fetchEvent({ url: 'https://other.test/thing.js', method: 'GET', mode: 'no-cors' }),
+    null, 'intercepted a cross-origin request');
+  assert.strictEqual(
+    await sw.fetchEvent(makeRequest('./index.html', { method: 'POST', mode: 'navigate' })),
+    null, 'intercepted a non-GET request');
+});
