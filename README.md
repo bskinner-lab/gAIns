@@ -26,7 +26,7 @@ Open `index.html` in any modern browser. That's it.
 ## Tech
 
 - Vanilla JS with no dependencies
-- Google Fonts loaded via CDN (Bebas Neue, DM Sans, DM Mono)
+- Self-hosted fonts (Oswald, IBM Plex Mono, Archivo) — no third-party requests
 - Web Audio API for timer sounds
 - Web Notifications API for background alerts
 - localStorage for persistence

@@ -10,10 +10,46 @@
 <meta name="theme-color" content="#f2efe8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#171613" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%23191813'/%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0%25' stop-color='%23f2efe8'/%3E%3Cstop offset='50%25' stop-color='%23e34f1e'/%3E%3Cstop offset='100%25' stop-color='%23f2efe8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='16' y='52' width='28' height='76' rx='8' fill='%23f2efe8'/%3E%3Crect x='136' y='52' width='28' height='76' rx='8' fill='%23f2efe8'/%3E%3Crect x='30' y='80' width='120' height='20' rx='10' fill='url(%23g)'/%3E%3Ccircle cx='90' cy='90' r='14' fill='%23191813'/%3E%3Ccircle cx='90' cy='90' r='7' fill='%23e34f1e'/%3E%3Ccircle cx='65' cy='90' r='4.5' fill='%23e34f1e' opacity='.7'/%3E%3Ccircle cx='115' cy='90' r='4.5' fill='%23e34f1e' opacity='.7'/%3E%3Cline x1='65' y1='90' x2='83' y2='90' stroke='%23e34f1e' stroke-width='2'/%3E%3Cline x1='97' y1='90' x2='115' y2='90' stroke='%23e34f1e' stroke-width='2'/%3E%3Cline x1='90' y1='76' x2='90' y2='52' stroke='%23e34f1e' stroke-width='2' opacity='.5'/%3E%3Cline x1='90' y1='104' x2='90' y2='128' stroke='%23e34f1e' stroke-width='2' opacity='.5'/%3E%3Ccircle cx='90' cy='49' r='4' fill='%23e34f1e' opacity='.4'/%3E%3Ccircle cx='90' cy='131' r='4' fill='%23e34f1e' opacity='.4'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+/* Self-hosted so a cold launch never touches a third-party origin. Latin
+   subset only; unicode-range is deliberately omitted so any glyph the subset
+   lacks falls back to the system font rather than silently to no font.
+   Oswald and Archivo are variable — one file covers the whole 400-700 range. */
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./fonts/oswald-var.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./fonts/archivo-var.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/ibm-plex-mono-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/ibm-plex-mono-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/ibm-plex-mono-600.woff2') format('woff2');
+}
 :root {
   --bg:        #f2efe8;
   --surface:   #ffffff;
