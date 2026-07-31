@@ -4067,10 +4067,20 @@ function settingsHTML() {
 
 function renderScroll() {
   const el = document.getElementById('scroll');
-  if (view.name === 'day') el.innerHTML = workoutHeaderHTML(curDay()) + exercisesHTML(curDay());
-  else if (view.name === 'plan') el.innerHTML = planHTML();
-  else if (view.name === 'progress') el.innerHTML = progressHTML();
-  else el.innerHTML = settingsHTML();
+  let html;
+  if (view.name === 'day') html = workoutHeaderHTML(curDay()) + exercisesHTML(curDay());
+  else if (view.name === 'plan') html = planHTML();
+  else if (view.name === 'progress') html = progressHTML();
+  else html = settingsHTML();
+  // The 500ms clock tick re-renders everything, and reassigning innerHTML
+  // destroys and recreates every node in here — killing live DOM state the
+  // markup can't carry. The settings panel's <input type="date"> is the sharp
+  // edge: a browser dismisses the native calendar the instant its input leaves
+  // the DOM, so the picker closed within half a second of being opened.
+  // Skipping the write when the markup is byte-identical leaves those nodes
+  // (and their focus, caret, and open pickers) alone on idle ticks. Same
+  // hazard renderBottomBar() guards for the inline weight editor.
+  if (el.innerHTML !== html) el.innerHTML = html;
   const fi = document.getElementById('importFile');
   if (fi) fi.onchange = importData;
 }
