@@ -112,4 +112,13 @@ function loadSW({ fetchImpl } = {}) {
   return { self, caches: cacheStorage, listeners, calls, fire, fetchEvent };
 }
 
-module.exports = { loadSW, makeResponse, makeRequest, makeCaches, urlOf, BASE, SW_PATH };
+// The cache name sw.js declares, parsed from source rather than duplicated
+// here. CACHE gets bumped on every app edit, and a hardcoded copy in the tests
+// would turn each of those bumps into a spurious failure.
+const CACHE = (() => {
+  const m = /const CACHE = '([^']+)'/.exec(fs.readFileSync(SW_PATH, 'utf8'));
+  if (!m) throw new Error('sw-shim: could not find the CACHE constant in sw.js');
+  return m[1];
+})();
+
+module.exports = { loadSW, makeResponse, makeRequest, makeCaches, urlOf, BASE, SW_PATH, CACHE };

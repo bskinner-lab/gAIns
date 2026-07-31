@@ -1,10 +1,14 @@
 'use strict';
 
-// Bump ONLY when this file's logic or PRECACHE changes. Routine index.html
-// pushes do NOT need a bump — they arrive via revalidation in the fetch
-// handler. Assuming otherwise, then forgetting once, is the usual way this
-// pattern is mistakenly declared broken.
-const CACHE = 'gains-v1';
+// Bump on EVERY app edit, not just changes to this file or PRECACHE.
+//
+// Revalidation alone does deliver a new index.html, but stale-while-revalidate
+// serves the cached shell first — so the load right after a deploy runs the OLD
+// build and only the one after it picks up the new one. That is indistinguish-
+// able from "the fix didn't work", and it has already cost one debugging cycle.
+// A new cache name makes activate() drop the old cache outright, so the next
+// launch is guaranteed fresh. Correctness over a saved refetch.
+const CACHE = 'gains-v2';
 
 // Relative paths so scope resolves under the /gAIns/ project page.
 // './' and './index.html' are distinct cache keys for the same resource; a

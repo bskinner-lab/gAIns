@@ -4065,6 +4065,10 @@ function settingsHTML() {
   </div>`;
 }
 
+// The markup last written into #scroll, so an idle re-render can tell "nothing
+// changed" without reading the DOM back. Reset to null to force a repaint.
+let lastScrollHTML = null;
+
 function renderScroll() {
   const el = document.getElementById('scroll');
   let html;
@@ -4080,7 +4084,22 @@ function renderScroll() {
   // Skipping the write when the markup is byte-identical leaves those nodes
   // (and their focus, caret, and open pickers) alone on idle ticks. Same
   // hazard renderBottomBar() guards for the inline weight editor.
-  if (el.innerHTML !== html) el.innerHTML = html;
+  //
+  // Compare against what we last WROTE, never against el.innerHTML: reading it
+  // back returns the browser's re-serialization of the DOM — normalized
+  // attribute quoting and order, re-escaped entities, void tags respelled — so
+  // it is almost never byte-identical to the string that produced it, the
+  // guard never fires, and the picker dies exactly as before. A string shim
+  // that stores what you assign cannot reproduce that; a browser can.
+  //
+  // The emptiness check keeps the cache honest: anything that wipes the
+  // container behind our back (the smoke harness does exactly this) must still
+  // get a repaint. Testing el.innerHTML for CONTENT is safe in a way that
+  // comparing it byte-for-byte is not — serialization reshapes markup, but it
+  // never turns a populated container into an empty string.
+  if (lastScrollHTML === html && el.innerHTML) return;
+  lastScrollHTML = html;
+  el.innerHTML = html;
   const fi = document.getElementById('importFile');
   if (fi) fi.onchange = importData;
 }

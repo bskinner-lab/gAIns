@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSW, makeResponse, BASE } = require('./sw-shim');
+const { loadSW, makeResponse, BASE, CACHE } = require('./sw-shim');
 
 const EXPECTED_PRECACHE = [
   'https://example.test/gAIns/',
@@ -17,8 +17,8 @@ test('1. install precaches exactly the seven shell entries', async () => {
   const sw = loadSW();
   await sw.fire('install');
   const dump = sw.caches._dump();
-  assert.deepStrictEqual([...dump.keys()], ['gains-v1']);
-  assert.deepStrictEqual([...dump.get('gains-v1').keys()].sort(), [...EXPECTED_PRECACHE].sort());
+  assert.deepStrictEqual([...dump.keys()], [CACHE]);
+  assert.deepStrictEqual([...dump.get(CACHE).keys()].sort(), [...EXPECTED_PRECACHE].sort());
   assert.strictEqual(sw.calls.skipWaiting, 1, 'install did not call skipWaiting()');
 });
 
@@ -32,7 +32,7 @@ test('2. one failed entry aborts the whole install — no partial cache', async 
   });
   await assert.rejects(() => sw.fire('install'), /addAll failed/);
   const dump = sw.caches._dump();
-  const entries = dump.get('gains-v1');
+  const entries = dump.get(CACHE);
   assert.strictEqual(entries ? entries.size : 0, 0, 'install left a partially populated cache');
 });
 
@@ -42,7 +42,7 @@ test('3. activate deletes foreign caches and keeps the current one', async () =>
   sw.caches._seed('something-else', './x', makeResponse());
   await sw.fire('install');
   await sw.fire('activate');
-  assert.deepStrictEqual([...sw.caches._dump().keys()], ['gains-v1']);
+  assert.deepStrictEqual([...sw.caches._dump().keys()], [CACHE]);
   assert.strictEqual(sw.calls.claim, 1, 'activate did not call clients.claim()');
 });
 
@@ -55,7 +55,7 @@ function navigate(url = './') {
 test('4. a navigation is served from the cached shell', async () => {
   const sw = loadSW({ fetchImpl: () => Promise.resolve(makeResponse({ body: 'NETWORK' })) });
   await sw.fire('install');
-  sw.caches._seed('gains-v1', './index.html', makeResponse({ body: 'CACHED' }));
+  sw.caches._seed(CACHE, './index.html', makeResponse({ body: 'CACHED' }));
   const res = await sw.fetchEvent(navigate());
   assert.ok(res, 'sw declined to handle a navigation');
   assert.strictEqual((await res).body, 'CACHED');
@@ -64,7 +64,7 @@ test('4. a navigation is served from the cached shell', async () => {
 test('5. a navigation refreshes the cache in the background', async () => {
   const sw = loadSW({ fetchImpl: () => Promise.resolve(makeResponse({ body: 'NEW BUILD' })) });
   await sw.fire('install');
-  sw.caches._seed('gains-v1', './index.html', makeResponse({ body: 'OLD BUILD' }));
+  sw.caches._seed(CACHE, './index.html', makeResponse({ body: 'OLD BUILD' }));
   const res = await sw.fetchEvent(navigate());
   assert.strictEqual((await res).body, 'OLD BUILD', 'should serve stale immediately');
   // Let the revalidation microtasks settle, then confirm the next launch wins.
@@ -77,7 +77,7 @@ test('6. an offline navigation still resolves from cache and does not reject', a
   // The whole point of the feature. If the network promise is not caught, this
   // is where an offline launch breaks.
   const sw = loadSW({ fetchImpl: () => Promise.reject(new TypeError('offline')) });
-  sw.caches._seed('gains-v1', './index.html', makeResponse({ body: 'CACHED' }));
+  sw.caches._seed(CACHE, './index.html', makeResponse({ body: 'CACHED' }));
   const res = await sw.fetchEvent(navigate());
   const settled = await res;   // must not throw
   assert.strictEqual(settled.body, 'CACHED');
@@ -88,7 +88,7 @@ test('7. a non-200 response is never cached', async () => {
   // Guards the worst deploy failure: caching GitHub Pages' 404 page as the app
   // shell, then serving it offline forever.
   const sw = loadSW({ fetchImpl: () => Promise.resolve(makeResponse({ status: 404, body: 'NOT FOUND' })) });
-  sw.caches._seed('gains-v1', './index.html', makeResponse({ body: 'GOOD SHELL' }));
+  sw.caches._seed(CACHE, './index.html', makeResponse({ body: 'GOOD SHELL' }));
   await sw.fetchEvent(navigate());
   await new Promise(r => setImmediate(r));
   const stored = await sw.caches.match('./index.html');

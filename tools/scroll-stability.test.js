@@ -15,11 +15,17 @@ function allSeenSeed() {
   return { hypertrophy_seen_programs: JSON.stringify(PROGRAMS.map(p => p.id)) };
 }
 
-// Count innerHTML writes on a shim element without disturbing reads.
+// Count innerHTML writes, and — critically — model the fact that a real
+// browser's innerHTML GETTER returns a re-serialization of the parsed DOM, not
+// the string that was assigned. Attribute quoting and order are normalized,
+// entities are re-escaped, void tags are respelled. Swapping the quote style on
+// read is a cheap stand-in for all of that. Any "did it change?" guard that
+// reads the DOM back will see a difference every single time and never fire;
+// a shim that echoes the assigned string verbatim hides that bug completely.
 function watchWrites(el) {
   let value = el.innerHTML, writes = 0;
   Object.defineProperty(el, 'innerHTML', {
-    get: () => value,
+    get: () => String(value).replace(/"/g, "'"),
     set: v => { value = v; writes++; },
     configurable: true,
   });
