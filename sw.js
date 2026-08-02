@@ -8,7 +8,9 @@
 // able from "the fix didn't work", and it has already cost one debugging cycle.
 // A new cache name makes activate() drop the old cache outright, so the next
 // launch is guaranteed fresh. Correctness over a saved refetch.
-const CACHE = 'gains-v2';
+// Keep the number in lockstep with APP_VERSION in index.html, which shows it at
+// the bottom of Settings. tools/version-sync.test.js fails if the two drift.
+const CACHE = 'gains-v3';
 
 // Relative paths so scope resolves under the /gAIns/ project page.
 // './' and './index.html' are distinct cache keys for the same resource; a

@@ -202,6 +202,7 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       // every test in the suite. Once index.html defines it, this getter can
       // collapse to a plain destructure alongside the others above.
       ' get commitEdit() { return typeof commitEdit === "function" ? commitEdit : undefined; },' +
+      ' APP_VERSION,' +
       ' get currentProgramIdx() { return currentProgramIdx; },' +
       ' get DAYS() { return DAYS; },' +
       ' get MESOCYCLE() { return MESOCYCLE; },' +

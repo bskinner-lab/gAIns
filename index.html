@@ -397,6 +397,13 @@ body {
 <div id="overlays"></div>
 
 <script>
+// Bumped on every app edit, and shown at the bottom of Settings so the running
+// build is identifiable without devtools — the quickest way to tell "the fix
+// isn't working" apart from "the service worker served you yesterday's shell".
+// Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
+// tools/version-sync.test.js fails the build if the two ever drift.
+const APP_VERSION = '3';
+
 const THEME_KEY = 'gains_theme';
 
 function storedTheme() {
@@ -4062,6 +4069,8 @@ function settingsHTML() {
     </div>
 
     <button class="big-btn ghost" style="margin-top:12px;border:1px solid var(--border);color:var(--muted-2)" data-act="clearweek">CLEAR THIS WEEK'S LOG</button>
+
+    <div style="margin-top:20px;text-align:center;font-family:var(--font-mono);font-size:11px;letter-spacing:0.08em;color:var(--muted-2)">gAIns · APP VERSION ${esc(APP_VERSION)}</div>
   </div>`;
 }
 
