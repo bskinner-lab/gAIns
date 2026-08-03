@@ -290,9 +290,27 @@ body {
 .step-v div:last-child { font-family: var(--font-mono); font-size: 7px; color: rgba(242,239,232,.4); }
 .step-in { width: 100%; min-width: 0; box-sizing: border-box; background: var(--bar-btn); border: 1px solid var(--accent); border-radius: 6px; color: var(--on-dark); font-family: var(--font-mono); font-size: 16px; font-weight: 600; text-align: center; padding: 3px 2px; }
 .log-go { width: 100%; background: var(--accent); border: none; border-radius: 8px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 1px; height: 52px; cursor: pointer; }
-.done-row { display: flex; align-items: center; justify-content: space-between; padding: 15px 2px 17px; }
-.done-t { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: 1.5px; color: var(--accent); }
-.done-s { font-family: var(--font-mono); font-size: 11px; color: rgba(242,239,232,.6); }
+/* The finished-day bar. Wider type, an accent rule and a check badge so the
+   end of a session reads as an event rather than a status line, plus a CTA
+   that hands the user straight to whatever comes next. */
+.done-row { display: flex; align-items: center; gap: 12px; padding: 13px 2px 15px; border-top: 2px solid var(--accent); }
+.done-mark { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--on-dark); font-size: 18px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex: none; }
+.done-txt { min-width: 0; flex: 1; }
+.done-t { font-family: var(--font-display); font-size: 22px; font-weight: 600; letter-spacing: 1.5px; color: var(--accent); line-height: 1.05; }
+.done-s { font-family: var(--font-mono); font-size: 10.5px; color: rgba(242,239,232,.6); margin-top: 2px; }
+.done-go { flex: none; max-width: 45%; background: var(--accent); border: none; border-radius: 8px; color: var(--on-dark); font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 1px; min-height: var(--tap-lg); padding: 0 14px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Standing banner at the top of a finished day, so the completed state is
+   still obvious after the celebration overlay is dismissed. */
+.dayflag { margin: 14px 20px 0; background: var(--ink); color: var(--on-ink); border-radius: 6px; padding: 16px 16px 15px; }
+.dayflag-k { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 2px; color: var(--accent); }
+.dayflag-k::before { content: '✓'; display: flex; align-items: center; justify-content: center; width: 17px; height: 17px; border-radius: 50%; background: var(--accent); color: var(--on-dark); font-size: 11px; }
+.dayflag-t { font-family: var(--font-display); font-size: 30px; font-weight: 600; letter-spacing: 1px; line-height: 1.05; margin-top: 7px; }
+.dayflag-s { font-family: var(--font-mono); font-size: 10.5px; opacity: .6; margin-top: 5px; }
+/* Tinted rather than solid accent, so it stays quieter than the sticky bar's
+   button. Keyed off --accent, which is identical in both themes — a cream or
+   ink tint here would vanish in one of them, since .dayflag itself inverts. */
+.dayflag-go { display: block; width: 100%; margin-top: 13px; background: rgba(227,79,30,.16); border: 1px solid rgba(227,79,30,.5); border-radius: 5px; color: var(--accent); font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; min-height: var(--tap-lg); cursor: pointer; }
 .vw { padding: 16px 20px 24px; }
 .vw-sub { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.5px; color: var(--muted-2); }
 .tbl { margin-top: 12px; border: 1px solid var(--ink); border-radius: 4px; overflow: hidden; }
@@ -371,6 +389,26 @@ body {
 .modal-t { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
 .modal-m { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 8px 0 18px; }
 .modal-row { display: flex; gap: 10px; }
+/* Completion celebration. Full-bleed rather than a small modal — finishing a
+   day (or a week) is the loudest thing the app has to say. Deliberately built
+   on --bar-dark/--on-dark, the one surface pair that stays dark in BOTH
+   themes: --ink/--on-ink would invert it to a full screen of cream at night. */
+.ov.done { background: var(--bar-dark); flex-direction: column; }
+.dc { width: 100%; max-width: 340px; text-align: center; color: var(--on-dark); }
+.dc-mark { width: 62px; height: 62px; border-radius: 50%; background: var(--accent); color: var(--on-dark); font-size: 32px; font-weight: 600; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; }
+.dc-k { font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; letter-spacing: 3px; color: var(--accent); }
+.dc-t { font-family: var(--font-display); font-size: 46px; font-weight: 600; letter-spacing: 1px; line-height: .98; margin-top: 8px; }
+.dc-sub { font-size: 12.5px; line-height: 1.5; opacity: .62; margin-top: 10px; }
+.dc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: rgba(242,239,232,.14); border: 1px solid rgba(242,239,232,.14); border-radius: 5px; overflow: hidden; margin-top: 22px; }
+.dc-st { background: var(--bar-dark); padding: 11px 4px; }
+.dc-sk { font-family: var(--font-mono); font-size: 8px; letter-spacing: 1.5px; opacity: .45; }
+.dc-sv { font-family: var(--font-display); font-size: 21px; font-weight: 500; margin-top: 2px; }
+.dc-sv small { font-size: 12px; opacity: .5; }
+.dc-move { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; color: var(--accent); border: 1px dashed rgba(227,79,30,.55); border-radius: 5px; padding: 10px 12px; margin-top: 16px; }
+.dc-move b { display: block; font-weight: 600; }
+.dc-move span { display: block; font-size: 9px; opacity: .75; margin-top: 4px; }
+.dc-go { display: block; width: 100%; margin-top: 20px; background: var(--accent); border: none; border-radius: 6px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 1.5px; min-height: 54px; cursor: pointer; }
+.dc-alt { display: block; width: 100%; margin-top: 9px; background: none; border: none; color: var(--on-dark); opacity: .5; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; min-height: var(--tap); cursor: pointer; }
 .tip-t { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; color: var(--accent); }
 .tip-d { font-size: 12.5px; line-height: 1.55; margin-top: 8px; }
 .tip-c { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--on-ink); opacity: .45; margin-top: 12px; text-align: right; }
@@ -402,7 +440,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '3';
+const APP_VERSION = '4';
 
 const THEME_KEY = 'gains_theme';
 
@@ -2823,6 +2861,7 @@ function initState() {
   });
   saveState();
   prefillFromPreviousWeeks();
+  seedCompleteFlags();
 }
 
 function prefillFromPreviousWeeks() {
@@ -3007,6 +3046,70 @@ function isDayComplete(dayId) {
   });
 }
 
+// Which days were complete as of the last mutation, so a day flipping from
+// incomplete to complete can be detected exactly once. Seeded by initState()
+// on every week/program load — without that seed, merely opening an already
+// finished week would fire the celebration again.
+const completeFlags = {};
+
+function seedCompleteFlags() {
+  Object.keys(completeFlags).forEach(k => delete completeFlags[k]);
+  DAYS.forEach(d => { completeFlags[d.id] = isDayComplete(d.id); });
+}
+
+// Call after any mutation to a day's sets. Fires the celebration on the
+// false -> true edge, and takes it back down if the day is un-completed
+// (undo, unskip, a swap that adds fresh sets) while it's still showing.
+function syncCompletion(dayId) {
+  if (!dayId || !state[dayId]) return;
+  const now = isDayComplete(dayId);
+  const was = completeFlags[dayId] === true;
+  completeFlags[dayId] = now;
+  if (now && !was) openDayDone(dayId);
+  else if (!now && view.done && view.done.dayId === dayId) view.done = null;
+}
+
+// Builds the celebration payload for a day that just finished, and — when
+// that day was the last one left in the week — moves the app on to the next
+// week before showing it. The payload is captured first so the overlay still
+// reports the week that was actually just finished.
+function openDayDone(dayId) {
+  const day = DAYS.find(d => d.id === dayId);
+  if (!day) return;
+  const s = dayStats(dayId);
+  const maxWeeks = curProg().totalWeeks;
+  const weekDone = isWeekComplete();
+  const nextDay = weekDone ? null : DAYS.find(d => !isDayComplete(d.id));
+  const done = {
+    dayId,
+    dayTitle: day.title.replace(/\.$/, ''),
+    week: currentWeek,
+    weekDone,
+    programDone: weekDone && currentWeek >= maxWeeks,
+    advancedTo: null,
+    nextPhase: '',
+    nextDayId: nextDay ? nextDay.id : null,
+    nextDayLabel: nextDay ? nextDay.label : '',
+    sets: s.done, total: s.total, skipped: s.skipped,
+    elapsed: Date.now() - view.sessionStart
+  };
+
+  if (weekDone && currentWeek < maxWeeks) {
+    changeWeek(1);
+    done.advancedTo = currentWeek;
+    const phase = curProg().weekPhases[currentWeek - 1];
+    done.nextPhase = phase ? `${phase.label.toUpperCase()} · ${phase.rpe}` : '';
+    view.dayId = getStartDay();
+    view.selectedExId = null;
+    view.pendKey = '';
+    view.latestPr = null;
+  }
+
+  view.restEnd = null;
+  view.restMinimized = false;
+  view.done = done;
+}
+
 // Compatibility shim — the preserved logic layer calls this; it now just re-renders.
 function updateOverallProgress(){ render(); }
 
@@ -3022,6 +3125,7 @@ function toggleSet(dayId, exId, setIdx) {
     state[dayId].sets[exId][setIdx] = false;
     clearTime(dayId, exId, setIdx);
     saveState();
+    syncCompletion(dayId);
     refreshCurrentDay(dayId);
     return;
   }
@@ -3039,9 +3143,13 @@ function toggleSet(dayId, exId, setIdx) {
   state[dayId].sets[exId][setIdx] = true;
   markTime(dayId, exId, setIdx, 'log');
   saveState();
+  // Ordered ahead of syncCompletion: finishing the last day of a week
+  // reloads `state` for the next week, so this must be read first.
+  const dayDone = isDayComplete(dayId);
+  syncCompletion(dayId);
   refreshCurrentDay(dayId);
 
-  if (isDayComplete(dayId)) {
+  if (dayDone) {
     return;
   }
 
@@ -3136,6 +3244,7 @@ function skipSet(dayId, exId, setIdx) {
     const orig = day && day.exercises.find(o => o.id === view.selectedExId);
     if (orig && !hasPendingSet(day, orig)) view.selectedExId = null;
   }
+  syncCompletion(dayId);
   refreshCurrentDay(dayId);
 }
 
@@ -3150,6 +3259,7 @@ function skipExercise(dayId, exId) {
     }
   }
   saveState();
+  syncCompletion(dayId);
   refreshCurrentDay(dayId);
 }
 
@@ -3176,6 +3286,7 @@ function skipDay(dayId) {
     }
   });
   saveState();
+  syncCompletion(dayId);
   refreshCurrentDay(dayId);
 }
 
@@ -3189,6 +3300,7 @@ function completeDay(dayId) {
     }
   });
   saveState();
+  syncCompletion(dayId);
   refreshCurrentDay(dayId);
 }
 
@@ -3207,6 +3319,7 @@ function performSwap(dayId, originalExId, newExId) {
     state[dayId].sets[ex.id] = Array(ex.sets).fill(false);
   }
   saveState();
+  syncCompletion(dayId);
   switchDay(dayId);
   updateOverallProgress();
 }
@@ -3552,10 +3665,20 @@ function getStartDay() {
   return DAYS[0].id;
 }
 
+// Does this week have anything logged or skipped at all? Guards the
+// auto-advance: a program day carrying no exercises is vacuously "complete",
+// and without this an untouched week would walk straight to the last one.
+function weekHasActivity() {
+  return DAYS.some(d => d.exercises.some(o => {
+    const ex = resolveExercise(d.id, o);
+    return (state[d.id].sets[ex.id] || []).some(isResolved);
+  }));
+}
+
 function advanceToCurrentWeek() {
   // If current week is fully complete, advance to next incomplete week
   const maxWeeks = PROGRAMS[currentProgramIdx].totalWeeks;
-  while (currentWeek < maxWeeks && isWeekComplete()) {
+  while (currentWeek < maxWeeks && weekHasActivity() && isWeekComplete()) {
     currentWeek++;
     saveWeek();
     initState();
@@ -3614,7 +3737,7 @@ function advanceToCurrentWeek() {
   document.head.appendChild(link);
 })();
 
-const view = { name: 'day', dayId: null, openPhase: 2, tip: null, confirm: null, swap: null,
+const view = { name: 'day', dayId: null, openPhase: 2, tip: null, confirm: null, swap: null, done: null,
                importMsg: '', importOk: true, sessionStart: Date.now(), now: Date.now(),
                // pendR's "not set" sentinel is '' (not null, unlike most of this
                // codebase's == null convention) because it feeds straight into
@@ -3723,6 +3846,20 @@ function workoutHeaderHTML(day) {
   const pr = view.latestPr
     ? `<div class="pr"><b>${esc(view.latestPr.type)}</b><span>${esc(view.latestPr.text)}</span></div>` : '';
 
+  // Standing "this day is finished" banner. The bottom bar says it too, but
+  // that sits below the fold once the exercise list is scrolled, so the state
+  // gets its own headline at the top of the day.
+  let flag = '';
+  if (complete) {
+    const nx = nextUp(day.id);
+    flag = `<div class="dayflag">
+      <div class="dayflag-k">${esc(day.title.replace(/\.$/, ''))} · WEEK ${currentWeek}</div>
+      <div class="dayflag-t">DAY COMPLETE</div>
+      <div class="dayflag-s">${s.done}/${s.total} SETS LOGGED · ${s.skipped} SKIPPED</div>
+      ${nx ? `<button class="dayflag-go" data-act="${nx.act}"${nx.id ? ` data-id="${nx.id}"` : ''}>${esc(nx.label)}</button>` : ''}
+    </div>`;
+  }
+
   let btns = '';
   if (hasPending) {
     btns = `<div class="daybtns">
@@ -3742,7 +3879,18 @@ function workoutHeaderHTML(day) {
     proto = `<div class="panel"><div class="panel-h">SHOULDER PROTOCOL — BEFORE PRESSING</div>${items}</div>`;
   }
 
-  return stats + pr + btns + proto;
+  return flag + stats + pr + btns + proto;
+}
+
+// What to offer once `dayId` is finished: the next unfinished day of the
+// week, or — when nothing is left — the progress view. Returns null when
+// there's nothing useful to point at. Shared by the day banner and the
+// bottom bar so both always name the same destination.
+function nextUp(dayId) {
+  const next = DAYS.find(d => d.id !== dayId && !isDayComplete(d.id));
+  if (next) return { act: 'donenext', id: next.id, label: `NEXT · ${next.label.toUpperCase()}` };
+  if (isWeekComplete()) return { act: 'doneprog', id: '', label: 'SEE PROGRESS' };
+  return null;
 }
 
 // First open (unlogged, unskipped) set index for `orig` (an ORIGINAL
@@ -3787,6 +3935,7 @@ function undoSet(dayId, exId, i) {
   state[dayId].sets[exId][i] = false;
   clearTime(dayId, exId, i);
   saveState();
+  syncCompletion(dayId);
   view.pendKey = '';
 }
 
@@ -3817,13 +3966,19 @@ function logActiveSet() {
   view.pendKey = '';
   if (view.selectedExId === act.orig.id && !hasPendingSet(day, act.orig)) view.selectedExId = null;
 
-  if (!isDayComplete(day.id)) {
+  // Read this BEFORE syncCompletion: finishing the last day of a week moves
+  // the app on to the next one, which reloads `state` out from under us — so
+  // isDayComplete() would then be answering about a different week entirely.
+  const dayDone = isDayComplete(day.id);
+  const nxt = dayDone ? null : activeSet(day);
+  syncCompletion(day.id);
+
+  if (!dayDone) {
     view.restEnd = Date.now() + ex.rest * 1000;
     view.restTotal = ex.rest;
     view.restMinimized = false;
     view.restInfo = `${ex.name} — SET ${i + 1} DONE`;
     view.restRec = ex.restLabel ? `RECOMMENDED ${ex.restLabel}` : '';
-    const nxt = activeSet(day);
     view.restNext = nxt
       ? (nxt.ex.id === ex.id ? `Next: ${ex.name} — Set ${nxt.i + 1}` : `Next: ${nxt.ex.name}`)
       : 'Last set of the day!';
@@ -4238,9 +4393,14 @@ function renderBottomBar() {
         <button class="log-go" data-act="log">LOG SET</button>
       </div></div>`;
   } else {
+    const nx = nextUp(day.id);
     body = `<div class="done-row">
-      <div class="done-t">DAY COMPLETE</div>
-      <div class="done-s">${fmtClock(view.now - view.sessionStart)} · ${s.done}/${s.total} · ${s.skipped} skip</div>
+      <div class="done-mark">✓</div>
+      <div class="done-txt">
+        <div class="done-t">DAY COMPLETE</div>
+        <div class="done-s">${fmtClock(view.now - view.sessionStart)} · ${s.done}/${s.total} SETS · ${s.skipped} SKIP</div>
+      </div>
+      ${nx ? `<button class="done-go" data-act="${nx.act}"${nx.id ? ` data-id="${nx.id}"` : ''}>${esc(nx.label)}</button>` : ''}
     </div>`;
   }
 
@@ -4258,6 +4418,47 @@ const EDIT_FIELD_ID = 'editfield';
 const REST_PRESETS = [60, 90, 120, 180];
 const RING_C = 527.8;
 
+function doneCardHTML(d) {
+  const kicker = d.programDone ? 'MESOCYCLE COMPLETE' : d.weekDone ? `WEEK ${d.week} COMPLETE` : 'SESSION COMPLETE';
+  const title  = d.programDone ? 'All done' : d.weekDone ? `Week ${d.week} done` : 'Day complete';
+  const sub    = d.programDone
+    ? `${d.dayTitle} closed out week ${d.week} — the last week of ${curProg().name}.`
+    : d.weekDone
+      ? `${d.dayTitle} was the last session of the week.`
+      : `${d.dayTitle} is logged. ${d.nextDayLabel ? `${d.nextDayLabel} is next.` : ''}`;
+
+  const stats = `<div class="dc-stats">
+    <div class="dc-st"><div class="dc-sk">TIME</div><div class="dc-sv">${fmtClock(d.elapsed)}</div></div>
+    <div class="dc-st"><div class="dc-sk">SETS</div><div class="dc-sv">${d.sets}<small>/${d.total}</small></div></div>
+    <div class="dc-st"><div class="dc-sk">SKIPPED</div><div class="dc-sv">${d.skipped}</div></div>
+  </div>`;
+
+  const moved = d.advancedTo
+    ? `<div class="dc-move"><b>MOVED ON TO WEEK ${d.advancedTo}</b>${
+        d.nextPhase ? `<span>${esc(d.nextPhase)}</span>` : ''}</div>` : '';
+
+  let cta;
+  if (d.advancedTo) {
+    cta = `<button class="dc-go" data-act="donex">START WEEK ${d.advancedTo}</button>
+      <button class="dc-alt" data-act="doneback">STAY ON WEEK ${d.week}</button>`;
+  } else if (d.programDone) {
+    cta = `<button class="dc-go" data-act="doneprog">SEE PROGRESS</button>
+      <button class="dc-alt" data-act="donex">CLOSE</button>`;
+  } else if (d.nextDayId) {
+    cta = `<button class="dc-go" data-act="donenext" data-id="${d.nextDayId}">NEXT · ${esc(d.nextDayLabel.toUpperCase())}</button>
+      <button class="dc-alt" data-act="donex">STAY HERE</button>`;
+  } else {
+    cta = `<button class="dc-go" data-act="donex">DONE</button>`;
+  }
+
+  return `<div class="dc">
+    <div class="dc-mark">✓</div>
+    <div class="dc-k">${kicker}</div>
+    <div class="dc-t">${esc(title)}</div>
+    <div class="dc-sub">${esc(sub)}</div>
+    ${stats}${moved}${cta}</div>`;
+}
+
 function renderOverlays() {
   const el = document.getElementById('overlays');
 
@@ -4269,6 +4470,11 @@ function renderOverlays() {
         <button class="ra" style="flex:1" data-act="cfx">CANCEL</button>
         <button class="ra solid" style="flex:1" data-act="cfok">CONFIRM</button>
       </div></div></div>`;
+    return;
+  }
+
+  if (view.done) {
+    el.innerHTML = `<div class="ov done">${doneCardHTML(view.done)}</div>`;
     return;
   }
 
@@ -4375,6 +4581,8 @@ document.addEventListener('click', e => {
   // One place to close the inline editor. Doing it per-branch would eventually
   // miss one and leave the bar frozen behind an overlay showing a stale set.
   if (act !== 'editw' && act !== 'editr') view.editing = null;
+  // Any deliberate navigation retires a celebration that's still up.
+  if (act !== 'donex' && act !== 'doneback' && act !== 'donenext' && act !== 'doneprog') view.done = null;
   if (act === 'prog')     { switchProgram(Number(el.dataset.i)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.selectedExId = null; }
   else if (act === 'wk')  { changeWeek(Number(el.dataset.d)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.restEnd = null; view.selectedExId = null; }
   else if (act === 'day') { view.name = 'day'; view.dayId = el.dataset.id; view.pendKey = ''; view.selectedExId = null; }
@@ -4422,6 +4630,17 @@ document.addEventListener('click', e => {
   }
   else if (act === 'restmin') { view.restMinimized = true; }
   else if (act === 'preset')  { setRest(Number(el.dataset.s)); }
+  else if (act === 'donex')   { view.done = null; }
+  else if (act === 'doneprog'){ view.done = null; view.name = 'progress'; }
+  else if (act === 'donenext'){
+    view.done = null; view.name = 'day'; view.dayId = el.dataset.id;
+    view.pendKey = ''; view.latestPr = null; view.selectedExId = null; view.restEnd = null;
+  }
+  else if (act === 'doneback'){
+    // Undo the automatic week advance — openDayDone() moved exactly one week.
+    view.done = null; changeWeek(-1);
+    view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.selectedExId = null;
+  }
   else if (act === 'tipx')    { view.tip = null; }
   else if (act === 'swapx')   { view.swap = null; }
   else if (act === 'doswap')  { performSwap(view.swap.dayId, el.dataset.orig, el.dataset.new); view.swap = null; view.pendKey = ''; view.selectedExId = null; }
@@ -4456,6 +4675,7 @@ function boot() {
   syncProgramGlobals();
   loadWeek();
   initState();
+  advanceToCurrentWeek();
   view.dayId = getStartDay();
   render();
   setInterval(() => {
