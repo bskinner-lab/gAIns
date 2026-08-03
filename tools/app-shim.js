@@ -187,7 +187,7 @@ function setupApp({ htmlPath, storage: seed } = {}) {
     // bindings, rather than wrapped on afterward like `clickHandler` below.
     api = eval(
       src +
-      '\n;({ PROGRAMS, EXERCISE_ALTERNATIVES, currentWeek, state, view,' +
+      '\n;({ PROGRAMS, EXERCISE_ALTERNATIVES, state, view,' +
       ' render, switchProgram, boot, activeSet, logActiveSet, skipSet, curDay,' +
       ' getExerciseHistory, lowRep,' +
       ' nowMs, setClock, markTime, clearTime,' +
@@ -203,6 +203,8 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       // collapse to a plain destructure alongside the others above.
       ' get commitEdit() { return typeof commitEdit === "function" ? commitEdit : undefined; },' +
       ' APP_VERSION,' +
+      ' isDayComplete, isWeekComplete, advanceToCurrentWeek, seedCompleteFlags,' +
+      ' get currentWeek() { return currentWeek; },' +
       ' get currentProgramIdx() { return currentProgramIdx; },' +
       ' get DAYS() { return DAYS; },' +
       ' get MESOCYCLE() { return MESOCYCLE; },' +
@@ -240,11 +242,12 @@ function setupApp({ htmlPath, storage: seed } = {}) {
  * running after this call returns):
  * - LIVE getters — always read the current binding, even after
  *   `syncProgramGlobals()`/`switchProgram()` reassigns them:
- *   `currentProgramIdx`, `DAYS`, `MESOCYCLE`, `WEEK_PHASES`, `PROTOCOL_ITEMS`.
+ *   `currentProgramIdx`, `currentWeek`, `DAYS`, `MESOCYCLE`, `WEEK_PHASES`,
+ *   `PROTOCOL_ITEMS`.
  * - Mutated in place, so already reflect changes without needing a getter:
  *   `state`, `view`.
  * - Snapshots at eval time — never reassigned by the app, so this is safe:
- *   `PROGRAMS`, `EXERCISE_ALTERNATIVES`, `currentWeek`.
+ *   `PROGRAMS`, `EXERCISE_ALTERNATIVES`.
  * @param {{htmlPath?: string, storage?: Record<string,string>}} opts
  * @returns {{PROGRAMS: any[], EXERCISE_ALTERNATIVES: object, DAYS: any[],
  *            MESOCYCLE: object, WEEK_PHASES: any[], PROTOCOL_ITEMS: any[],

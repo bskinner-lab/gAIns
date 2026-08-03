@@ -21,7 +21,7 @@ A single `view` state object drives four render functions, all called by `render
 - `renderMasthead()` — title, week `‹ ›` selector, phase line, ⚙ settings, program chips, day/PLAN/PROGRESS tabs
 - `renderScroll()` — dispatches on `view.name`: `day` → `workoutHeaderHTML()` + `exercisesHTML()`, `plan` → `planHTML()`, `progress` → `progressHTML()`, else `settingsHTML()`
 - `renderBottomBar()` — sticky dark bar: active exercise, ± weight stepper (2.5 lb), LOG SET, minimized rest pill, or DAY COMPLETE
-- `renderOverlays()` — one overlay at a time, priority `confirm > tip > swap > rest`
+- `renderOverlays()` — one overlay at a time, priority `confirm > done > tip > swap > rest`
 
 Each rebuilds its container's `innerHTML`. **All interaction goes through one delegated click handler** keyed on `data-act` attributes — add new UI by emitting `data-act="…"` and adding an `else if` branch there. A 500ms `setInterval` updates `view.now` (session clock + rest countdown); `visibilitychange` resyncs so the timestamp-based rest timer survives backgrounding.
 
@@ -43,6 +43,7 @@ Each rebuilds its container's `innerHTML`. **All interaction goes through one de
 - **Light + dark themes** — toggled in Settings, defaults to `prefers-color-scheme`.
 - **Shoulder-cautious program** — tailored for a user with shoulder considerations. Protocol sections appear on push/pull/upper days.
 - **Week system** — 8-week mesocycle with phases (Foundation → Overload → High Stimulus → Overreach → Deload) that affect RPE targets and whether LLP is active.
+- **Completion is loud, and it advances** — when a day's last set resolves, `syncCompletion()` fires the full-screen celebration in `view.done`; if that day also closed out the week, `openDayDone()` calls `changeWeek(1)` first, so the app is already on the next week when the overlay appears. `advanceToCurrentWeek()` repeats that on boot for a week finished in a previous session. Both are gated on `weekHasActivity()` so an untouched week can never walk itself forward.
 
 ## Development
 
