@@ -440,7 +440,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '5';
+const APP_VERSION = '6';
 
 const THEME_KEY = 'gains_theme';
 
@@ -874,23 +874,6 @@ const PROGRAMS = [
             },
           },
           {
-            id: 'm3_machine_chest_press',
-            name: 'Machine Chest Press',
-            sets: 3,
-            reps: '8–12',
-            rpe: '7–8',
-            note: 'Progressed well last block (+12 lb/wk) — keep pushing load here.',
-            llp: false,
-            compound: false,
-            rest: 135,
-            restLabel: '2–2.5 min',
-            muscles: {
-              chest: 1,
-              front_delt: 0.5,
-              triceps: 0.5,
-            },
-          },
-          {
             id: 'm3_cable_fly',
             name: 'Cable Fly (low-to-high)',
             sets: 3,
@@ -1228,6 +1211,23 @@ const PROGRAMS = [
             },
           },
           {
+            id: 'm3_machine_chest_press',
+            name: 'Machine Chest Press',
+            sets: 3,
+            reps: '8–12',
+            rpe: '7–8',
+            note: 'Progressed well last block (+12 lb/wk) — keep pushing load here.',
+            llp: false,
+            compound: false,
+            rest: 135,
+            restLabel: '2–2.5 min',
+            muscles: {
+              chest: 1,
+              front_delt: 0.5,
+              triceps: 0.5,
+            },
+          },
+          {
             id: 'm3_lean_away_lat_raise',
             name: 'Lean-Away Lateral Raise',
             sets: 4,
@@ -1279,7 +1279,7 @@ const PROGRAMS = [
           {
             id: 'm3_rope_hammer_curl',
             name: 'Rope Hammer Curl',
-            sets: 3,
+            sets: 2,
             reps: '12–15',
             rpe: '8',
             note: 'Second and final direct curl of the block — brachialis and forearm.',

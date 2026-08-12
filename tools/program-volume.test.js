@@ -41,13 +41,13 @@ const WEEKS = [1, 2, 3, 4, 5, 6, 7, 8];
 // implementation is free to land the per-exercise halving wherever the integer
 // floor puts it.
 const ORACLE = [
-  { week: 1, total: 102, side_delt: 13, calves: 8,  chest: 11.5, rear_delt: 9,  lats: 12.5, upper_back: 13, abs: 6, biceps: 14.5 },
-  { week: 2, total: 102, side_delt: 13, calves: 8,  chest: 11.5, rear_delt: 9,  lats: 12.5, upper_back: 13, abs: 6, biceps: 14.5 },
-  { week: 3, total: 108, side_delt: 15, calves: 10, chest: 12.5, rear_delt: 10, lats: 12.5, upper_back: 13, abs: 6, biceps: 14.5 },
-  { week: 4, total: 108, side_delt: 15, calves: 10, chest: 12.5, rear_delt: 10, lats: 12.5, upper_back: 13, abs: 6, biceps: 14.5 },
-  { week: 5, total: 114, side_delt: 17, calves: 12, chest: 12.5, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 6, biceps: 15.5 },
-  { week: 6, total: 114, side_delt: 17, calves: 12, chest: 12.5, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 6, biceps: 15.5 },
-  { week: 7, total: 119, side_delt: 19, calves: 13, chest: 12.5, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 8, biceps: 15.5 },
+  { week: 1, total: 101, side_delt: 13, calves: 8,  chest: 11.5, rear_delt: 9,  lats: 12.5, upper_back: 13, abs: 6, biceps: 13.5 },
+  { week: 2, total: 101, side_delt: 13, calves: 8,  chest: 11.5, rear_delt: 9,  lats: 12.5, upper_back: 13, abs: 6, biceps: 13.5 },
+  { week: 3, total: 107, side_delt: 15, calves: 10, chest: 12.5, rear_delt: 10, lats: 12.5, upper_back: 13, abs: 6, biceps: 13.5 },
+  { week: 4, total: 107, side_delt: 15, calves: 10, chest: 12.5, rear_delt: 10, lats: 12.5, upper_back: 13, abs: 6, biceps: 13.5 },
+  { week: 5, total: 113, side_delt: 17, calves: 12, chest: 12.5, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 6, biceps: 14.5 },
+  { week: 6, total: 113, side_delt: 17, calves: 12, chest: 12.5, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 6, biceps: 14.5 },
+  { week: 7, total: 118, side_delt: 19, calves: 13, chest: 12.5, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 8, biceps: 14.5 },
 ];
 const MUSCLE_COLUMNS = Object.keys(ORACLE[0]).filter(k => k !== 'week' && k !== 'total');
 const RAMPED_WEEKS = ORACLE.map(r => r.week); // 1–7; week 8 is the deload
@@ -192,3 +192,84 @@ for (const prog of [MESO1, MESO2]) {
     }
   });
 }
+
+// ── 8. Per-session concentration ─────────────────────────────────────────────
+// Sets 9, 10 and 11 of one muscle inside a single session are worth less than
+// the same sets 72 hours later: stimulus per set falls off steeply once a
+// muscle is deep into a session, so volume piled into one day buys less growth
+// than the identical volume split across two. The design target for this
+// program is at most 8 DIRECT sets (credit === 1) per muscle per session.
+//
+// FINDING — the program does not currently respect 8. Moving Machine Chest
+// Press off PUSH cleared the worst offender (chest on PUSH ran 10–11 direct
+// sets in every accumulation week; it is now 7–8), but three combinations
+// remain, all of them pre-existing and none introduced by that move:
+//
+//   day3 (LOWER A) / quads      weeks 1–7:  10
+//   day2 (PULL)    / lats       weeks 5–7:  10
+//   day1 (PUSH)    / side_delt  weeks 5–6:   9,  week 7: 11
+//
+// The side-delt figure is the ramp doing exactly what it was authored to do —
+// DB Lateral Raise climbs to 6 and Cable Lateral Raise to 5 by week 7. So 11 is
+// the honest ceiling the shipped program respects today, and that is what this
+// test pins. It is a ratchet, not an endorsement: it stops the concentration
+// getting worse while the question of whether to re-split quads/lats/side delts
+// or accept the higher number is decided. Lower the threshold toward 8 as those
+// days are rebalanced; do not raise it to make a new pile-up pass.
+const MAX_DIRECT_SETS_PER_SESSION = 11;
+const DIRECT_SETS_TARGET = 8; // the design intent, not yet met — see above
+
+test(`no meso3 muscle takes more than ${MAX_DIRECT_SETS_PER_SESSION} direct sets in one session`, () => {
+  for (const week of WEEKS) {
+    for (const day of MESO3.days) {
+      const direct = {};
+      for (const ex of day.exercises) {
+        const count = app.setsForWeek(ex, week, MESO3);
+        for (const [muscle, credit] of Object.entries(ex.muscles || {})) {
+          if (credit === 1) direct[muscle] = (direct[muscle] || 0) + count;
+        }
+      }
+      for (const [muscle, sets] of Object.entries(direct)) {
+        assert.ok(sets <= MAX_DIRECT_SETS_PER_SESSION,
+          `meso3 ${day.id} (${day.title}) / ${muscle} in week ${week}: ${sets} direct ` +
+          `sets in a single session exceeds the ${MAX_DIRECT_SETS_PER_SESSION}-set ceiling ` +
+          `(design target is ${DIRECT_SETS_TARGET}) — split the volume across a second day ` +
+          `rather than stacking it here`);
+      }
+    }
+  }
+});
+
+// ── 9. Chest is trained twice a week ─────────────────────────────────────────
+// The regression guard for this commit. Chest used to run 10 of its 11.5
+// weighted weekly sets inside one PUSH session, which is a 1×/week frequency
+// wearing a 2×/week total. Machine Chest Press now lives on UPPER, so the split
+// is 7/4.5 (weeks 1–2) and 8/4.5 (weeks 3–7). Anything that walks chest back
+// into a single session — moving the exercise home, or dropping it — trips this.
+//
+// Week 8 is the deload: every count is halved, so the per-day floor scales with
+// it. The frequency requirement itself still holds there.
+const CHEST_MIN_DAYS = 2;
+const CHEST_MIN_SETS_PER_DAY = 3;
+
+test('meso3 trains chest on at least 2 days in every week', () => {
+  for (const week of WEEKS) {
+    const phase = MESO3.weekPhases[week - 1];
+    const floor = phase && phase.deload ? CHEST_MIN_SETS_PER_DAY / 2 : CHEST_MIN_SETS_PER_DAY;
+    const perDay = [];
+    for (const day of MESO3.days) {
+      let chest = 0;
+      for (const ex of day.exercises) {
+        const credit = (ex.muscles || {}).chest;
+        if (credit) chest += app.setsForWeek(ex, week, MESO3) * credit;
+      }
+      if (chest > 0) perDay.push({ day: `${day.id} (${day.title})`, chest });
+    }
+    const qualifying = perDay.filter(d => d.chest >= floor);
+    const summary = perDay.map(d => `${d.day}=${d.chest}`).join(', ') || 'none';
+    assert.ok(qualifying.length >= CHEST_MIN_DAYS,
+      `meso3 week ${week}: chest reaches the ${floor}-weighted-set floor on only ` +
+      `${qualifying.length} day(s), need ${CHEST_MIN_DAYS} — chest by day: ${summary}. ` +
+      `Weekly chest volume is not the point here; frequency is.`);
+  }
+});

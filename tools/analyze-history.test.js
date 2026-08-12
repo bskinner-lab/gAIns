@@ -178,12 +178,17 @@ test('a generated alternative swapped into a generated slot inherits the origina
   // as the legacy alt_* case, just for a generated program.
   const alt = EXERCISE_ALTERNATIVES.m3_machine_chest_press.find(a => a.id === 'm3_alt_pec_deck');
   assert.ok(alt, 'fixture assumption: m3_alt_pec_deck exists as an alternative to m3_machine_chest_press');
-  const original = PROGRAMS.find(p => p.id === 'meso3').days.find(d => d.id === 'day1')
-    .exercises.find(e => e.id === 'm3_machine_chest_press');
+  // Look the slot up by exercise id rather than pinning a day: swaps and
+  // inline profiles are keyed by exercise id, so which day an exercise lives on
+  // is a program-design decision this test has no stake in.
+  const home = PROGRAMS.find(p => p.id === 'meso3').days
+    .find(d => d.exercises.some(e => e.id === 'm3_machine_chest_press'));
+  assert.ok(home, 'fixture assumption: m3_machine_chest_press is on some meso3 day');
+  const original = home.exercises.find(e => e.id === 'm3_machine_chest_press');
   assert.ok(original.muscles && Object.keys(original.muscles).length, 'fixture assumption: original has an inline profile');
 
-  const raw = inlineExport('meso3', 'day1', { m3_alt_pec_deck: [true, true, true] });
-  raw.programs.meso3.weeks['1'].day1.swaps = { m3_machine_chest_press: 'm3_alt_pec_deck' };
+  const raw = inlineExport('meso3', home.id, { m3_alt_pec_deck: [true, true, true] });
+  raw.programs.meso3.weeks['1'][home.id].swaps = { m3_machine_chest_press: 'm3_alt_pec_deck' };
   const vol = weeklyVolume(normalizeExport(raw), muscleMap, EXERCISE_ALTERNATIVES, PROGRAMS).meso3;
   for (const [muscle, credit] of Object.entries(original.muscles)) {
     assert.ok(Math.abs((vol[muscle] || 0) - 3 * credit) < 1e-9, `${muscle}: ${vol[muscle]} !== ${3 * credit}`);
