@@ -361,6 +361,187 @@ test('a program whose alternatives are all empty arrays is rejected at validatio
   assert.ok(errors.some(e => /must define at least one exercise alternative/.test(e)));
 });
 
+// --- ramp / deload (per-week set counts) --------------------------------
+//
+// `ex.ramp` is a sparse map: keys are the weeks where the prescribed set
+// count CHANGES, values are the ABSOLUTE count from that week on. Weeks below
+// the lowest key fall back to `ex.sets`, so week 1 is `sets` by definition and
+// a ramp key of 1 is always an authoring mistake. `weekPhases[i].deload`
+// halves the ramped count for that week. Both are optional — the fixture
+// carries neither and must keep validating clean.
+//
+// The fixture's totalWeeks is 2, so week 2 is the only in-range ramp key and
+// week 3 is the first out-of-range one.
+
+/** The fixture with `ramp` set on day1/exercises[0]. */
+function programWithRamp(ramp) {
+  const p = clone(valid);
+  p.days[0].exercises[0].ramp = ramp;
+  return p;
+}
+
+test('a valid ramp is accepted', () => {
+  assert.deepStrictEqual(validateProgram(programWithRamp({ 2: 5 }), new Set()), []);
+});
+
+test('an empty ramp is accepted — it behaves as no ramp', () => {
+  assert.deepStrictEqual(validateProgram(programWithRamp({}), new Set()), []);
+});
+
+test('an absent ramp is accepted — the fixture has none', () => {
+  assert.ok(!('ramp' in valid.days[0].exercises[0]));
+  assert.deepStrictEqual(validateProgram(valid, new Set()), []);
+});
+
+test('a ramp key of 1 is rejected by name — week 1 is `sets`', () => {
+  const errors = validateProgram(programWithRamp({ 1: 5, 2: 6 }), new Set());
+  assert.ok(errors.some(e => /ramp key '1' is invalid/.test(e)), errors.join('; '));
+  assert.ok(errors.some(e => /week 1 is always `sets`/.test(e)), errors.join('; '));
+  // The legal key alongside it must not be dragged down with it.
+  assert.strictEqual(errors.length, 1);
+});
+
+test('a ramp key above totalWeeks is rejected', () => {
+  const errors = validateProgram(programWithRamp({ 3: 5 }), new Set());
+  assert.ok(errors.some(e => /ramp week 3 is out of range \(totalWeeks is 2\)/.test(e)), errors.join('; '));
+});
+
+test('a ramp week of 0 or a negative week is rejected', () => {
+  for (const week of ['0', '-2']) {
+    const errors = validateProgram(programWithRamp({ [week]: 5 }), new Set());
+    assert.ok(errors.some(e => /is not a valid week \(weeks start at 1\)/.test(e)),
+      `expected an error for ramp week ${week} — got ${errors.join('; ')}`);
+  }
+});
+
+test('non-integer and non-numeric ramp keys are rejected', () => {
+  for (const key of ['week2', '2.5', '', ' 2', '2x']) {
+    const errors = validateProgram(programWithRamp({ [key]: 5 }), new Set());
+    assert.ok(errors.some(e => e.includes(`ramp key '${key}' must be an integer week number`)),
+      `expected an error for ramp key ${JSON.stringify(key)} — got ${errors.join('; ')}`);
+  }
+});
+
+test('zero, negative and fractional ramp values are rejected', () => {
+  for (const count of [0, -3, 4.5]) {
+    const errors = validateProgram(programWithRamp({ 2: count }), new Set());
+    assert.ok(errors.some(e => e.includes(`ramp['2'] must be a positive integer set count (got ${JSON.stringify(count)})`)),
+      `expected an error for ramp value ${count} — got ${errors.join('; ')}`);
+  }
+});
+
+test('non-numeric ramp values are rejected', () => {
+  for (const count of ['5', null, {}, [5]]) {
+    const errors = validateProgram(programWithRamp({ 2: count }), new Set());
+    assert.ok(errors.some(e => /ramp\['2'\] must be a positive integer set count/.test(e)),
+      `expected an error for ramp value ${JSON.stringify(count)} — got ${errors.join('; ')}`);
+  }
+});
+
+test('a bad ramp key and a bad ramp value are both reported for the same entry', () => {
+  const errors = validateProgram(programWithRamp({ 1: 0 }), new Set());
+  assert.ok(errors.some(e => /ramp key '1' is invalid/.test(e)), errors.join('; '));
+  assert.ok(errors.some(e => /ramp\['1'\] must be a positive integer set count/.test(e)), errors.join('; '));
+});
+
+test('an array ramp is rejected — typeof passes but the indices are not weeks', () => {
+  const errors = validateProgram(programWithRamp([4, 5, 6]), new Set());
+  assert.ok(errors.some(e => /ramp must be an object mapping week number to set count \(got array\)/.test(e)),
+    errors.join('; '));
+});
+
+test('a null ramp is rejected — typeof null === "object"', () => {
+  const errors = validateProgram(programWithRamp(null), new Set());
+  assert.ok(errors.some(e => /ramp must be an object mapping week number to set count \(got null\)/.test(e)),
+    errors.join('; '));
+});
+
+test('a scalar ramp is rejected and names the type it got', () => {
+  const errors = validateProgram(programWithRamp(5), new Set());
+  assert.ok(errors.some(e => /ramp must be an object mapping week number to set count \(got number\)/.test(e)),
+    errors.join('; '));
+});
+
+test('a ramp error names the exercise path the way every other message does', () => {
+  const bad = clone(valid);
+  bad.days[1].exercises[0].ramp = { 3: 5 };
+  const errors = validateProgram(bad, new Set());
+  assert.ok(errors.some(e => e.startsWith('day2/exercises[0]: ramp')), errors.join('; '));
+});
+
+test('a missing totalWeeks does not cascade into bogus ramp range errors', () => {
+  const bad = programWithRamp({ 2: 5, 9: 7 });
+  delete bad.totalWeeks;
+  const errors = validateProgram(bad, new Set());
+  assert.ok(errors.some(e => /missing required field: totalWeeks/.test(e)));
+  assert.ok(!errors.some(e => /out of range/.test(e)),
+    `range checks should stand down when totalWeeks is unusable — got ${errors.join('; ')}`);
+});
+
+test('deload: true and deload: false are both accepted on a phase', () => {
+  for (const flag of [true, false]) {
+    const p = clone(valid);
+    p.weekPhases[1].deload = flag;
+    assert.deepStrictEqual(validateProgram(p, new Set()), [],
+      `deload: ${flag} should validate clean`);
+  }
+});
+
+test('an absent deload is accepted — it stays optional', () => {
+  assert.ok(valid.weekPhases.every(ph => !('deload' in ph)));
+  assert.deepStrictEqual(validateProgram(valid, new Set()), []);
+  // And it must not have been quietly added to the required set.
+  const bare = clone(valid);
+  delete bare.weekPhases[0].deload;
+  assert.ok(!validateProgram(bare, new Set()).some(e => /missing deload/.test(e)));
+});
+
+test('a non-boolean deload is rejected', () => {
+  const bad = clone(valid);
+  bad.weekPhases[1].deload = 'true';
+  const errors = validateProgram(bad, new Set());
+  assert.ok(errors.some(e => /weekPhases\[1\]: deload must be a boolean \(got string\)/.test(e)),
+    errors.join('; '));
+});
+
+test('a truthy non-boolean deload is rejected too — 1 is not true', () => {
+  const bad = clone(valid);
+  bad.weekPhases[0].deload = 1;
+  const errors = validateProgram(bad, new Set());
+  assert.ok(errors.some(e => /weekPhases\[0\]: deload must be a boolean \(got number\)/.test(e)),
+    errors.join('; '));
+});
+
+test('a null deload is read as absent, matching missingKeys() leniency', () => {
+  const p = clone(valid);
+  p.weekPhases[0].deload = null;
+  assert.deepStrictEqual(validateProgram(p, new Set()), []);
+});
+
+test('a ramped, deloading program validates clean end to end', () => {
+  const p = clone(valid);
+  p.days[0].exercises[0].ramp = { 2: 5 };
+  p.days[0].exercises[1].ramp = {};
+  p.days[1].exercises[0].ramp = { 2: 6 };
+  p.weekPhases[1].deload = true;
+  p.weekPhases[0].deload = false;
+  assert.deepStrictEqual(validateProgram(p, collectExistingIds()), []);
+});
+
+test('a ramped program survives the full insert pipeline', () => {
+  const file = tempCopy();
+  const p = clone(valid);
+  p.days[0].exercises[0].ramp = { 2: 5 };
+  p.weekPhases[1].deload = true;
+
+  const result = insertProgram(p, { htmlPath: file });
+  assert.strictEqual(result.ok, true, result.error);
+
+  const inserted = loadApp({ htmlPath: file }).PROGRAMS.at(-1);
+  assert.deepStrictEqual(inserted.days[0].exercises[0].ramp, { 2: 5 });
+  assert.strictEqual(inserted.weekPhases[1].deload, true);
+});
+
 test('non-string day label/title/subtitle are named at validation', () => {
   const bad = clone(valid);
   bad.days[0].label = 42;

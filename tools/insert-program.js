@@ -63,6 +63,17 @@ function validateProgram(prog, existingIds = new Set()) {
         for (const key of missingKeys(ph, ['label', 'rpe', 'llp', 'color'])) {
           errors.push(`weekPhases[${i}] missing ${key}`);
         }
+        // `deload` is OPTIONAL and stays out of the required list above: a
+        // block is free to have no deload week at all, and every program
+        // authored before the flag existed omits it. setsForWeek() reads it
+        // as a plain truthiness test (`phase.deload`), so a null is
+        // indistinguishable from absent — treated as absent here the way
+        // missingKeys() treats it. A string 'false' or a 0, though, is an
+        // authoring slip that would silently halve (or fail to halve) a
+        // whole week's volume, so the type is pinned like llp/compound.
+        if (ph.deload !== undefined && ph.deload !== null && typeof ph.deload !== 'boolean') {
+          errors.push(`weekPhases[${i}]: deload must be a boolean (got ${typeof ph.deload})`);
+        }
       });
     }
   }
@@ -84,6 +95,13 @@ function validateProgram(prog, existingIds = new Set()) {
     if (!Array.isArray(prog.protocolItems)) errors.push('protocolItems must be an array');
     else if (prog.protocolItems.length === 0) errors.push('protocolItems is empty');
   }
+
+  // Whether totalWeeks can be trusted as the upper bound for ramp weeks. When
+  // it is missing or malformed that is already reported above, so the ramp
+  // range check stands down rather than emitting one bogus "out of range"
+  // per ramp key on top of it.
+  const weeksKnown = typeof prog.totalWeeks === 'number' &&
+    Number.isInteger(prog.totalWeeks) && prog.totalWeeks > 0;
 
   const seenIds = new Set();
   const definedExerciseIds = new Set();
@@ -148,6 +166,43 @@ function validateProgram(prog, existingIds = new Set()) {
         if (ex.sets !== undefined && ex.sets !== null &&
             !(typeof ex.sets === 'number' && ex.sets > 0)) {
           errors.push(`${where}: sets must be a positive number (got ${JSON.stringify(ex.sets)})`);
+        }
+        // `ramp` is OPTIONAL: an exercise without one is flat across the
+        // block. When present it is a SPARSE map — keys are the weeks where
+        // the count CHANGES, values are the ABSOLUTE count from that week
+        // until the next key ({ sets: 4, ramp: { 3: 5, 7: 6 } } → w1–2: 4,
+        // w3–6: 5, w7+: 6). setsForWeek() reads it with `if (ex.ramp)` and
+        // `Object.keys(...).map(Number)`, so a malformed one degrades
+        // silently instead of throwing: an array ramp resolves its indices
+        // as weeks, a string value makes every later week render a
+        // non-numeric set count. Nothing downstream would name the field,
+        // and because `ramp` is not in REQUIRED_EX missingKeys() never
+        // mentions it either — so unlike every field above, a `null` here is
+        // rejected rather than waved through as "absent". A generator that
+        // emitted `ramp: null` meant to ramp and failed to.
+        if (ex.ramp !== undefined) {
+          if (ex.ramp === null || typeof ex.ramp !== 'object' || Array.isArray(ex.ramp)) {
+            const got = ex.ramp === null ? 'null' : Array.isArray(ex.ramp) ? 'array' : typeof ex.ramp;
+            errors.push(`${where}: ramp must be an object mapping week number to set count (got ${got})`);
+          } else {
+            // An empty ramp is legal — it resolves to `sets` every week,
+            // exactly like no ramp at all.
+            for (const [key, count] of Object.entries(ex.ramp)) {
+              const week = Number(key);
+              if (!/^-?\d+$/.test(key) || !Number.isInteger(week)) {
+                errors.push(`${where}: ramp key '${key}' must be an integer week number`);
+              } else if (week === 1) {
+                errors.push(`${where}: ramp key '1' is invalid — week 1 is always \`sets\`; ramp keys mark the weeks where the count CHANGES`);
+              } else if (week < 1) {
+                errors.push(`${where}: ramp week ${week} is not a valid week (weeks start at 1)`);
+              } else if (weeksKnown && week > prog.totalWeeks) {
+                errors.push(`${where}: ramp week ${week} is out of range (totalWeeks is ${prog.totalWeeks})`);
+              }
+              if (typeof count !== 'number' || !Number.isInteger(count) || count <= 0) {
+                errors.push(`${where}: ramp['${key}'] must be a positive integer set count (got ${JSON.stringify(count)})`);
+              }
+            }
+          }
         }
         if (ex.llp !== undefined && ex.llp !== null && typeof ex.llp !== 'boolean') {
           errors.push(`${where}: llp must be a boolean (got ${typeof ex.llp})`);
