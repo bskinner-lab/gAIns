@@ -440,7 +440,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '4';
+const APP_VERSION = '5';
 
 const THEME_KEY = 'gains_theme';
 
@@ -859,6 +859,7 @@ const PROGRAMS = [
             id: 'm3_incline_db_press',
             name: 'Incline DB Press',
             sets: 4,
+            ramp: { 3: 5 },
             reps: '6–10',
             rpe: '7–9',
             note: 'Neutral-ish grip, elbows ~60°. Deep stretch at the bottom — this is the lengthened-position chest builder.',
@@ -908,6 +909,7 @@ const PROGRAMS = [
             id: 'm3_db_lateral_raise',
             name: 'DB Lateral Raise',
             sets: 4,
+            ramp: { 3: 5, 7: 6 },
             reps: '12–20',
             rpe: '8–9',
             note: 'Side delts were the big miss last block. Stop at 1 RIR — never 0 on delts.',
@@ -923,6 +925,7 @@ const PROGRAMS = [
             id: 'm3_cable_lat_raise_d1',
             name: 'Cable Lateral Raise',
             sets: 3,
+            ramp: { 5: 4, 7: 5 },
             reps: '12–20',
             rpe: '8–9',
             note: 'Constant tension. Add bottom-half partials on the last set once LLP is active.',
@@ -978,6 +981,7 @@ const PROGRAMS = [
             id: 'm3_single_arm_pulldown',
             name: 'Single-Arm Pulldown',
             sets: 4,
+            ramp: { 5: 5 },
             reps: '8–12',
             rpe: '7–9',
             note: 'Replaces the stalled weighted pull-up / neutral pulldown. This one progressed 25→70 last block.',
@@ -994,6 +998,7 @@ const PROGRAMS = [
             id: 'm3_chest_supported_row',
             name: 'Chest-Supported Row',
             sets: 4,
+            ramp: { 5: 5 },
             reps: '8–12',
             rpe: '7–9',
             note: 'No lower-back fatigue, full ROM every rep. Progressed steadily last block.',
@@ -1150,6 +1155,7 @@ const PROGRAMS = [
             id: 'm3_standing_calf',
             name: 'Standing Calf Raise',
             sets: 4,
+            ramp: { 3: 5, 5: 6, 7: 7 },
             reps: '8–12',
             rpe: '8–9',
             note: 'Stalled last block at higher reps — heavier and lower reps now, 2s pause in the stretch.',
@@ -1165,6 +1171,7 @@ const PROGRAMS = [
             id: 'm3_hanging_leg_raise',
             name: 'Hanging Leg Raise',
             sets: 3,
+            ramp: { 7: 4 },
             reps: '10–15',
             rpe: '8',
             note: 'Stalled at bodyweight — add a dumbbell between the feet once you clear 15.',
@@ -1224,6 +1231,7 @@ const PROGRAMS = [
             id: 'm3_lean_away_lat_raise',
             name: 'Lean-Away Lateral Raise',
             sets: 4,
+            ramp: { 3: 5, 5: 6 },
             reps: '12–20',
             rpe: '8–9',
             note: 'New stimulus for the stalled day-4 lateral raise — leaning away loads the delt in a longer position.',
@@ -1239,6 +1247,7 @@ const PROGRAMS = [
             id: 'm3_rear_delt_fly',
             name: 'Rear Delt Fly',
             sets: 3,
+            ramp: { 3: 4 },
             reps: '12–15',
             rpe: '8',
             note: 'Flat at the same load for 7 straight weeks — add a plate this block. Never to failure.',
@@ -1345,6 +1354,7 @@ const PROGRAMS = [
             id: 'm3_seated_calf',
             name: 'Seated Calf Raise',
             sets: 4,
+            ramp: { 3: 5, 5: 6 },
             reps: '12–20',
             rpe: '8–9',
             note: 'Soleus bias — the bent-knee complement to day 3\'s standing work. Pause in the stretch.',
@@ -1360,6 +1370,7 @@ const PROGRAMS = [
             id: 'm3_cable_crunch',
             name: 'Cable Crunch',
             sets: 3,
+            ramp: { 7: 4 },
             reps: '10–15',
             rpe: '8',
             note: 'Round the spine against the load, hips fixed.',
@@ -1438,7 +1449,7 @@ const PROGRAMS = [
         points: [
           '+1 set to: cable lateral raise (day 1), lean-away lateral raise (side delts → 17/wk)',
           '+1 set to: standing calf, seated calf (calves → 12/wk)',
-          '+1 set to: single-arm pulldown, chest-supported row (lats → 14/wk, upper back → 14/wk)',
+          '+1 set to: single-arm pulldown, chest-supported row (lats → 14.5/wk, upper back → 14/wk)',
           'LLP fully integrated on lateral raises, leg curls, calves (last set)',
           '1 drop set per session on an isolation movement',
           'Volume approaching MAV on side delts, calves and back',
@@ -1451,7 +1462,7 @@ const PROGRAMS = [
         rir: 'Isolations only near failure — never delts or cuff',
         color: '#ff6b35',
         points: [
-          '+1 set to: DB lateral raise, lean-away lateral raise (side delts → 19/wk, peak)',
+          '+1 set to: DB lateral raise, cable lateral raise (side delts → 19/wk, peak)',
           '+1 set to: standing calf (calves → 13/wk, peak)',
           '+1 set to: hanging leg raise, cable crunch (abs → 8/wk)',
           'Highest LLP usage — 2+ exercises per session',
@@ -1521,6 +1532,9 @@ const PROGRAMS = [
         label: 'Deload',
         rpe: 'RPE 6–7',
         llp: false,
+        // Halves every exercise's ramped set count for this week. An explicit
+        // flag, not the label: setsForWeek must never sniff for 'Deload'.
+        deload: true,
         color: '#8b8bff',
       },
     ],
@@ -2773,7 +2787,53 @@ function resolveExercise(dayId, ex) {
   if (!alts) return ex;
   const alt = alts.find(a => a.id === altId);
   if (!alt) return ex;
-  return { ...ex, ...alt };
+  const merged = { ...ex, ...alt };
+  // A `ramp` is authored against the exercise it belongs to: its values are
+  // ABSOLUTE set counts tuned to that exercise's own base `sets`. Alternatives
+  // carry their own `sets` but (today) no `ramp`, so inheriting the original's
+  // would apply the original's absolute targets to a different base — e.g.
+  // swapping {sets:4, ramp:{3:5}} for a 3-set alt would jump to 5 sets in week
+  // 3, a +2 rather than the intended +1. The alt's own ramp wins if it has one;
+  // otherwise the key must be absent entirely (not `undefined`) so the sparse
+  // lookup in setsForWeek falls back to the alt's flat `sets`.
+  if (!alt.ramp) delete merged.ramp;
+  return merged;
+}
+
+// Prescribed set count for a RESOLVED exercise in a given week.
+// `ex.ramp` is sparse: its keys are the weeks where the count CHANGES and its
+// values are the ABSOLUTE count from that week until the next key. Weeks below
+// the lowest key use `ex.sets`; no `ramp` at all means `ex.sets` everywhere.
+//   { sets: 4, ramp: { 3: 5, 7: 6 } }  →  w1–2: 4, w3–6: 5, w7+: 6
+// A week whose phase carries `deload: true` halves the RAMPED value. The flag
+// is an explicit boolean on the phase, never the phase's label — a program is
+// free to name its deload week anything, and matching on 'Deload' would both
+// miss those and catch programs that only borrow the word.
+function setsForWeek(ex, week = currentWeek, prog = curProg()) {
+  let n = ex.sets;
+  if (ex.ramp) {
+    Object.keys(ex.ramp)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .forEach(k => { if (k <= week) n = ex.ramp[k]; });
+  }
+  const phase = prog && prog.weekPhases ? prog.weekPhases[week - 1] : null;
+  if (phase && phase.deload) n = Math.max(1, Math.floor(n / 2));
+  return n;
+}
+
+// Grow or shrink a live set array to `target` without ever destroying logged
+// work: growth appends unlogged sets, shrinking only pops trailing blanks and
+// stops dead at the first resolved (true / 'skipped') entry from the end. The
+// array is synced IN PLACE so anything already holding a reference to it — a
+// half-rendered card, the saved blob — keeps seeing the same array.
+function syncSetCount(dayId, exId, target) {
+  const sd = state[dayId];
+  if (!sd || !sd.sets) return;
+  const arr = sd.sets[exId];
+  if (!Array.isArray(arr)) return;
+  while (arr.length < target) arr.push(false);
+  while (arr.length > target && arr[arr.length - 1] === false) arr.pop();
 }
 
 function syncProgramGlobals() {
@@ -2855,8 +2915,12 @@ function initState() {
     };
     day.exercises.forEach(originalEx => {
       const ex = resolveExercise(day.id, originalEx);
-      state[day.id].sets[ex.id] = savedDay.sets ? (savedDay.sets[ex.id] || Array(ex.sets).fill(false)) : Array(ex.sets).fill(false);
-      while (state[day.id].sets[ex.id].length < ex.sets) state[day.id].sets[ex.id].push(false);
+      // Seed from the saved blob when there is one, else start empty; either
+      // way syncSetCount reconciles the length to this week's prescription in
+      // both directions, keeping any sets already logged in this week.
+      const savedArr = savedDay.sets ? savedDay.sets[ex.id] : null;
+      state[day.id].sets[ex.id] = Array.isArray(savedArr) ? savedArr : [];
+      syncSetCount(day.id, ex.id, setsForWeek(ex));
     });
   });
   saveState();
@@ -3315,9 +3379,11 @@ function performSwap(dayId, originalExId, newExId) {
   const day = DAYS.find(d => d.id === dayId);
   const originalEx = day.exercises.find(e => e.id === originalExId);
   const ex = resolveExercise(dayId, originalEx);
-  if (!state[dayId].sets[ex.id]) {
-    state[dayId].sets[ex.id] = Array(ex.sets).fill(false);
-  }
+  // Always re-sync, not just when the array is absent: swapping back and forth
+  // between exercises of different lengths would otherwise reuse whatever array
+  // the previous occupant of this id left behind, at its length.
+  if (!state[dayId].sets[ex.id]) state[dayId].sets[ex.id] = [];
+  syncSetCount(dayId, ex.id, setsForWeek(ex));
   saveState();
   syncCompletion(dayId);
   switchDay(dayId);
@@ -4005,12 +4071,15 @@ function exercisesHTML(day) {
     const arr = state[day.id].sets[ex.id] || [];
     const dh = arr.filter(v => v === true).length;
     const sk = arr.filter(v => v === 'skipped').length;
-    const allDone = (dh + sk) === ex.sets;
+    // Against the array's OWN length, not `ex.sets`: the rows below render from
+    // `arr`, so in a ramped (or deloaded) week a card whose every rendered set
+    // is resolved would otherwise never register as done.
+    const allDone = (dh + sk) === arr.length;
     const prior = priorWeekEntry(day.id, ex.id);
     const curW = state[day.id].weights[ex.id];
     const curR = state[day.id].reps[ex.id];
 
-    let tags = `<span class="tag">${ex.sets}×${esc(ex.reps)}</span>`
+    let tags = `<span class="tag">${setsForWeek(ex)}×${esc(ex.reps)}</span>`
       + `<span class="tag ink hit" data-act="tip" data-t="RPE">RPE ${esc(ex.rpe)}</span>`;
     if (ex.restLabel) tags += `<span class="tag">⏱ ${esc(ex.restLabel)}</span>`;
     if (ex.llp) tags += `<span class="tag acc hit" data-act="tip" data-t="LLP">LLP</span>`;
@@ -4077,7 +4146,7 @@ function exercisesHTML(day) {
         <div class="ex-name${allDone ? ' done' : ''}">${String(xi + 1).padStart(2, '0')} ${esc(ex.name)}</div>
         <div class="ex-right">
           ${EXERCISE_ALTERNATIVES[orig.id] ? `<button class="swap hit${swapped ? ' on' : ''}" data-act="swap" data-orig="${orig.id}" aria-label="Swap exercise">⇄</button>` : ''}
-          <div class="ex-count">${dh + sk}/${ex.sets}</div>
+          <div class="ex-count">${dh + sk}/${arr.length}</div>
         </div>
       </div>
       <div class="tags">${tags}</div>
@@ -4371,7 +4440,7 @@ function renderBottomBar() {
     body = `<div class="log-row">
       <div class="log-top">
         <div class="log-name">${esc(act.ex.name)}</div>
-        <div class="log-set">SET ${act.i + 1}/${act.ex.sets} · ${esc(act.ex.reps)} REPS</div>
+        <div class="log-set">SET ${act.i + 1}/${(state[day.id].sets[act.ex.id] || []).length} · ${esc(act.ex.reps)} REPS</div>
       </div>
       <div class="log-ctl">
         <div class="log-steps">
@@ -4496,13 +4565,13 @@ function renderOverlays() {
     if (curSwap) {
       opts += `<div class="opt" data-act="doswap" data-orig="${origId}" data-new="${origId}">
         <div class="opt-n">↩ ${esc(orig.name)}</div>
-        <div class="opt-m">${orig.sets} sets · ${esc(orig.reps)} · RPE ${esc(orig.rpe)}</div>
+        <div class="opt-m">${setsForWeek(orig)} sets · ${esc(orig.reps)} · RPE ${esc(orig.rpe)}</div>
         <div class="opt-d">Revert to original exercise</div></div>`;
     }
     (EXERCISE_ALTERNATIVES[origId] || []).forEach(a => {
       opts += `<div class="opt${curSwap === a.id ? ' on' : ''}" data-act="doswap" data-orig="${origId}" data-new="${a.id}">
         <div class="opt-n">${esc(a.name)}</div>
-        <div class="opt-m">${a.sets} sets · ${esc(a.reps)} · RPE ${esc(a.rpe)} · ⏱ ${esc(a.restLabel)}</div>
+        <div class="opt-m">${setsForWeek(a)} sets · ${esc(a.reps)} · RPE ${esc(a.rpe)} · ⏱ ${esc(a.restLabel)}</div>
         <div class="opt-d">${esc(a.note)}</div></div>`;
     });
     el.innerHTML = `<div class="ov scrim sheet"><div class="sheet-in">
@@ -4559,7 +4628,7 @@ function resetWeek() {
     state[day.id].times = {};
     day.exercises.forEach(o => {
       const ex = resolveExercise(day.id, o);
-      state[day.id].sets[ex.id] = Array(ex.sets).fill(false);
+      state[day.id].sets[ex.id] = Array(setsForWeek(ex)).fill(false);
     });
   });
   saveState();
