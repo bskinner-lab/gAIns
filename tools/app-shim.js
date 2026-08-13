@@ -202,6 +202,15 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       // every test in the suite. Once index.html defines it, this getter can
       // collapse to a plain destructure alongside the others above.
       ' get commitEdit() { return typeof commitEdit === "function" ? commitEdit : undefined; },' +
+      // setsForWeek/syncSetCount are forward references for the same reason:
+      // the set-ramp work lands in index.html later, and until it does a bare
+      // reference here would throw ReferenceError at eval time and take the
+      // whole suite down with it. `typeof` on an undeclared identifier is
+      // legal and answers "undefined", so the tests can assert their absence
+      // today and their behaviour once the implementation exists. Collapse
+      // both into the plain destructure above once index.html defines them.
+      ' get setsForWeek() { return typeof setsForWeek === "function" ? setsForWeek : undefined; },' +
+      ' get syncSetCount() { return typeof syncSetCount === "function" ? syncSetCount : undefined; },' +
       ' APP_VERSION,' +
       ' isDayComplete, isWeekComplete, advanceToCurrentWeek, seedCompleteFlags,' +
       ' get currentWeek() { return currentWeek; },' +
@@ -255,7 +264,8 @@ function setupApp({ htmlPath, storage: seed } = {}) {
  *            view: object, render: Function, switchProgram: Function,
  *            boot: Function, activeSet: Function, logActiveSet: Function,
  *            skipSet: Function, curDay: Function, getExerciseHistory: Function,
- *            commitEdit: Function|undefined, storage: object,
+ *            commitEdit: Function|undefined, setsForWeek: Function|undefined,
+ *            syncSetCount: Function|undefined, storage: object,
  *            elements: Map<string, object>, clickHandler: Function|null}}
  */
 function loadApp(opts) {
