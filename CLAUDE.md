@@ -45,12 +45,33 @@ Each rebuilds its container's `innerHTML`. **All interaction goes through one de
 - **Week system** — 8-week mesocycle with phases (Foundation → Overload → High Stimulus → Overreach → Deload) that affect RPE targets and whether LLP is active.
 - **Completion is loud, and it advances** — when a day's last set resolves, `syncCompletion()` fires the full-screen celebration in `view.done`; if that day also closed out the week, `openDayDone()` calls `changeWeek(1)` first, so the app is already on the next week when the overlay appears. `advanceToCurrentWeek()` repeats that on boot for a week finished in a previous session. Both are gated on `weekHasActivity()` so an untouched week can never walk itself forward.
 
+## Bump the version on every change
+
+`APP_VERSION` (top of the script block in `index.html`) renders at the bottom of Settings as `gAIns · APP VERSION <n>`. It is the only way to tell whether the build you are looking at contains your change: the service worker serves the cached shell first, so the load right after a deploy runs the **old** build and only the one after it picks up the new code. Without a bump that is indistinguishable from "the fix didn't work" — and it has already cost one debugging cycle.
+
+**Any change to `index.html` or `sw.js` must bump both, in lockstep:**
+
+- `APP_VERSION` in `index.html` → the next integer
+- `CACHE` in `sw.js` → `gains-v<APP_VERSION>`
+
+One bump per commit, not per edit. `tools/version-sync.test.js` fails if the two ever drift — but nothing catches forgetting to bump *both together*, so that part is on you. There is no judgment call about whether a change is "user-visible enough": if either file changed, bump.
+
 ## Development
 
-No build or test commands. To develop:
+To develop:
 - Edit `index.html`
 - Open in browser (or refresh) to see changes
 - State persists in localStorage; clear it manually or via devtools to reset
+
+There is no build step, but there **is** a test suite — Node's built-in runner, no dependencies, no `package.json`:
+
+```bash
+node --test tools/*.test.js                # full suite (332 tests)
+node tools/smoke-render.js                 # render gate, program 0
+node tools/smoke-render.js index.html 2    # render gate, a specific program
+```
+
+Run the full suite before committing. Each feature commit in this repo ships its own `tools/<feature>.test.js` built on `tools/app-shim.js` — follow that pattern rather than adding tests to an unrelated file.
 
 ### Verifying changes without a browser
 
