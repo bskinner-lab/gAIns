@@ -440,7 +440,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '6';
+const APP_VERSION = '7';
 
 const THEME_KEY = 'gains_theme';
 
@@ -2410,7 +2410,7 @@ const EXERCISE_ALTERNATIVES = {
     {
       id: 'm3_alt_cross_body_hammer',
       name: 'Cross-Body Hammer Curl',
-      sets: 3,
+      sets: 2,
       reps: '12–15',
       rpe: '8',
       note: 'More brachialis',
@@ -2422,7 +2422,7 @@ const EXERCISE_ALTERNATIVES = {
     {
       id: 'm3_alt_cable_curl_d4',
       name: 'Cable Curl',
-      sets: 3,
+      sets: 2,
       reps: '12–15',
       rpe: '8',
       note: 'Constant tension',
@@ -2787,17 +2787,14 @@ function resolveExercise(dayId, ex) {
   if (!alts) return ex;
   const alt = alts.find(a => a.id === altId);
   if (!alt) return ex;
-  const merged = { ...ex, ...alt };
-  // A `ramp` is authored against the exercise it belongs to: its values are
-  // ABSOLUTE set counts tuned to that exercise's own base `sets`. Alternatives
-  // carry their own `sets` but (today) no `ramp`, so inheriting the original's
-  // would apply the original's absolute targets to a different base — e.g.
-  // swapping {sets:4, ramp:{3:5}} for a 3-set alt would jump to 5 sets in week
-  // 3, a +2 rather than the intended +1. The alt's own ramp wins if it has one;
-  // otherwise the key must be absent entirely (not `undefined`) so the sparse
-  // lookup in setsForWeek falls back to the alt's flat `sets`.
-  if (!alt.ramp) delete merged.ramp;
-  return merged;
+  // An alternative is a same-pattern substitute for its original — same slot,
+  // same job, same base `sets` — so it trains through the original's
+  // progression. `ramp` therefore inherits like every other field the alt does
+  // not itself author: dropping it would quietly cut the week's prescribed
+  // volume (week 7 Standing Calf Raise is 7 sets; swapping it must not hand
+  // back the base 4). An alt that genuinely progresses differently says so by
+  // carrying its own `ramp`, which wins here as the spread already implies.
+  return { ...ex, ...alt };
 }
 
 // Prescribed set count for a RESOLVED exercise in a given week.
@@ -2843,6 +2840,7 @@ function syncProgramGlobals() {
   WEEK_PHASES = prog.weekPhases;
   PROTOCOL_ITEMS = prog.protocolItems;
   rebuildLegacyIdMap();
+  exerciseHome = null;
 }
 
 let programInitialized = false;
@@ -2898,10 +2896,110 @@ function migrateDayState(dayId, sd) {
   return m;
 }
 
-function initState() {
-  const raw = loadState();
+// An exercise can MOVE between days when the program is revised — meso3's
+// Machine Chest Press went PUSH → UPPER. `state` is keyed dayId → exId, so a
+// week blob written before the move still files that work under the OLD day,
+// and initState's per-day rebuild reads only the day's CURRENT exercises before
+// saveState() writes the whole object back: the logged array would not just be
+// orphaned, it would be deleted from localStorage on the next boot. The
+// relocation below runs over the whole blob, before that rebuild, so a move is
+// invisible to the user.
+//
+// Where migrateDayState is a per-day key rewrite, this one needs a cross-day
+// view: it has to know which day owns an id NOW to know where to send it.
+
+// exId → the day it lives on today, memoized per program (cleared by
+// syncProgramGlobals). Alternatives resolve to their original's day as well,
+// because a swapped exercise's sets are keyed by the ALTERNATIVE's id and have
+// to travel with it. A real exercise id always wins over an alternative id, and
+// an alternative offered on two different days is left unmapped rather than
+// guessed at.
+let exerciseHome = null;
+function exerciseHomeMap() {
+  if (exerciseHome) return exerciseHome;
+  const home = {};
+  DAYS.forEach(day => day.exercises.forEach(ex => { home[ex.id] = day.id; }));
+  const alts = {};
+  DAYS.forEach(day => day.exercises.forEach(ex => {
+    (EXERCISE_ALTERNATIVES[ex.id] || []).forEach(a => {
+      if (home[a.id]) return;
+      alts[a.id] = (a.id in alts && alts[a.id] !== day.id) ? null : day.id;
+    });
+  }));
+  Object.keys(alts).forEach(id => { if (alts[id]) home[id] = alts[id]; });
+  exerciseHome = home;
+  return home;
+}
+
+// The day maps that carry BOTH key forms: `exId` (the exercise-level value) and
+// `${exId}_${setIdx}` (the per-set value written by markTime and the set rows).
+const MOVABLE_MAPS = ['weights', 'reps', 'times'];
+
+function isPerSetKey(key, exId) {
+  return key.startsWith(exId + '_') && /^\d+$/.test(key.slice(exId.length + 1));
+}
+
+// Move one key of one map, destination-wins: an entry already on the
+// destination is kept and the source copy dropped, so a second run is a no-op.
+function moveEntry(src, dst, mapName, key) {
+  const from = src[mapName];
+  if (!from || !(key in from)) return;
+  if (!dst[mapName]) dst[mapName] = {};
+  if (!(key in dst[mapName])) dst[mapName][key] = from[key];
+  delete from[key];
+}
+
+function migrateMovedExercises(saved) {
+  const home = exerciseHomeMap();
+  Object.keys(saved).forEach(fromDay => {
+    const sd = saved[fromDay];
+    if (!sd || typeof sd !== 'object') return;
+    // Which ids in THIS day's blob have moved away? Read them off the blob's
+    // own keys, not off the program, so an id the current program knows nothing
+    // about — a removed exercise, another program's leftovers — is simply never
+    // considered and stays exactly where it is.
+    const moving = {};
+    const consider = id => { const to = home[id]; if (to && to !== fromDay) moving[id] = to; };
+    Object.keys(sd.sets || {}).forEach(consider);
+    Object.keys(sd.effort || {}).forEach(consider);
+    Object.keys(sd.swaps || {}).forEach(consider);
+    MOVABLE_MAPS.forEach(mapName => {
+      Object.keys(sd[mapName] || {}).forEach(k => {
+        consider(k);
+        const perSet = /^(.+)_\d+$/.exec(k);
+        if (perSet) consider(perSet[1]);
+      });
+    });
+    Object.keys(moving).forEach(exId => {
+      const dst = saved[moving[exId]] || (saved[moving[exId]] = {});
+      moveEntry(sd, dst, 'sets', exId);
+      moveEntry(sd, dst, 'effort', exId);
+      moveEntry(sd, dst, 'swaps', exId);
+      MOVABLE_MAPS.forEach(mapName => {
+        moveEntry(sd, dst, mapName, exId);
+        Object.keys(sd[mapName] || {}).forEach(k => {
+          if (isPerSetKey(k, exId)) moveEntry(sd, dst, mapName, k);
+        });
+      });
+    });
+  });
+  return saved;
+}
+
+// A saved week blob, normalized for the current program: the per-day legacy key
+// rewrite first (it keys off each day's own exercise list, so it has to run
+// before anything crosses days), then the relocation of exercises that have
+// since moved. Every reader of a raw blob goes through this — the open week and
+// the cross-week history alike — so a move never splits an exercise's record.
+function normalizeWeekBlob(raw) {
   const saved = {};
-  DAYS.forEach(day => { saved[day.id] = migrateDayState(day.id, raw[day.id]); });
+  Object.keys(raw || {}).forEach(dayId => { saved[dayId] = raw[dayId]; });
+  DAYS.forEach(day => { saved[day.id] = migrateDayState(day.id, raw && raw[day.id]); });
+  return migrateMovedExercises(saved);
+}
+
+function initState() {
+  const saved = normalizeWeekBlob(loadState());
   DAYS.forEach(day => {
     const savedDay = saved[day.id] || {};
     state[day.id] = {
@@ -2937,8 +3035,7 @@ function prefillFromPreviousWeeks() {
       const ex = resolveExercise(day.id, originalEx);
       for (let w = currentWeek - 1; w >= 1; w--) {
         try {
-          const raw = JSON.parse(localStorage.getItem(weekStorageKey(w)) || '{}');
-          const prev = migrateDayState(day.id, raw[day.id]);
+          const prev = normalizeWeekBlob(JSON.parse(localStorage.getItem(weekStorageKey(w)) || '{}'))[day.id];
           if (!prev) continue;
           if (!weights[ex.id] && prev.weights && prev.weights[ex.id]) {
             weights[ex.id] = prev.weights[ex.id];
@@ -2954,7 +3051,8 @@ function prefillFromPreviousWeeks() {
 }
 
 // Cross-week history for a single exercise (current program). Ascending by week.
-// Reads each week's localStorage blob via migrateDayState; prefers in-memory
+// Reads each week's localStorage blob through normalizeWeekBlob, so a week
+// logged before the exercise changed days still answers here; prefers in-memory
 // `state` for the current week so unsaved edits are reflected.
 function getExerciseHistory(dayId, exId) {
   const maxWeeks = PROGRAMS[currentProgramIdx].totalWeeks;
@@ -2965,8 +3063,7 @@ function getExerciseHistory(dayId, exId) {
       dayState = state[dayId];
     } else {
       try {
-        const raw = JSON.parse(localStorage.getItem(weekStorageKey(w)) || '{}');
-        dayState = migrateDayState(dayId, raw[dayId]);
+        dayState = normalizeWeekBlob(JSON.parse(localStorage.getItem(weekStorageKey(w)) || '{}'))[dayId];
       } catch (e) { dayState = null; }
     }
     if (!dayState) continue;

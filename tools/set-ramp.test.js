@@ -244,6 +244,100 @@ test('entries before the truncation point survive verbatim', () => {
   });
 });
 
+// ------------------------------------------------------------------- swaps
+//
+// An alternative is a same-pattern substitute for its original, so it trains
+// through the original's progression: the `ramp` inherits along with everything
+// else the alt does not itself author. Deleting it on swap silently cut the
+// week's prescribed volume — week 7 Standing Calf Raise goes 7 sets, and
+// swapping it used to drop the session to the base 4.
+
+function findEx(prog, exId) {
+  for (const day of prog.days) {
+    const ex = day.exercises.find(e => e.id === exId);
+    if (ex) return { day, ex };
+  }
+  throw new Error(`${exId} is not in ${prog.id}`);
+}
+
+// Open `day`, then swap `exId` for `altId` through the real UI path.
+function swapTo(app, day, exId, altId) {
+  click(app, { act: 'day', id: day.id });
+  click(app, { act: 'swap', orig: exId });
+  click(app, { act: 'doswap', orig: exId, new: altId });
+}
+
+function gotoWeek(app, week) {
+  while (app.currentWeek < week) click(app, { act: 'wk', d: '1' });
+  while (app.currentWeek > week) click(app, { act: 'wk', d: '-1' });
+}
+
+// A swap changes the movement, not the dose: an alternative stands in the same
+// slot for the same reason, so it carries the same base `sets`. Two guards in
+// one — it keeps a set-count edit on an exercise from being undone the moment
+// the user swaps it (the rope hammer curl went 3→2 and its alternatives were
+// left at 3), and it is the premise that makes inheriting `ramp` correct, since
+// the ramp's values are absolute counts read against that base.
+test('an alternative prescribes the same number of sets as the exercise it replaces', () => {
+  withApp({}, app => {
+    app.PROGRAMS.forEach(prog => prog.days.forEach(day => day.exercises.forEach(ex => {
+      (app.EXERCISE_ALTERNATIVES[ex.id] || []).forEach(alt => {
+        assert.strictEqual(alt.sets, ex.sets,
+          `${prog.id}/${ex.id} prescribes ${ex.sets} sets but its alternative ${alt.id} ` +
+          `prescribes ${alt.sets} — swapping would change the session's volume`);
+      });
+    })));
+  });
+});
+
+test('a swapped ramped exercise keeps the ramped count in a ramped week', () => {
+  withApp({ storage: meso3Storage() }, app => {
+    const { day, ex } = findEx(app.PROGRAMS[2], 'm3_standing_calf');
+    const altId = app.EXERCISE_ALTERNATIVES[ex.id][1].id;
+    gotoWeek(app, 7);
+    assert.strictEqual(app.setsForWeek(ex, 7, app.PROGRAMS[2]), 7, 'week 7 is the peak for this lift');
+    swapTo(app, day, ex.id, altId);
+    assert.strictEqual(app.state[day.id].swaps[ex.id], altId, 'the swap did not take');
+    assert.strictEqual(app.state[day.id].sets[altId].length, 7,
+      'the swap dropped the week\'s prescribed volume back to the base count');
+  });
+});
+
+test('an alternative that authors its own ramp overrides the original', () => {
+  withApp({ storage: meso3Storage() }, app => {
+    const { day, ex } = findEx(app.PROGRAMS[2], 'm3_standing_calf');
+    const alt = app.EXERCISE_ALTERNATIVES[ex.id][1];
+    alt.ramp = { 5: 2 }; // this eval's copy of the data only
+    gotoWeek(app, 7);
+    swapTo(app, day, ex.id, alt.id);
+    assert.strictEqual(app.state[day.id].sets[alt.id].length, 2,
+      'the alternative\'s own ramp lost to the original\'s');
+  });
+});
+
+test('a swap in the deload week halves the ramped count, not the base count', () => {
+  withApp({ storage: meso3Storage() }, app => {
+    const { day, ex } = findEx(app.PROGRAMS[2], 'm3_standing_calf');
+    const altId = app.EXERCISE_ALTERNATIVES[ex.id][1].id;
+    gotoWeek(app, 8);
+    assert.strictEqual(app.setsForWeek(ex, 8, app.PROGRAMS[2]), 3, 'week 8 should halve the week-7 count');
+    swapTo(app, day, ex.id, altId);
+    assert.strictEqual(app.state[day.id].sets[altId].length, 3,
+      'the deload halved the base count instead of the ramped one');
+  });
+});
+
+test('swapping an unramped exercise still follows the alternative\'s own set count', () => {
+  withApp({ storage: meso3Storage() }, app => {
+    const { day, ex } = findEx(app.PROGRAMS[2], 'm3_rope_hammer_curl');
+    const alt = app.EXERCISE_ALTERNATIVES[ex.id][0];
+    assert.ok(!ex.ramp, 'this case is about an exercise with no ramp');
+    swapTo(app, day, ex.id, alt.id);
+    assert.strictEqual(app.state[day.id].sets[alt.id].length, alt.sets,
+      'a flat alt should prescribe its own sets');
+  });
+});
+
 // -------------------------------------------------------------- integration
 
 test('meso3 holds exactly the prescribed number of sets for the week', () => {
