@@ -542,6 +542,159 @@ test('a ramped program survives the full insert pipeline', () => {
   assert.strictEqual(inserted.weekPhases[1].deload, true);
 });
 
+// --- ramp key canonicality (third adversarial review) -------------------
+//
+// setsForWeek() picks the applicable week with
+// `Object.keys(ex.ramp).map(Number)` but reads the count back with
+// `ex.ramp[week]` — a NUMBER index, which JS stringifies canonically. A key
+// spelled '03' therefore selects week 3 and then looks up `ex.ramp[3]`, which
+// does not exist. Verified against the real setsForWeek() in index.html for
+// { sets: 4, ramp: { '03': 5 } }: weeks 1–2 answer 4, and from week 3 on it
+// answers `undefined` — or NaN in a deload week, since
+// Math.max(1, Math.floor(undefined / 2)) is NaN.
+//
+// The rest of the chain, also verified: syncSetCount()'s two while-loops both
+// compare the live array's length against that non-number, so both are false
+// on the first iteration and the function no-ops. The array initState()
+// seeded as [] stays [] — and isDayComplete()'s `arr.every(isResolved)` is
+// vacuously true for an empty array. The day renders DAY COMPLETE, every card
+// at 0/0, with nothing ever logged and no way to log it.
+//
+// Which is why a non-canonical key gets its own error message rather than
+// sharing the generic "must be an integer week number" one: nothing at
+// runtime will ever point at the key, so the message is the only chance the
+// author gets to understand what happened.
+
+/** The fixture stretched to `weeks` weeks, so ramp keys above 2 are in range. */
+function longProgram(weeks = 4) {
+  const p = clone(valid);
+  p.totalWeeks = weeks;
+  p.weekPhases = Array.from({ length: weeks }, (_, i) =>
+    Object.assign(clone(valid.weekPhases[0]), { label: `Week ${i + 1}` }));
+  return p;
+}
+
+/** `longProgram()` with `ramp` set on day1/exercises[0]. */
+function longProgramWithRamp(ramp) {
+  const p = longProgram();
+  p.days[0].exercises[0].ramp = ramp;
+  return p;
+}
+
+test('a ramp key with a leading zero is rejected — Number() round-trips it away', () => {
+  const errors = validateProgram(longProgramWithRamp({ '03': 5 }), new Set());
+  assert.ok(errors.some(e => /ramp key '03' must be a plain integer/.test(e)), errors.join('; '));
+  assert.ok(errors.some(e => /no leading zeros or padding/.test(e)), errors.join('; '));
+  assert.ok(errors.some(e => /write '3'/.test(e)), errors.join('; '));
+  // The value beside it is fine and week 3 is in range, so the spelling of
+  // the key is the only thing to complain about.
+  assert.strictEqual(errors.length, 1, errors.join('; '));
+});
+
+test('sign-padded, decimal and whitespace-padded ramp keys are all rejected', () => {
+  for (const key of ['+3', '3.0', ' 3', '3 ', '003', '-0']) {
+    const errors = validateProgram(longProgramWithRamp({ [key]: 5 }), new Set());
+    assert.ok(errors.some(e => e.includes(`ramp key '${key}'`)),
+      `expected a ramp key error for ${JSON.stringify(key)} — got ${errors.join('; ')}`);
+  }
+});
+
+test('a canonical ramp key is still accepted', () => {
+  assert.deepStrictEqual(validateProgram(longProgramWithRamp({ '3': 5 }), new Set()), []);
+  assert.deepStrictEqual(validateProgram(longProgramWithRamp({ 2: 4, 3: 5, 4: 6 }), new Set()), []);
+});
+
+test('the canonicality check names the exercise path like every other message', () => {
+  const p = longProgram();
+  p.days[1].exercises[0].ramp = { '02': 5 };
+  const errors = validateProgram(p, new Set());
+  assert.ok(errors.some(e => e.startsWith("day2/exercises[0]: ramp key '02'")), errors.join('; '));
+});
+
+// --- alternatives carry real prescriptions too --------------------------
+//
+// resolveExercise() merges an alternative over its original with
+// `{...ex, ...alt}`, so an alternative's `sets` REPLACES the original's and an
+// alternative's own `ramp` is honoured verbatim. Both therefore reach
+// setsForWeek()/syncSetCount()/Array(n) exactly the way an exercise's do, and
+// must be held to exactly the same rules.
+
+/** `longProgram()` with `patch` merged onto the first alternative. */
+function programWithAlt(patch) {
+  const p = longProgram();
+  Object.assign(p.alternatives.mtest_rope_pushdown[0], patch);
+  return p;
+}
+
+test('an alternative with a malformed ramp is rejected the way an exercise is', () => {
+  const cases = [
+    [{ '03': 5 }, /ramp key '03' must be a plain integer/],
+    [{ 1: 5 }, /ramp key '1' is invalid/],
+    [{ 9: 5 }, /ramp week 9 is out of range \(totalWeeks is 4\)/],
+    [{ 0: 5 }, /ramp week 0 is not a valid week/],
+    [{ 2: 0 }, /ramp\['2'\] must be a positive integer set count/],
+    [{ 2: '5' }, /ramp\['2'\] must be a positive integer set count/],
+    [null, /ramp must be an object mapping week number to set count \(got null\)/],
+    [[4, 5], /ramp must be an object mapping week number to set count \(got array\)/],
+    [5, /ramp must be an object mapping week number to set count \(got number\)/],
+  ];
+  for (const [ramp, pattern] of cases) {
+    const errors = validateProgram(programWithAlt({ ramp }), new Set());
+    assert.ok(errors.some(e => pattern.test(e)),
+      `expected ${pattern} for alt ramp ${JSON.stringify(ramp)} — got ${errors.join('; ')}`);
+    assert.ok(errors.some(e => e.startsWith("alternatives['mtest_rope_pushdown'][0]: ramp")),
+      `alt ramp errors must name the alternative's path — got ${errors.join('; ')}`);
+  }
+});
+
+test('an alternative with a valid ramp is accepted', () => {
+  assert.deepStrictEqual(validateProgram(programWithAlt({ sets: 3, ramp: { 3: 4 } }), new Set()), []);
+  assert.deepStrictEqual(validateProgram(programWithAlt({ ramp: {} }), new Set()), []);
+});
+
+test('an alternative ramp range check stands down when totalWeeks is unusable', () => {
+  const p = programWithAlt({ ramp: { 9: 5 } });
+  delete p.totalWeeks;
+  const errors = validateProgram(p, new Set());
+  assert.ok(errors.some(e => /missing required field: totalWeeks/.test(e)));
+  assert.ok(!errors.some(e => /out of range/.test(e)), errors.join('; '));
+});
+
+test('an alternative with a zero, negative, fractional or non-numeric sets is rejected', () => {
+  for (const sets of [0, -2, 2.5, '3']) {
+    const errors = validateProgram(programWithAlt({ sets }), new Set());
+    const want = `alternatives['mtest_rope_pushdown'][0]: sets must be a positive integer (got ${JSON.stringify(sets)})`;
+    assert.ok(errors.includes(want),
+      `expected exactly "${want}" — got ${errors.join('; ')}`);
+  }
+});
+
+test('a positive integer sets on an alternative is accepted', () => {
+  assert.deepStrictEqual(validateProgram(programWithAlt({ sets: 3 }), new Set()), []);
+});
+
+test('sets stays OPTIONAL on an alternative — the spread inherits the original one', () => {
+  // The shipped fixture's alternatives carry no `sets` at all, and
+  // resolveExercise()'s `{...ex, ...alt}` is what makes that work: an
+  // alternative with no `sets` runs the original's prescription, exactly like
+  // it runs the original's reps/rpe/rest/muscles. Requiring it here would
+  // reject every alternative the app already ships in that shape.
+  assert.ok(valid.alternatives.mtest_rope_pushdown.every(a => !('sets' in a)));
+  const errors = validateProgram(valid, new Set());
+  assert.deepStrictEqual(errors, []);
+  assert.ok(!errors.some(e => /missing sets/.test(e)));
+});
+
+test('a still-valid ramped program produces zero errors after the tightened checks', () => {
+  const p = longProgram();
+  p.days[0].exercises[0].ramp = { 2: 5, 4: 6 };
+  p.days[0].exercises[1].ramp = {};
+  p.days[1].exercises[0].ramp = { 3: 5 };
+  p.weekPhases[3].deload = true;
+  Object.assign(p.alternatives.mtest_rope_pushdown[0], { sets: 3, ramp: { 3: 4 } });
+  assert.deepStrictEqual(validateProgram(p, collectExistingIds()), []);
+});
+
 test('non-string day label/title/subtitle are named at validation', () => {
   const bad = clone(valid);
   bad.days[0].label = 42;

@@ -30,6 +30,79 @@ function collectExistingIds(htmlPath) {
 }
 
 /**
+ * Validate one `ramp` map, accumulating every problem onto `errors`.
+ *
+ * Shared by exercises and by their alternatives rather than duplicated:
+ * resolveExercise() merges an alternative over its original with
+ * `{...ex, ...alt}` and honours the alternative's OWN ramp, so an
+ * alt-authored ramp reaches setsForWeek() exactly the way an exercise's does
+ * and has to survive exactly the same rules.
+ *
+ * `ramp` is OPTIONAL: an exercise without one is flat across the block. When
+ * present it is a SPARSE map — keys are the weeks where the count CHANGES,
+ * values are the ABSOLUTE count from that week until the next key
+ * ({ sets: 4, ramp: { 3: 5, 7: 6 } } → w1–2: 4, w3–6: 5, w7+: 6). An empty
+ * ramp is legal — it resolves to `sets` every week, exactly like no ramp.
+ *
+ * setsForWeek() reads it with `if (ex.ramp)` and `Object.keys(...).map(Number)`,
+ * so a malformed one degrades silently instead of throwing: an array ramp
+ * resolves its indices as weeks, a string value makes every later week render
+ * a non-numeric set count. Nothing downstream would name the field, and
+ * because `ramp` is in no required list missingKeys() never mentions it
+ * either — so unlike most fields a `null` here is rejected rather than waved
+ * through as "absent". A generator that emitted `ramp: null` meant to ramp
+ * and failed to.
+ *
+ * `totalWeeks` is the block length when it is trustworthy, or null when it is
+ * missing/malformed — that is already reported by the caller, so the range
+ * check stands down rather than piling one bogus "out of range" per key on
+ * top of it. Never throws.
+ */
+function checkRamp(ramp, where, errors, totalWeeks) {
+  if (ramp === undefined) return;
+  if (ramp === null || typeof ramp !== 'object' || Array.isArray(ramp)) {
+    const got = ramp === null ? 'null' : Array.isArray(ramp) ? 'array' : typeof ramp;
+    errors.push(`${where}: ramp must be an object mapping week number to set count (got ${got})`);
+    return;
+  }
+  for (const [key, count] of Object.entries(ramp)) {
+    const week = Number(key);
+    if (!/^-?\d+$/.test(key) || !Number.isInteger(week)) {
+      errors.push(`${where}: ramp key '${key}' must be an integer week number`);
+    } else if (String(week) !== key) {
+      // The key parses to a whole number but is not spelled the way JS
+      // stringifies that number, and setsForWeek() needs BOTH spellings to
+      // agree: it selects the week via `Object.keys(ramp).map(Number)` — which
+      // happily reads '03' as 3 — and then reads the count back as
+      // `ramp[3]`, a NUMBER index that stringifies canonically to '3' and
+      // finds nothing under '03'. From that week on setsForWeek() returns
+      // undefined (NaN in a deload week), syncSetCount()'s two while-loops
+      // both no-op against a non-number target, the set array stays empty,
+      // and isDayComplete()'s `[].every(isResolved)` is vacuously true: the
+      // day renders DAY COMPLETE at 0/0 with nothing logged and no way to log
+      // it. Nothing at runtime ever points back at the key, so this message
+      // is the author's only chance to see what happened — hence its own
+      // wording rather than the generic one above.
+      errors.push(
+        `${where}: ramp key '${key}' must be a plain integer with no leading zeros or padding — write '${week}'. ` +
+        `setsForWeek() finds the week with Object.keys(ramp).map(Number) but reads the count back as ramp[${week}], ` +
+        `which does not exist under '${key}': the exercise silently loses its set count from week ${week} on and the ` +
+        `day renders as already complete with nothing logged.`
+      );
+    } else if (week === 1) {
+      errors.push(`${where}: ramp key '1' is invalid — week 1 is always \`sets\`; ramp keys mark the weeks where the count CHANGES`);
+    } else if (week < 1) {
+      errors.push(`${where}: ramp week ${week} is not a valid week (weeks start at 1)`);
+    } else if (totalWeeks !== null && week > totalWeeks) {
+      errors.push(`${where}: ramp week ${week} is out of range (totalWeeks is ${totalWeeks})`);
+    }
+    if (typeof count !== 'number' || !Number.isInteger(count) || count <= 0) {
+      errors.push(`${where}: ramp['${key}'] must be a positive integer set count (got ${JSON.stringify(count)})`);
+    }
+  }
+}
+
+/**
  * Validate a generated program. Returns ALL errors so one run surfaces every
  * problem rather than making the caller play whack-a-mole. Never throws —
  * a truncated/malformed LLM response (stray `null`s, wrong types) is the
@@ -96,12 +169,12 @@ function validateProgram(prog, existingIds = new Set()) {
     else if (prog.protocolItems.length === 0) errors.push('protocolItems is empty');
   }
 
-  // Whether totalWeeks can be trusted as the upper bound for ramp weeks. When
-  // it is missing or malformed that is already reported above, so the ramp
-  // range check stands down rather than emitting one bogus "out of range"
-  // per ramp key on top of it.
-  const weeksKnown = typeof prog.totalWeeks === 'number' &&
-    Number.isInteger(prog.totalWeeks) && prog.totalWeeks > 0;
+  // The upper bound for ramp weeks, or null when totalWeeks can't be trusted
+  // to supply one. A missing or malformed totalWeeks is already reported
+  // above, so checkRamp()'s range check stands down rather than emitting one
+  // bogus "out of range" per ramp key on top of it.
+  const rampWeekLimit = (typeof prog.totalWeeks === 'number' &&
+    Number.isInteger(prog.totalWeeks) && prog.totalWeeks > 0) ? prog.totalWeeks : null;
 
   const seenIds = new Set();
   const definedExerciseIds = new Set();
@@ -167,43 +240,7 @@ function validateProgram(prog, existingIds = new Set()) {
             !(typeof ex.sets === 'number' && ex.sets > 0)) {
           errors.push(`${where}: sets must be a positive number (got ${JSON.stringify(ex.sets)})`);
         }
-        // `ramp` is OPTIONAL: an exercise without one is flat across the
-        // block. When present it is a SPARSE map — keys are the weeks where
-        // the count CHANGES, values are the ABSOLUTE count from that week
-        // until the next key ({ sets: 4, ramp: { 3: 5, 7: 6 } } → w1–2: 4,
-        // w3–6: 5, w7+: 6). setsForWeek() reads it with `if (ex.ramp)` and
-        // `Object.keys(...).map(Number)`, so a malformed one degrades
-        // silently instead of throwing: an array ramp resolves its indices
-        // as weeks, a string value makes every later week render a
-        // non-numeric set count. Nothing downstream would name the field,
-        // and because `ramp` is not in REQUIRED_EX missingKeys() never
-        // mentions it either — so unlike every field above, a `null` here is
-        // rejected rather than waved through as "absent". A generator that
-        // emitted `ramp: null` meant to ramp and failed to.
-        if (ex.ramp !== undefined) {
-          if (ex.ramp === null || typeof ex.ramp !== 'object' || Array.isArray(ex.ramp)) {
-            const got = ex.ramp === null ? 'null' : Array.isArray(ex.ramp) ? 'array' : typeof ex.ramp;
-            errors.push(`${where}: ramp must be an object mapping week number to set count (got ${got})`);
-          } else {
-            // An empty ramp is legal — it resolves to `sets` every week,
-            // exactly like no ramp at all.
-            for (const [key, count] of Object.entries(ex.ramp)) {
-              const week = Number(key);
-              if (!/^-?\d+$/.test(key) || !Number.isInteger(week)) {
-                errors.push(`${where}: ramp key '${key}' must be an integer week number`);
-              } else if (week === 1) {
-                errors.push(`${where}: ramp key '1' is invalid — week 1 is always \`sets\`; ramp keys mark the weeks where the count CHANGES`);
-              } else if (week < 1) {
-                errors.push(`${where}: ramp week ${week} is not a valid week (weeks start at 1)`);
-              } else if (weeksKnown && week > prog.totalWeeks) {
-                errors.push(`${where}: ramp week ${week} is out of range (totalWeeks is ${prog.totalWeeks})`);
-              }
-              if (typeof count !== 'number' || !Number.isInteger(count) || count <= 0) {
-                errors.push(`${where}: ramp['${key}'] must be a positive integer set count (got ${JSON.stringify(count)})`);
-              }
-            }
-          }
-        }
+        checkRamp(ex.ramp, where, errors, rampWeekLimit);
         if (ex.llp !== undefined && ex.llp !== null && typeof ex.llp !== 'boolean') {
           errors.push(`${where}: llp must be a boolean (got ${typeof ex.llp})`);
         }
@@ -245,6 +282,30 @@ function validateProgram(prog, existingIds = new Set()) {
           const where = `alternatives['${origId}'][${ai}]`;
           if (!alt || typeof alt !== 'object') { errors.push(`${where} must be an object`); return; }
           for (const key of missingKeys(alt, ['id', 'name', 'note'])) errors.push(`${where} missing ${key}`);
+          // `sets` stays OPTIONAL, deliberately. resolveExercise() merges the
+          // alternative over its original with `{...ex, ...alt}`, so an
+          // alternative that omits `sets` inherits the original's — the same
+          // inheritance every other unstated field (reps, rpe, rest,
+          // restLabel, llp, compound, muscles) already relies on, and the
+          // right default for a substitute meant to fill the same slot in the
+          // same day. Singling `sets` out as the one mandatory prescription
+          // would reject the shape the fixture and the app's own shipped
+          // alternatives are authored in.
+          //
+          // Validated when present, though, and more tightly than the
+          // exercise's own `sets`: the spread means an alternative's `sets`
+          // REPLACES the original's, and it lands in `Array(n).fill(false)`
+          // in resetWeek() (a fractional n is a RangeError) and in
+          // syncSetCount()'s length comparisons (a 0 or a string silently
+          // empties or freezes the set list).
+          if (alt.sets !== undefined && alt.sets !== null &&
+              !(typeof alt.sets === 'number' && Number.isInteger(alt.sets) && alt.sets > 0)) {
+            errors.push(`${where}: sets must be a positive integer (got ${JSON.stringify(alt.sets)})`);
+          }
+          // An alternative's own ramp is honoured verbatim by
+          // resolveExercise(), so it is exactly as load-bearing as an
+          // exercise's and gets exactly the same check.
+          checkRamp(alt.ramp, where, errors, rampWeekLimit);
           noteId(alt.id, where);
         });
       }
