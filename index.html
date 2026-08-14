@@ -459,7 +459,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '8';
+const APP_VERSION = '9';
 
 const THEME_KEY = 'gains_theme';
 
@@ -3322,44 +3322,16 @@ function toggleSet(dayId, exId, setIdx) {
   state[dayId].sets[exId][setIdx] = true;
   markTime(dayId, exId, setIdx, 'log');
   saveState();
-  // Ordered ahead of syncCompletion: finishing the last day of a week
-  // reloads `state` for the next week, so this must be read first.
+  // Both ordered ahead of syncCompletion: finishing the last day of a week
+  // reloads `state` for the next week, so these must be read first.
   const dayDone = isDayComplete(dayId);
+  const day = DAYS.find(d => d.id === dayId);
+  const nxt = dayDone ? null : activeSet(day);
+  const ex = resolveExercise(dayId, day.exercises.find(e => resolveExercise(dayId, e).id === exId));
   syncCompletion(dayId);
   refreshCurrentDay(dayId);
 
-  if (dayDone) {
-    return;
-  }
-
-  const day = DAYS.find(d => d.id === dayId);
-  const exIdx = day.exercises.findIndex(e => resolveExercise(dayId, e).id === exId);
-  const ex = resolveExercise(dayId, day.exercises[exIdx]);
-  const nextSetInEx = setIdx + 1 < ex.sets ? setIdx + 1 : null;
-  const nextOriginalEx = nextSetInEx === null ? day.exercises[exIdx + 1] : null;
-  const nextEx = nextOriginalEx ? resolveExercise(dayId, nextOriginalEx) : null;
-
-  let nextLabel = '';
-  if (nextSetInEx !== null) {
-    nextLabel = `Next: <strong>${ex.name}</strong> — Set ${nextSetInEx + 1}`;
-  } else if (nextEx) {
-    nextLabel = `Next exercise: <strong>${nextEx.name}</strong>`;
-  } else {
-    nextLabel = `<strong>Last set of the day!</strong>`;
-  }
-
-  document.getElementById('timerSetInfo').textContent = `${ex.name} — Set ${setIdx + 1} Complete`;
-  document.getElementById('timerNext').innerHTML = nextLabel;
-
-  const exerciseRest = ex.rest || currentRestTime;
-  const restInfo = document.getElementById('timerRestRec');
-  if (restInfo && ex.restLabel) {
-    restInfo.textContent = `Recommended: ${ex.restLabel}`;
-    restInfo.style.display = '';
-  } else if (restInfo) {
-    restInfo.style.display = 'none';
-  }
-  startTimer(exerciseRest, () => { refreshCurrentDay(dayId); });
+  if (!dayDone) beginRest(ex, setIdx, nxt);
 }
 
 function saveWeight(dayId, exId) {
@@ -3561,16 +3533,11 @@ function notifyTimerDone() {
   }
 }
 
-// TIMER — timestamp-based so it survives backgrounding
-let timerInterval = null;
+// A silent oscillator every 5s. Safari/iOS suspends an idle AudioContext once
+// the app is backgrounded, and a suspended context drops the rest-over chime
+// on the floor. Keeping it nominally busy for exactly as long as a rest period
+// is running is enough to hold it open, at no audible cost.
 let audioKeepAlive = null;
-let timerEndTime = null;   // absolute epoch ms when timer expires
-let timerTotal = 90;
-let currentRestTime = 90;
-let pendingCallback = null;
-let timerMinimized = false;
-
-const CIRCUMFERENCE = 565; // 2 * π * 90
 
 function startAudioKeepAlive() {
   if (audioKeepAlive) clearInterval(audioKeepAlive);
@@ -3589,97 +3556,6 @@ function startAudioKeepAlive() {
 
 function stopAudioKeepAlive() {
   if (audioKeepAlive) { clearInterval(audioKeepAlive); audioKeepAlive = null; }
-}
-
-function startTimer(seconds, onComplete) {
-  primeAudio();
-  startAudioKeepAlive();
-  clearInterval(timerInterval);
-  timerTotal = seconds;
-  timerEndTime = Date.now() + seconds * 1000;
-  pendingCallback = onComplete;
-
-  timerMinimized = false;
-  updateTimerDisplay();
-  document.getElementById('timerPill').classList.remove('visible');
-  document.getElementById('timerOverlay').classList.add('visible');
-  updatePresetButtons(seconds);
-
-  timerInterval = setInterval(timerTick, 250); // poll 4×/sec for accuracy
-}
-
-function timerTick() {
-  const remaining = Math.max(0, Math.ceil((timerEndTime - Date.now()) / 1000));
-  updateTimerDisplayValue(remaining);
-  if (remaining <= 0) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-    notifyTimerDone();
-    closeTimer();
-    if (pendingCallback) pendingCallback();
-  }
-}
-
-// When user returns to tab/app, immediately resync
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && timerEndTime !== null) {
-    const remaining = Math.max(0, Math.ceil((timerEndTime - Date.now()) / 1000));
-    updateTimerDisplayValue(remaining);
-    if (remaining <= 0) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-      timerEndTime = null;
-      notifyTimerDone();
-      closeTimer();
-      if (pendingCallback) pendingCallback();
-    }
-  }
-});
-
-function updateTimerDisplay() {
-  const remaining = timerEndTime
-    ? Math.max(0, Math.ceil((timerEndTime - Date.now()) / 1000))
-    : timerTotal;
-  updateTimerDisplayValue(remaining);
-}
-
-function updateTimerDisplayValue(remaining) {
-  const mins = Math.floor(remaining / 60);
-  const secs = remaining % 60;
-  const display = `${mins}:${String(secs).padStart(2, '0')}`;
-  const urgent = remaining <= 10;
-  const progress = remaining / timerTotal;
-
-  // Full overlay
-  const timeEl = document.getElementById('timerDisplay');
-  const ringEl = document.getElementById('timerRingFill');
-  timeEl.textContent = display;
-  timeEl.classList.toggle('urgent', urgent);
-  ringEl.classList.toggle('urgent', urgent);
-  ringEl.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
-
-  // Minimized pill
-  const pillTime = document.getElementById('pillTimerDisplay');
-  const pillRing = document.getElementById('pillRingFill');
-  pillTime.textContent = display;
-  pillTime.classList.toggle('urgent', urgent);
-  pillRing.classList.toggle('urgent', urgent);
-  const pillCirc = 2 * Math.PI * 12; // r=12
-  pillRing.style.strokeDashoffset = pillCirc * (1 - progress);
-}
-
-function closeTimer() {
-  timerEndTime = null;
-  timerMinimized = false;
-  stopAudioKeepAlive();
-}
-
-function updatePresetButtons(active) {
-  document.querySelectorAll('.rest-preset-btn').forEach(btn => {
-    const parts = btn.textContent.split(':');
-    const val = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-    btn.classList.toggle('active', val === active);
-  });
 }
 
 // Suppress iOS shake-to-undo: blur inputs on outside tap so iOS has no undo target
@@ -4154,15 +4030,22 @@ function logActiveSet() {
   const nxt = dayDone ? null : activeSet(day);
   syncCompletion(day.id);
 
-  if (!dayDone) {
-    setRest(ex.rest);
-    view.restMinimized = false;
-    view.restInfo = `${ex.name} — SET ${i + 1} DONE`;
-    view.restRec = ex.restLabel ? `RECOMMENDED ${ex.restLabel}` : '';
-    view.restNext = nxt
-      ? (nxt.ex.id === ex.id ? `Next: ${ex.name} — Set ${nxt.i + 1}` : `Next: ${nxt.ex.name}`)
-      : 'Last set of the day!';
-  }
+  if (!dayDone) beginRest(ex, i, nxt);
+}
+
+// Open a rest period after a logged set. Both logging paths (logActiveSet and
+// toggleSet) come through here so the timer's length and the overlay's copy
+// cannot drift apart. `next` is the set that follows, or null on the last one
+// of the day — read it BEFORE syncCompletion, since closing out a week reloads
+// `state` and activeSet() would then be answering about a different week.
+function beginRest(ex, setIdx, next) {
+  setRest(ex.rest);
+  view.restMinimized = false;
+  view.restInfo = `${ex.name} — SET ${setIdx + 1} DONE`;
+  view.restRec = ex.restLabel ? `RECOMMENDED ${ex.restLabel}` : '';
+  view.restNext = next
+    ? (next.ex.id === ex.id ? `Next: ${ex.name} — Set ${next.i + 1}` : `Next: ${next.ex.name}`)
+    : 'Last set of the day!';
 }
 
 // Rest timer lifecycle. The countdown itself is timestamp-based (view.restEnd

@@ -181,6 +181,62 @@ test('an already-ended rest period cannot chime', () => {
   });
 });
 
+// toggleSet is the older of the two logging paths. Its tail used to write into
+// #timerSetInfo/#timerNext/#timerRestRec and call startTimer() — elements and a
+// timer that the JS-rendered shell never creates, so in a real browser it threw
+// on a null. It now goes through the same beginRest() as logActiveSet.
+test('toggleSet starts a real rest period', () => {
+  withApp({ storage: seed() }, app => {
+    app.view.name = 'day';
+    app.view.now = Date.now();
+    const day = app.curDay();
+    const act = app.activeSet(day);
+    app.toggleSet(day.id, act.ex.id, 0);
+    assert.ok(app.view.restEnd > Date.now(), 'toggleSet did not start the rest timer');
+    assert.strictEqual(app.view.restTotal, act.ex.rest, 'wrong rest length');
+    assert.match(app.view.restInfo, /SET 1 DONE/);
+  });
+});
+
+// The whole point of sharing beginRest() is that the two paths cannot drift.
+test('both logging paths open an identical rest period', () => {
+  const readRest = log => withApp({ storage: seed() }, app => {
+    app.view.name = 'day';
+    app.view.now = Date.now();
+    log(app);
+    const { restTotal, restInfo, restRec, restNext, restMinimized } = app.view;
+    return { restTotal, restInfo, restRec, restNext, restMinimized };
+  });
+  const viaToggle = readRest(app => {
+    const act = app.activeSet(app.curDay());
+    app.toggleSet(app.curDay().id, act.ex.id, 0);
+  });
+  const viaLog = readRest(app => {
+    app.view.pendW = 100;
+    app.view.pendR = 10;
+    app.logActiveSet();
+  });
+  assert.deepStrictEqual(viaToggle, viaLog, 'the two logging paths disagree about the rest period');
+});
+
+test('the last set of the day does not open a rest period', () => {
+  withApp({ storage: seed() }, app => {
+    app.view.name = 'day';
+    app.view.now = Date.now();
+    let restedAtLeastOnce = false;
+    // Log the day out, one set at a time. curDay() is re-read every pass:
+    // closing the day (or the week) moves the app on underneath us.
+    for (let guard = 0; guard < 200 && app.activeSet(app.curDay()); guard++) {
+      app.view.pendW = 100;
+      app.view.pendR = 10;
+      app.logActiveSet();
+      if (app.view.restEnd) restedAtLeastOnce = true;
+    }
+    assert.ok(restedAtLeastOnce, 'no set in the day ever opened a rest period');
+    assert.strictEqual(app.view.restEnd, null, 'a finished day left a rest timer running');
+  });
+});
+
 // Logging a set is the only way a rest period starts in normal use, and it is
 // the user gesture that unlocks the AudioContext — if it stops priming audio,
 // iOS drops the first chime of every session.

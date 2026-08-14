@@ -10,7 +10,7 @@
 // launch is guaranteed fresh. Correctness over a saved refetch.
 // Keep the number in lockstep with APP_VERSION in index.html, which shows it at
 // the bottom of Settings. tools/version-sync.test.js fails if the two drift.
-const CACHE = 'gains-v8';
+const CACHE = 'gains-v9';
 
 // Relative paths so scope resolves under the /gAIns/ project page.
 // './' and './index.html' are distinct cache keys for the same resource; a
