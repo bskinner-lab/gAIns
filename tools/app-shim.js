@@ -128,11 +128,18 @@ function setupApp({ htmlPath, storage: seed } = {}) {
     removeEventListener() {},
   };
 
-  setGlobal('window', {
+  // A real browser hangs AudioContext and Notification off `window`, and the
+  // app looks them up there (`window.AudioContext`, `'Notification' in
+  // window`) rather than as bare globals. A window without them makes the
+  // whole audio/notification path silently inert under test — the code runs,
+  // finds nothing, and returns early, so a test can never observe a chime.
+  // They are filled in just below, once the stubs exist.
+  const win = {
     addEventListener() {}, removeEventListener() {},
     matchMedia: () => ({ matches: false, addEventListener() {}, addListener() {} }),
     location: { href: '' },
-  });
+  };
+  setGlobal('window', win);
   setGlobal('document', doc);
   setGlobal('localStorage', storage);
   setGlobal('navigator', { userAgent: 'node', vibrate() {} });
@@ -150,6 +157,9 @@ function setupApp({ htmlPath, storage: seed } = {}) {
   };
   setGlobal('AudioContext', AudioContextStub);
   setGlobal('webkitAudioContext', AudioContextStub);
+  win.Notification = NotificationStub;
+  win.AudioContext = AudioContextStub;
+  win.webkitAudioContext = AudioContextStub;
   // Capture what exportData serialises so tests can assert on it.
   let lastBlob = null;
   setGlobal('Blob', function (parts) { lastBlob = parts && parts[0]; });
@@ -192,6 +202,7 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       ' getExerciseHistory, lowRep,' +
       ' nowMs, setClock, markTime, clearTime,' +
       ' toggleSet, undoSet, skipExercise, skipDay, completeDay,' +
+      ' setRest, endRest, expireRestIfDue,' +
       ' initState, saveState, loadState, prefillFromPreviousWeeks,' +
       ' exportData, importData,' +
       ' backfillProgram, programStartKey,' +
@@ -264,6 +275,7 @@ function setupApp({ htmlPath, storage: seed } = {}) {
  *            view: object, render: Function, switchProgram: Function,
  *            boot: Function, activeSet: Function, logActiveSet: Function,
  *            skipSet: Function, curDay: Function, getExerciseHistory: Function,
+ *            setRest: Function, endRest: Function, expireRestIfDue: Function,
  *            commitEdit: Function|undefined, setsForWeek: Function|undefined,
  *            syncSetCount: Function|undefined, storage: object,
  *            elements: Map<string, object>, clickHandler: Function|null}}
