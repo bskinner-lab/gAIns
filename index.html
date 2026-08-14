@@ -63,6 +63,11 @@
   --done-bg:   #eae6db;
   --accent:    #e34f1e;
   --danger:    #c0392b;
+  /* --danger reads fine on --bg but collapses to ~3:1 against the near-black
+     bottom bar — dimmer than --accent, so the minimized timer's urgent state
+     looked like nothing changed. --danger-bar is the on-dark counterpart:
+     same alarm semantics, legible where the pill actually lives. */
+  --danger-bar: #ff5f45;
   --ok:        #4b7a3f;
   --on-dark:   #f2efe8;
   --on-ink:    #f2efe8;
@@ -93,6 +98,7 @@
   --done-bg:   #26241f;
   --accent:    #e34f1e;
   --danger:    #e05c4b;
+  --danger-bar: #ff6a52;
   --ok:        #7fa872;
   --on-dark:   #f2efe8;
   --on-ink:    #171613;
@@ -115,6 +121,7 @@
     --border-lt: #2a2822;
     --done-bg:   #26241f;
     --danger:    #e05c4b;
+    --danger-bar: #ff6a52;
     --ok:        #7fa872;
     --on-ink:    #171613;
     --bar-dark:  #0f0e0c;
@@ -269,13 +276,25 @@ body {
 
 #bottombar:empty { display: none; }
 .barbar { background: var(--bar-dark); color: var(--on-dark); padding: 0 16px; flex: none; }
-.pill { display: flex; align-items: center; justify-content: space-between; padding: 10px 2px; border-bottom: 1px solid var(--bar-line); }
+/* No border-bottom: .pill-track sits directly beneath and doubles as the
+   divider between the rest pill and the log row. */
+.pill { display: flex; align-items: center; justify-content: space-between; padding: 10px 2px 8px; }
 .pill-l { display: flex; align-items: center; gap: 9px; cursor: pointer; min-width: 0; min-height: var(--tap); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
-.dot.urgent { background: var(--danger); }
+.dot.urgent { background: var(--danger-bar); animation: dot-pulse 1s ease-in-out infinite; }
+@keyframes dot-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.7); } }
+@media (prefers-reduced-motion: reduce) { .dot.urgent { animation: none; } }
 .pill-k { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: rgba(242,239,232,.5); }
+.pill-k.urgent { color: var(--danger-bar); }
 .pill-t { font-family: var(--font-mono); font-size: 17px; font-weight: 600; color: var(--accent); }
-.pill-t.urgent { color: var(--danger); }
+.pill-t.urgent { color: var(--danger-bar); }
+/* The minimized counterpart of the full-screen ring: same accent→danger
+   sweep, unrolled into the one strip of space the pill has. */
+.pill-track { height: 2px; background: var(--bar-line); border-radius: 2px; overflow: hidden; margin-bottom: 2px; }
+/* No width transition: renderBottomBar() rebuilds this element from scratch
+   every tick, so there is never a previous width to animate away from. */
+.pill-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.pill-fill.urgent { background: var(--danger-bar); }
 .pill-b { background: none; border: 1px solid var(--bar-edge); border-radius: 8px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; min-height: 46px; padding: 0 18px; cursor: pointer; }
 .log-row { padding: 11px 0 14px; }
 .log-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
@@ -440,7 +459,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '7';
+const APP_VERSION = '8';
 
 const THEME_KEY = 'gains_theme';
 
@@ -3266,8 +3285,7 @@ function openDayDone(dayId) {
     view.latestPr = null;
   }
 
-  view.restEnd = null;
-  view.restMinimized = false;
+  endRest(false);
   view.done = done;
 }
 
@@ -4137,8 +4155,7 @@ function logActiveSet() {
   syncCompletion(day.id);
 
   if (!dayDone) {
-    view.restEnd = Date.now() + ex.rest * 1000;
-    view.restTotal = ex.rest;
+    setRest(ex.rest);
     view.restMinimized = false;
     view.restInfo = `${ex.name} — SET ${i + 1} DONE`;
     view.restRec = ex.restLabel ? `RECOMMENDED ${ex.restLabel}` : '';
@@ -4148,7 +4165,32 @@ function logActiveSet() {
   }
 }
 
-function setRest(sec) { view.restTotal = sec; view.restEnd = Date.now() + sec * 1000; }
+// Rest timer lifecycle. The countdown itself is timestamp-based (view.restEnd
+// vs Date.now()) so it survives backgrounding, which also means nothing fires
+// *at* the moment it runs out — the 500ms tick notices after the fact. Every
+// start and every stop is routed through these three so the completion chime
+// fires exactly once, whichever surface is up (full-screen overlay or
+// minimized pill), and so the AudioContext keep-alive lives exactly as long as
+// a timer is running. Without the keep-alive, iOS suspends the context while
+// the app is backgrounded and the chime is silently dropped.
+function setRest(sec) {
+  primeAudio();
+  startAudioKeepAlive();
+  view.restTotal = sec;
+  view.restEnd = Date.now() + sec * 1000;
+}
+
+function endRest(chime) {
+  const wasRunning = !!view.restEnd;
+  view.restEnd = null;
+  view.restMinimized = false;
+  stopAudioKeepAlive();
+  if (wasRunning && chime) notifyTimerDone();
+}
+
+function expireRestIfDue() {
+  if (view.restEnd && view.restEnd <= view.now) endRest(true);
+}
 
 function addRest(delta) {
   if (!view.restEnd) return;
@@ -4518,17 +4560,24 @@ function renderBottomBar() {
   let pill = '';
   const restMs = view.restEnd ? Math.max(0, view.restEnd - view.now) : 0;
   if (view.restEnd && view.restMinimized) {
+    // Mirror the full-screen overlay's urgent styling: same ≤10s threshold,
+    // same accent→danger swap across the readout and the progress indicator.
+    // The pill sits on the dark bar, so it swaps to --danger-bar rather than
+    // --danger (see the token's note) and unrolls the ring into a strip.
     const urgent = restMs / 1000 <= 10;
+    const u = urgent ? ' urgent' : '';
+    const pct = view.restTotal ? Math.max(0, Math.min(1, restMs / 1000 / view.restTotal)) : 0;
     pill = `<div class="pill">
       <div class="pill-l" data-act="restexpand">
-        <span class="dot${urgent ? ' urgent' : ''}"></span>
-        <span class="pill-k">REST</span>
-        <span class="pill-t${urgent ? ' urgent' : ''}">${fmtClock(restMs)}</span>
+        <span class="dot${u}"></span>
+        <span class="pill-k${u}">REST</span>
+        <span class="pill-t${u}">${fmtClock(restMs)}</span>
       </div>
       <div style="display:flex;gap:8px;flex:none">
         <button class="pill-b" data-act="rest+">+30</button>
         <button class="pill-b" data-act="restskip">SKIP</button>
-      </div></div>`;
+      </div></div>
+      <div class="pill-track"><div class="pill-fill${u}" style="width:${(pct * 100).toFixed(1)}%"></div></div>`;
   }
 
   let body;
@@ -4750,7 +4799,7 @@ document.addEventListener('click', e => {
   // Any deliberate navigation retires a celebration that's still up.
   if (act !== 'donex' && act !== 'doneback' && act !== 'donenext' && act !== 'doneprog') view.done = null;
   if (act === 'prog')     { switchProgram(Number(el.dataset.i)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.selectedExId = null; }
-  else if (act === 'wk')  { changeWeek(Number(el.dataset.d)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.restEnd = null; view.selectedExId = null; }
+  else if (act === 'wk')  { changeWeek(Number(el.dataset.d)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; endRest(false); view.selectedExId = null; }
   else if (act === 'day') { view.name = 'day'; view.dayId = el.dataset.id; view.pendKey = ''; view.selectedExId = null; }
   else if (act === 'view'){ view.name = el.dataset.v; }
   else if (act === 'settings') { view.name = view.name === 'settings' ? 'day' : 'settings'; }
@@ -4784,7 +4833,7 @@ document.addEventListener('click', e => {
   else if (act === 'editw') { view.editing = 'w'; }
   else if (act === 'editr') { view.editing = 'r'; }
   else if (act === 'restexpand') { view.restMinimized = false; }
-  else if (act === 'restskip')   { view.restEnd = null; view.restMinimized = false; }
+  else if (act === 'restskip')   { endRest(false); }
   else if (act === 'rest+')      { addRest(30); }
   else if (act === 'rest-')      { addRest(-15); }
   else if (act === 'phase')  { view.openPhase = view.openPhase === Number(el.dataset.i) ? -1 : Number(el.dataset.i); }
@@ -4800,7 +4849,7 @@ document.addEventListener('click', e => {
   else if (act === 'doneprog'){ view.done = null; view.name = 'progress'; }
   else if (act === 'donenext'){
     view.done = null; view.name = 'day'; view.dayId = el.dataset.id;
-    view.pendKey = ''; view.latestPr = null; view.selectedExId = null; view.restEnd = null;
+    view.pendKey = ''; view.latestPr = null; view.selectedExId = null; endRest(false);
   }
   else if (act === 'doneback'){
     // Undo the automatic week advance — openDayDone() moved exactly one week.
@@ -4846,10 +4895,17 @@ function boot() {
   render();
   setInterval(() => {
     view.now = Date.now();
-    if (view.restEnd && view.restEnd <= view.now) { view.restEnd = null; view.restMinimized = false; }
+    expireRestIfDue();
     render();
   }, 500);
-  document.addEventListener('visibilitychange', () => { view.now = Date.now(); render(); });
+  // Background tabs get their intervals throttled hard, so a rest period can
+  // run out while the tick is stalled. Expire on the way back in too — endRest
+  // is idempotent, so whichever path notices first is the one that chimes.
+  document.addEventListener('visibilitychange', () => {
+    view.now = Date.now();
+    expireRestIfDue();
+    render();
+  });
 }
 
 boot();
