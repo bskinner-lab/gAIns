@@ -459,7 +459,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '9';
+const APP_VERSION = '10';
 
 const THEME_KEY = 'gains_theme';
 
@@ -501,6 +501,10 @@ const GLOSSARY = {
   'rest-pause': 'Take a set to near-failure, rest 10–15 seconds, then squeeze out additional reps. An intensity technique for isolations only.',
   'mesocycle': 'A structured training block, typically 4–8 weeks, with a clear progression strategy and a deload at the end.',
   'double progression': 'Hit the top of your rep range → increase weight next session. Miss the top → repeat same weight. Simple, effective loading strategy.',
+  'spot reduction': 'The idea that training a body part burns the fat sitting on it. It does not work — fat is mobilised systemically from the whole body, not from the muscle you just trained. Oblique work builds the wall under the love handles; only an energy deficit removes what is on top of it.',
+  'energy deficit': 'Eating fewer calories than you burn. The only thing that removes body fat. Target 0.5–1% of bodyweight lost per week — faster than that and the weight coming off starts including muscle, which makes the waist look worse, not better.',
+  'NEAT': 'Non-Exercise Activity Thermogenesis — everything you burn that is not sleeping, eating or training. Mostly walking. It is the largest and most controllable slice of daily burn, and the first thing the body quietly turns down when you start dieting. Hold a step target so it cannot.',
+  'Zone 2': 'Easy aerobic work — roughly RPE 5–6, hard enough to be work, easy enough to hold a conversation. Low-impact modalities (bike, incline walk) add a deficit without stealing recovery from the lifting, which is what protects muscle while you cut.',
 };
 
 const STORAGE_KEY = 'hypertrophy_state';
@@ -870,7 +874,7 @@ const PROGRAMS = [
         id: 'day1',
         label: 'Day 1',
         title: 'PUSH',
-        subtitle: 'Chest · Side Delts · Triceps',
+        subtitle: 'Chest · Side Delts · Triceps · Waist',
         note: '🩺 Neutral/semi-pronated grip on all pressing. Prehab first: band pull-aparts 2×20, external rotations 2×15/arm.',
         protocol: true,
         exercises: [
@@ -969,13 +973,41 @@ const PROGRAMS = [
               triceps: 1,
             },
           },
+          {
+            id: 'm3_pallof_press',
+            name: 'Half-Kneeling Pallof Press',
+            sets: 2,
+            reps: '10–12 each side',
+            rpe: '7–8',
+            note: 'Anti-rotation, not side bends. Ribs down, hips square, press slow and resist the pull. Builds the oblique and deep-corset wall under the fat instead of thickening the waist.',
+            llp: false,
+            compound: false,
+            rest: 45,
+            restLabel: '45 sec',
+            muscles: {
+              abs: 1,
+            },
+          },
+          {
+            id: 'm3_zone2_push',
+            name: 'Zone 2 Finish',
+            sets: 1,
+            reps: '10 min',
+            rpe: '5–6',
+            note: '🚴 Bike, incline walk or stair climber — conversational pace, nose-breathing. Log the level/incline in the weight field. This is here to add deficit without eating recovery, not to burn the flanks off: see PLAN → FAT LOSS for the part that does.',
+            llp: false,
+            compound: false,
+            rest: 60,
+            restLabel: '1 min',
+            muscles: {},
+          },
         ],
       },
       {
         id: 'day2',
         label: 'Day 2',
         title: 'PULL',
-        subtitle: 'Lats · Upper Back · Rear Delts · Biceps',
+        subtitle: 'Lats · Upper Back · Rear Delts · Biceps · Waist',
         note: '💪 Both vertical pulls stalled last block — this is a different stimulus. Face pulls are non-negotiable.',
         protocol: true,
         exercises: [
@@ -1079,6 +1111,36 @@ const PROGRAMS = [
             muscles: {
               biceps: 1,
             },
+          },
+          {
+            id: 'm3_suitcase_carry',
+            name: 'Suitcase Carry',
+            sets: 2,
+            reps: '40 yd each side',
+            rpe: '8',
+            note: 'Anti-lateral-flexion. One heavy dumbbell, stand tall, refuse to lean. Obliques and grip, and the walk keeps the heart rate up on its own.',
+            llp: false,
+            compound: false,
+            rest: 45,
+            restLabel: '45 sec',
+            muscles: {
+              abs: 1,
+              traps: 0.5,
+              forearms: 0.5,
+            },
+          },
+          {
+            id: 'm3_zone2_pull',
+            name: 'Zone 2 Finish',
+            sets: 1,
+            reps: '10 min',
+            rpe: '5–6',
+            note: '🚴 Bike, incline walk or stair climber — conversational pace, nose-breathing. Log the level/incline in the weight field. This is here to add deficit without eating recovery, not to burn the flanks off: the deficit does that.',
+            llp: false,
+            compound: false,
+            rest: 60,
+            restLabel: '1 min',
+            muscles: {},
           },
         ],
       },
@@ -1191,7 +1253,7 @@ const PROGRAMS = [
         id: 'day4',
         label: 'Day 4',
         title: 'UPPER',
-        subtitle: 'Delts · Upper Back · Arms',
+        subtitle: 'Delts · Upper Back · Arms · Waist',
         note: '🔥 The delt/upper-back volume last block promised but didn\'t deliver. Prehab first.',
         protocol: true,
         exercises: [
@@ -1310,6 +1372,34 @@ const PROGRAMS = [
               biceps: 1,
               forearms: 0.5,
             },
+          },
+          {
+            id: 'm3_side_plank',
+            name: 'Side Plank w/ Hip Lift',
+            sets: 2,
+            reps: '10–15 each side',
+            rpe: '8',
+            note: 'Elbow under shoulder, body in one line — reps, not a hold. End the set when the hip starts to sag. Drop to the knees if the shoulder complains.',
+            llp: false,
+            compound: false,
+            rest: 45,
+            restLabel: '45 sec',
+            muscles: {
+              abs: 1,
+            },
+          },
+          {
+            id: 'm3_zone2_upper',
+            name: 'Zone 2 Finish',
+            sets: 1,
+            reps: '10 min',
+            rpe: '5–6',
+            note: '🚴 Bike, incline walk or stair climber — conversational pace, nose-breathing. Log the level/incline in the weight field. This is here to add deficit without eating recovery, not to burn the flanks off: the deficit does that.',
+            llp: false,
+            compound: false,
+            rest: 60,
+            restLabel: '1 min',
+            muscles: {},
           },
         ],
       },
@@ -2605,6 +2695,200 @@ const EXERCISE_ALTERNATIVES = {
       compound: false,
       rest: 75,
       restLabel: '1–1.5 min',
+    },
+  ],
+
+  // ── Waist + conditioning finishers (meso3) ──
+  m3_pallof_press: [
+    {
+      id: 'm3_alt_cable_chop',
+      name: 'Half-Kneeling Cable Chop',
+      sets: 2,
+      reps: '10–12 each side',
+      rpe: '7–8',
+      note: 'Same anti-rotation demand, adds range',
+      llp: false,
+      compound: false,
+      rest: 45,
+      restLabel: '45 sec',
+    },
+    {
+      id: 'm3_alt_bird_dog',
+      name: 'Bird Dog',
+      sets: 2,
+      reps: '8–10 each side',
+      rpe: '7',
+      note: 'No cable needed, lower-back friendly',
+      llp: false,
+      compound: false,
+      rest: 45,
+      restLabel: '45 sec',
+    },
+  ],
+  m3_suitcase_carry: [
+    {
+      id: 'm3_alt_farmer_carry',
+      name: 'Farmer Carry',
+      sets: 2,
+      reps: '40 yd',
+      rpe: '8',
+      note: 'Both hands — more grip and traps, less oblique',
+      llp: false,
+      compound: false,
+      rest: 45,
+      restLabel: '45 sec',
+    },
+    {
+      id: 'm3_alt_side_plank_carry',
+      name: 'Weighted Side Plank',
+      sets: 2,
+      reps: '20–30 sec each side',
+      rpe: '8',
+      note: 'Static alternative when the floor is crowded',
+      llp: false,
+      compound: false,
+      rest: 45,
+      restLabel: '45 sec',
+    },
+  ],
+  m3_side_plank: [
+    {
+      id: 'm3_alt_copenhagen',
+      name: 'Copenhagen Plank',
+      sets: 2,
+      reps: '8–12 each side',
+      rpe: '8',
+      note: 'Adds adductor work to the same oblique demand',
+      llp: false,
+      compound: false,
+      rest: 45,
+      restLabel: '45 sec',
+    },
+    {
+      id: 'm3_alt_ab_wheel_d4',
+      name: 'Ab Wheel Rollout',
+      sets: 2,
+      reps: '8–12',
+      rpe: '8',
+      note: 'Anti-extension instead of anti-lateral-flexion',
+      llp: false,
+      compound: false,
+      rest: 45,
+      restLabel: '45 sec',
+    },
+  ],
+  m3_zone2_push: [
+    {
+      id: 'm3_alt_z2_push_bike',
+      name: 'Stationary Bike',
+      sets: 1,
+      reps: '10 min',
+      rpe: '5–6',
+      note: 'Zero impact, easiest on the knees',
+      llp: false,
+      compound: false,
+      rest: 60,
+      restLabel: '1 min',
+    },
+    {
+      id: 'm3_alt_z2_push_stair',
+      name: 'Stair Climber',
+      sets: 1,
+      reps: '10 min',
+      rpe: '5–6',
+      note: 'Higher burn per minute, more leg fatigue',
+      llp: false,
+      compound: false,
+      rest: 60,
+      restLabel: '1 min',
+    },
+    {
+      id: 'm3_alt_z2_push_row',
+      name: 'Rower',
+      sets: 1,
+      reps: '10 min',
+      rpe: '5–6',
+      note: 'Full body — skip it after a heavy pull day',
+      llp: false,
+      compound: false,
+      rest: 60,
+      restLabel: '1 min',
+    },
+  ],
+  m3_zone2_pull: [
+    {
+      id: 'm3_alt_z2_pull_bike',
+      name: 'Stationary Bike',
+      sets: 1,
+      reps: '10 min',
+      rpe: '5–6',
+      note: 'Zero impact, easiest on the knees',
+      llp: false,
+      compound: false,
+      rest: 60,
+      restLabel: '1 min',
+    },
+    {
+      id: 'm3_alt_z2_pull_stair',
+      name: 'Stair Climber',
+      sets: 1,
+      reps: '10 min',
+      rpe: '5–6',
+      note: 'Higher burn per minute, more leg fatigue',
+      llp: false,
+      compound: false,
+      rest: 60,
+      restLabel: '1 min',
+    },
+    {
+      id: 'm3_alt_z2_pull_row',
+      name: 'Rower',
+      sets: 1,
+      reps: '10 min',
+      rpe: '5–6',
+      note: 'Full body — skip it after a heavy pull day',
+      llp: false,
+      compound: false,
+      rest: 60,
+      restLabel: '1 min',
+    },
+  ],
+  m3_zone2_upper: [
+    {
+      id: 'm3_alt_z2_upper_bike',
+      name: 'Stationary Bike',
+      sets: 1,
+      reps: '10 min',
+      rpe: '5–6',
+      note: 'Zero impact, easiest on the knees',
+      llp: false,
+      compound: false,
+      rest: 60,
+      restLabel: '1 min',
+    },
+    {
+      id: 'm3_alt_z2_upper_stair',
+      name: 'Stair Climber',
+      sets: 1,
+      reps: '10 min',
+      rpe: '5–6',
+      note: 'Higher burn per minute, more leg fatigue',
+      llp: false,
+      compound: false,
+      rest: 60,
+      restLabel: '1 min',
+    },
+    {
+      id: 'm3_alt_z2_upper_row',
+      name: 'Rower',
+      sets: 1,
+      reps: '10 min',
+      rpe: '5–6',
+      note: 'Full body — skip it after a heavy pull day',
+      llp: false,
+      compound: false,
+      rest: 60,
+      restLabel: '1 min',
     },
   ],
 };
@@ -4197,6 +4481,23 @@ const PROG_RULES = [
   'If recovery suffers, cut 1 set per exercise before adding more',
 ];
 
+// Love handles are flank body fat, and fat is mobilised systemically — no
+// amount of oblique work burns the fat sitting on the obliques. The waist work
+// and the Zone 2 finishers in the program build the wall and widen the deficit;
+// these rules are the part that actually removes what is on top of it, which is
+// why they render in PLAN next to the training rules rather than as a footnote.
+const CUT_RULES = [
+  'Spot reduction is not real — no ab or oblique exercise burns flank fat. The deficit does.',
+  'Deficit: 300–500 kcal/day. Aim to lose 0.5–1% of bodyweight per week, no faster.',
+  'Protein 1.6–2.2 g per kg of bodyweight per day — this is what keeps the loss fat, not muscle.',
+  'Keep the loads heavy. Cutting weight on the bar during a deficit is how you lose the muscle instead.',
+  '8–10k steps daily. NEAT outweighs anything a 10-min finisher burns, and it is the first thing dieting turns down.',
+  'Zone 2 finishers 3×/week on upper days only — never after a lower day, it costs recovery you need.',
+  'Sleep 7–9 h. Short sleep during a deficit shifts the loss from fat toward lean mass.',
+  'Alcohol suppresses fat oxidation for hours and is the easiest 500 kcal to cut.',
+  'Judge progress by waist measurement and the weekly average of daily weigh-ins, not by a single morning.',
+];
+
 function phaseIndexForWeek() {
   const label = curProg().weekPhases[currentWeek - 1].label;
   return curProg().mesocycle.findIndex(m => m.label === label);
@@ -4230,6 +4531,7 @@ function planHTML() {
     <div class="tbl"><div class="tbl-h"><span>WEEKS</span><span>PHASE</span><span>RPE</span></div>${phases}</div>
     ${panel('EXECUTION RULES', EXEC_RULES)}
     ${panel('PROGRESSION RULES', PROG_RULES)}
+    ${panel('FAT LOSS — WHERE THE LOVE HANDLES GO', CUT_RULES)}
     <div class="panel" style="margin-left:0;margin-right:0"><div class="panel-h">GLOSSARY</div>${gloss}</div>
   </div>`;
 }

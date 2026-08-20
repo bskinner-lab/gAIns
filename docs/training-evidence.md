@@ -3,7 +3,7 @@
 Rulebook for `/newplan`. Every claim here is applied by the generator; if you
 disagree with a plan, this is the file to argue with.
 
-**Last researched:** 2026-07-21
+**Last researched:** 2026-08-20
 
 ## Volume landmarks
 
@@ -240,6 +240,67 @@ fine" answer with no explicit request does not relax anything below):
   timing and structure (see above) reduces volume and effort, it never
   removes the prehab protocol or reintroduces a banned movement pattern.
 
+## Energy balance and regional fat
+
+The generator gets asked for "exercises to lose the love handles." There are
+none. Flank fat is subcutaneous adipose tissue, and it is mobilised
+systemically — training the muscle underneath a fat depot does not
+preferentially strip that depot. Three independent designs land in the same
+place:
+
+- Twenty-four sedentary adults did seven abdominal exercises, 2×10, five days
+  a week for six weeks on an isocaloric diet. Abdominal fat (DXA) and abdominal
+  girth were unchanged versus control; the authors' own conclusion is that "to
+  reduce abdominal fat, a deficit in energy expenditure and caloric intake must
+  be created"
+  ([Vispute, Smith, LeCheminant & Hurley, *JSCR*, 2011](https://journals.lww.com/nsca-jscr/fulltext/2011/09000/the_effect_of_abdominal_exercise_on_abdominal_fat.27.aspx)).
+- Eleven participants trained *one* leg for twelve weeks at 960–1,200 reps per
+  session. Total fat mass fell 5.1% — but the reduction in the upper extremities
+  and trunk was significantly *greater* than in the trained leg
+  ([Ramírez-Campillo et al., *JSCR*, 2013](https://journals.lww.com/nsca-jscr/fulltext/2013/08000/regional_fat_changes_induced_by_localized_muscle.23.aspx)).
+
+**Applied here:** never present direct waist work as fat loss. Ab and oblique
+work is prescribed as *hypertrophy of the wall underneath* — it changes what
+the waist looks like once the fat is gone, and nothing before that. The deficit
+is what removes the fat, and it belongs in the plan text, not in the exercise
+list.
+
+### Rate of loss and protein
+
+Twenty-four elite athletes cut at either 0.7%/week or 1.4%/week of bodyweight
+alongside strength training. Lean body mass rose 2.1% ± 0.4% in the slow group
+and did not change in the fast group (*p* < .01 between groups)
+([Garthe, Raastad, Refsnes, Koivisto & Sundgot-Borgen, *IJSNEM*, 2011](https://journals.humankinetics.com/view/journals/ijsnem/21/2/article-p97.xml)).
+So 0.5–1%/week is the band; faster and the scale moves for the wrong reason,
+which makes the waist look worse rather than better.
+
+Protein during a deficit is prescribed at 2.3–3.1 g/kg of *lean* body mass per
+day ([Helms, Aragon & Fitschen, *JISSN*, 2014](https://link.springer.com/article/10.1186/1550-2783-11-20)).
+For a lifter around 15–20% body fat that converts to roughly 1.6–2.2 g/kg of
+total bodyweight, which is the form the app states it in.
+
+Fourteen days of moderate caloric restriction at 5.5 h versus 8.5 h of nightly
+sleep cut fat loss by 55% and increased fat-free mass loss by 60% in the same
+people ([Nedeltcheva, Kilkus, Imperial, Schoeller & Penev, *Annals of Internal
+Medicine*, 2010](https://www.acpjournals.org/doi/abs/10.7326/0003-4819-153-7-201010050-00006)).
+Sleep is a body-composition variable during a cut, not a lifestyle footnote.
+
+### Conditioning modality and placement
+
+A meta-analysis of 21 concurrent-training studies (422 effect sizes) found that
+resistance training combined with **running**, but not with **cycling**,
+produced significant decrements in both hypertrophy and strength, with
+significant negative correlations for endurance frequency (−0.26 to −0.35) and
+duration (−0.29 to −0.75)
+([Wilson, Marín, Rhea, Wilson, Loenneke & Anderson, *JSCR*, 2012](https://journals.lww.com/nsca-jscr/fulltext/2012/08000/concurrent_training__a_meta_analysis_examining.35.aspx)).
+
+**Applied here:** conditioning added to a hypertrophy block is low-impact
+(bike, incline walk, stair climber), short, and kept off lower-body days —
+never running, never long, never stacked on the session that already trained
+the same muscles. It exists to widen the deficit at a low recovery cost, and
+the moment it starts costing loads on the ramped lifts it is the first thing
+cut, before any working set.
+
 ## Sources
 
 - [Bernárdez-Vázquez, Raya-González, Castillo & Beato (umbrella review), 2022 — Resistance Training Variables for Optimization of Muscle Hypertrophy](https://pmc.ncbi.nlm.nih.gov/articles/PMC9302196/)
@@ -256,3 +317,9 @@ fine" answer with no explicit request does not relax anything below):
 - [Baz-Valle et al., *PLOS ONE*, 2019 — Effects of exercise variation on muscle thickness, maximal strength and motivation](https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0226989)
 - [Yanai, Fuss & Fukunaga, *Clinical Biomechanics*, 2006 — In vivo measurements of subacromial impingement force under abduction with internal rotation](https://pubmed.ncbi.nlm.nih.gov/16632128/)
 - [Band Pull-Apart Exercise: Effects of Movement Direction and Hand Position on Shoulder Muscle Activity, *IJSPT*](https://ijspt.scholasticahq.com/article/33026-band-pull-apart-exercise-effects-of-movement-direction-and-hand-position-on-shoulder-muscle-activity)
+- [Vispute, Smith, LeCheminant & Hurley, *JSCR*, 2011 — The Effect of Abdominal Exercise on Abdominal Fat](https://journals.lww.com/nsca-jscr/fulltext/2011/09000/the_effect_of_abdominal_exercise_on_abdominal_fat.27.aspx)
+- [Ramírez-Campillo et al., *JSCR*, 2013 — Regional Fat Changes Induced by Localized Muscle Endurance Resistance Training](https://journals.lww.com/nsca-jscr/fulltext/2013/08000/regional_fat_changes_induced_by_localized_muscle.23.aspx)
+- [Garthe, Raastad, Refsnes, Koivisto & Sundgot-Borgen, *IJSNEM*, 2011 — Effect of Two Different Weight-Loss Rates on Body Composition and Performance in Elite Athletes](https://journals.humankinetics.com/view/journals/ijsnem/21/2/article-p97.xml)
+- [Helms, Aragon & Fitschen, *JISSN*, 2014 — Evidence-based recommendations for natural bodybuilding contest preparation](https://link.springer.com/article/10.1186/1550-2783-11-20)
+- [Nedeltcheva, Kilkus, Imperial, Schoeller & Penev, *Annals of Internal Medicine*, 2010 — Insufficient Sleep Undermines Dietary Efforts to Reduce Adiposity](https://www.acpjournals.org/doi/abs/10.7326/0003-4819-153-7-201010050-00006)
+- [Wilson, Marín, Rhea, Wilson, Loenneke & Anderson, *JSCR*, 2012 — Concurrent Training: A Meta-Analysis Examining Interference of Aerobic and Resistance Exercises](https://journals.lww.com/nsca-jscr/fulltext/2012/08000/concurrent_training__a_meta_analysis_examining.35.aspx)
