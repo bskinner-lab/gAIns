@@ -40,14 +40,20 @@ const WEEKS = [1, 2, 3, 4, 5, 6, 7, 8];
 // as a band relative to week 7 rather than pinned to exact counts, so that the
 // implementation is free to land the per-exercise halving wherever the integer
 // floor puts it.
+// The waist block (Pallof Press / Suitcase Carry / Side Plank, 2 flat sets
+// each on days 1/2/4) and the three 1-set Zone 2 finishers add 9 sets to every
+// accumulation week: +6 abs, +0.5 traps, +0.5 forearms, and 3 conditioning sets
+// that carry no muscle credit but do count toward `total`. They are deliberately
+// flat — accessory and conditioning volume holds during a deficit, it does not
+// ramp — so the whole abs column shifts by +6 rather than acquiring a new slope.
 const ORACLE = [
-  { week: 1, total: 101, side_delt: 13, calves: 8,  chest: 11.5, rear_delt: 9,  lats: 12.5, upper_back: 13, abs: 6, biceps: 13.5 },
-  { week: 2, total: 101, side_delt: 13, calves: 8,  chest: 11.5, rear_delt: 9,  lats: 12.5, upper_back: 13, abs: 6, biceps: 13.5 },
-  { week: 3, total: 107, side_delt: 15, calves: 10, chest: 12.5, rear_delt: 10, lats: 12.5, upper_back: 13, abs: 6, biceps: 13.5 },
-  { week: 4, total: 107, side_delt: 15, calves: 10, chest: 12.5, rear_delt: 10, lats: 12.5, upper_back: 13, abs: 6, biceps: 13.5 },
-  { week: 5, total: 113, side_delt: 17, calves: 12, chest: 12.5, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 6, biceps: 14.5 },
-  { week: 6, total: 113, side_delt: 17, calves: 12, chest: 12.5, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 6, biceps: 14.5 },
-  { week: 7, total: 118, side_delt: 19, calves: 13, chest: 12.5, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 8, biceps: 14.5 },
+  { week: 1, total: 110, side_delt: 13, calves: 8,  chest: 11.5, rear_delt: 9,  lats: 12.5, upper_back: 13, abs: 12, biceps: 13.5 },
+  { week: 2, total: 110, side_delt: 13, calves: 8,  chest: 11.5, rear_delt: 9,  lats: 12.5, upper_back: 13, abs: 12, biceps: 13.5 },
+  { week: 3, total: 116, side_delt: 15, calves: 10, chest: 12.5, rear_delt: 10, lats: 12.5, upper_back: 13, abs: 12, biceps: 13.5 },
+  { week: 4, total: 116, side_delt: 15, calves: 10, chest: 12.5, rear_delt: 10, lats: 12.5, upper_back: 13, abs: 12, biceps: 13.5 },
+  { week: 5, total: 122, side_delt: 17, calves: 12, chest: 12.5, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 12, biceps: 14.5 },
+  { week: 6, total: 122, side_delt: 17, calves: 12, chest: 12.5, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 12, biceps: 14.5 },
+  { week: 7, total: 127, side_delt: 19, calves: 13, chest: 12.5, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 14, biceps: 14.5 },
 ];
 const MUSCLE_COLUMNS = Object.keys(ORACLE[0]).filter(k => k !== 'week' && k !== 'total');
 const RAMPED_WEEKS = ORACLE.map(r => r.week); // 1–7; week 8 is the deload
