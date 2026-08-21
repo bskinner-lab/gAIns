@@ -46,14 +46,22 @@ const WEEKS = [1, 2, 3, 4, 5, 6, 7, 8];
 // that carry no muscle credit but do count toward `total`. They are deliberately
 // flat — accessory and conditioning volume holds during a deficit, it does not
 // ramp — so the whole abs column shifts by +6 rather than acquiring a new slope.
+//
+// The session-length pass (every day now fits 50–70 min) reshaped several
+// columns: Neutral-Grip Close DB Press came off UPPER and Incline DB Curl moved
+// PULL → LOWER B, Seated DB Shoulder Press went 4 sets → 3 and Machine Chest
+// Press 3 → 4, Cable Fly picked up a week-5 set and Lying Leg Curl a week-7 one,
+// and Cable Lateral Raise lost its week-7 step. Biceps, lats, upper back and
+// rear delts are untouched by all of it — the curl kept its 3 sets, it just
+// trains on a different day.
 const ORACLE = [
-  { week: 1, total: 110, side_delt: 13, calves: 8,  chest: 11.5, rear_delt: 9,  lats: 12.5, upper_back: 13, abs: 12, biceps: 13.5 },
-  { week: 2, total: 110, side_delt: 13, calves: 8,  chest: 11.5, rear_delt: 9,  lats: 12.5, upper_back: 13, abs: 12, biceps: 13.5 },
-  { week: 3, total: 116, side_delt: 15, calves: 10, chest: 12.5, rear_delt: 10, lats: 12.5, upper_back: 13, abs: 12, biceps: 13.5 },
-  { week: 4, total: 116, side_delt: 15, calves: 10, chest: 12.5, rear_delt: 10, lats: 12.5, upper_back: 13, abs: 12, biceps: 13.5 },
-  { week: 5, total: 122, side_delt: 17, calves: 12, chest: 12.5, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 12, biceps: 14.5 },
-  { week: 6, total: 122, side_delt: 17, calves: 12, chest: 12.5, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 12, biceps: 14.5 },
-  { week: 7, total: 127, side_delt: 19, calves: 13, chest: 12.5, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 14, biceps: 14.5 },
+  { week: 1, total: 107, side_delt: 12.5, calves: 8,  chest: 11, rear_delt: 9,  lats: 12.5, upper_back: 13, abs: 12, biceps: 13.5 },
+  { week: 2, total: 107, side_delt: 12.5, calves: 8,  chest: 11, rear_delt: 9,  lats: 12.5, upper_back: 13, abs: 12, biceps: 13.5 },
+  { week: 3, total: 113, side_delt: 14.5, calves: 10, chest: 12, rear_delt: 10, lats: 12.5, upper_back: 13, abs: 12, biceps: 13.5 },
+  { week: 4, total: 113, side_delt: 14.5, calves: 10, chest: 12, rear_delt: 10, lats: 12.5, upper_back: 13, abs: 12, biceps: 13.5 },
+  { week: 5, total: 120, side_delt: 16.5, calves: 12, chest: 13, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 12, biceps: 14.5 },
+  { week: 6, total: 120, side_delt: 16.5, calves: 12, chest: 13, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 12, biceps: 14.5 },
+  { week: 7, total: 125, side_delt: 17.5, calves: 13, chest: 13, rear_delt: 10, lats: 14.5, upper_back: 14, abs: 14, biceps: 14.5 },
 ];
 const MUSCLE_COLUMNS = Object.keys(ORACLE[0]).filter(k => k !== 'week' && k !== 'total');
 const RAMPED_WEEKS = ORACLE.map(r => r.week); // 1–7; week 8 is the deload
@@ -208,21 +216,21 @@ for (const prog of [MESO1, MESO2]) {
 //
 // FINDING — the program does not currently respect 8. Moving Machine Chest
 // Press off PUSH cleared the worst offender (chest on PUSH ran 10–11 direct
-// sets in every accumulation week; it is now 7–8), but three combinations
-// remain, all of them pre-existing and none introduced by that move:
+// sets in every accumulation week; it is now 7–8), and capping Cable Lateral
+// Raise at 4 sets took day-1 side delts off the week-7 peak of 11. Three
+// combinations still sit above the target, none of them worse than 10:
 //
 //   day3 (LOWER A) / quads      weeks 1–7:  10
 //   day2 (PULL)    / lats       weeks 5–7:  10
-//   day1 (PUSH)    / side_delt  weeks 5–6:   9,  week 7: 11
+//   day1 (PUSH)    / side_delt  week 7:     10
 //
-// The side-delt figure is the ramp doing exactly what it was authored to do —
-// DB Lateral Raise climbs to 6 and Cable Lateral Raise to 5 by week 7. So 11 is
-// the honest ceiling the shipped program respects today, and that is what this
-// test pins. It is a ratchet, not an endorsement: it stops the concentration
-// getting worse while the question of whether to re-split quads/lats/side delts
-// or accept the higher number is decided. Lower the threshold toward 8 as those
-// days are rebalanced; do not raise it to make a new pile-up pass.
-const MAX_DIRECT_SETS_PER_SESSION = 11;
+// So 10 is the honest ceiling the shipped program respects today, and that is
+// what this test pins. It is a ratchet, not an endorsement: it stops the
+// concentration getting worse while the question of whether to re-split
+// quads/lats/side delts or accept the higher number is decided. Lower the
+// threshold toward 8 as those days are rebalanced; do not raise it to make a
+// new pile-up pass.
+const MAX_DIRECT_SETS_PER_SESSION = 10;
 const DIRECT_SETS_TARGET = 8; // the design intent, not yet met — see above
 
 test(`no meso3 muscle takes more than ${MAX_DIRECT_SETS_PER_SESSION} direct sets in one session`, () => {
@@ -247,11 +255,15 @@ test(`no meso3 muscle takes more than ${MAX_DIRECT_SETS_PER_SESSION} direct sets
 });
 
 // ── 9. Chest is trained twice a week ─────────────────────────────────────────
-// The regression guard for this commit. Chest used to run 10 of its 11.5
-// weighted weekly sets inside one PUSH session, which is a 1×/week frequency
-// wearing a 2×/week total. Machine Chest Press now lives on UPPER, so the split
-// is 7/4.5 (weeks 1–2) and 8/4.5 (weeks 3–7). Anything that walks chest back
-// into a single session — moving the exercise home, or dropping it — trips this.
+// Chest used to run 10 of its 11.5 weighted weekly sets inside one PUSH
+// session, which is a 1×/week frequency wearing a 2×/week total. Machine Chest
+// Press now lives on UPPER at 4 sets, so the split is 7/4 (weeks 1–2), 8/4
+// (weeks 3–4) and 9/4 (weeks 5–7). Anything that walks chest back into a single
+// session — moving the exercise home, or dropping it — trips this.
+//
+// This is also what caught the session-length pass taking UPPER's second
+// horizontal press away: at 3 sets the deload week left a single chest set on
+// day 4, under the floor below. The fix was on the program side, not here.
 //
 // Week 8 is the deload: every count is halved, so the per-day floor scales with
 // it. The frequency requirement itself still holds there.
