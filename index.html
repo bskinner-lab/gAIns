@@ -459,7 +459,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '10';
+const APP_VERSION = '11';
 
 const THEME_KEY = 'gains_theme';
 
@@ -900,6 +900,7 @@ const PROGRAMS = [
             id: 'm3_cable_fly',
             name: 'Cable Fly (low-to-high)',
             sets: 3,
+            ramp: { 5: 4 },
             reps: '12–15',
             rpe: '8',
             note: 'Full stretch at the bottom, shoulder-friendly angle.',
@@ -931,7 +932,7 @@ const PROGRAMS = [
             id: 'm3_cable_lat_raise_d1',
             name: 'Cable Lateral Raise',
             sets: 3,
-            ramp: { 5: 4, 7: 5 },
+            ramp: { 5: 4 },
             reps: '12–20',
             rpe: '8–9',
             note: 'Constant tension. Add bottom-half partials on the last set once LLP is active.',
@@ -1007,7 +1008,7 @@ const PROGRAMS = [
         id: 'day2',
         label: 'Day 2',
         title: 'PULL',
-        subtitle: 'Lats · Upper Back · Rear Delts · Biceps · Waist',
+        subtitle: 'Lats · Upper Back · Rear Delts · Waist',
         note: '💪 Both vertical pulls stalled last block — this is a different stimulus. Face pulls are non-negotiable.',
         protocol: true,
         exercises: [
@@ -1095,21 +1096,6 @@ const PROGRAMS = [
               rear_delt: 1,
               upper_back: 0.5,
               biceps: 0.5,
-            },
-          },
-          {
-            id: 'm3_incline_db_curl',
-            name: 'Incline DB Curl',
-            sets: 3,
-            reps: '10–12',
-            rpe: '8–9',
-            note: 'Lengthened-position curl. Only two direct curl exercises this block — biceps were over MRV.',
-            llp: true,
-            compound: false,
-            rest: 75,
-            restLabel: '1–1.5 min',
-            muscles: {
-              biceps: 1,
             },
           },
           {
@@ -1260,7 +1246,7 @@ const PROGRAMS = [
           {
             id: 'm3_db_shoulder_press',
             name: 'Seated DB Shoulder Press',
-            sets: 4,
+            sets: 3,
             reps: '8–12',
             rpe: '7–8',
             note: 'Promoted from substitute — you chose this over landmine press in 5 of 8 weeks. Neutral grip, stop just below 90°.',
@@ -1294,7 +1280,7 @@ const PROGRAMS = [
           {
             id: 'm3_machine_chest_press',
             name: 'Machine Chest Press',
-            sets: 3,
+            sets: 4,
             reps: '8–12',
             rpe: '7–8',
             note: 'Progressed well last block (+12 lb/wk) — keep pushing load here.',
@@ -1338,23 +1324,6 @@ const PROGRAMS = [
             restLabel: '1–1.5 min',
             muscles: {
               rear_delt: 1,
-            },
-          },
-          {
-            id: 'm3_neutral_cg_press',
-            name: 'Neutral-Grip Close DB Press',
-            sets: 3,
-            reps: '8–12',
-            rpe: '8',
-            note: 'Replaces the stalled close-grip Smith. Neutral grip keeps the shoulder out of internal rotation.',
-            llp: false,
-            compound: true,
-            rest: 120,
-            restLabel: '2 min',
-            muscles: {
-              triceps: 1,
-              chest: 0.5,
-              front_delt: 0.5,
             },
           },
           {
@@ -1407,7 +1376,7 @@ const PROGRAMS = [
         id: 'day5',
         label: 'Day 5',
         title: 'LOWER B',
-        subtitle: 'Posterior Chain · Calves · Abs',
+        subtitle: 'Posterior Chain · Calves · Biceps · Abs',
         note: '🔁 Hamstrings were below MEV last block and calves less than half of it. This day exists to fix that.',
         protocol: false,
         exercises: [
@@ -1432,6 +1401,7 @@ const PROGRAMS = [
             id: 'm3_lying_leg_curl',
             name: 'Lying Leg Curl',
             sets: 3,
+            ramp: { 7: 4 },
             reps: '10–15',
             rpe: '8–9',
             note: 'Different hip angle than the seated curl on day 3 — trains the hamstring short of the hip.',
@@ -1507,6 +1477,21 @@ const PROGRAMS = [
               glutes: 1,
             },
           },
+          {
+            id: 'm3_incline_db_curl',
+            name: 'Incline DB Curl',
+            sets: 3,
+            reps: '10–12',
+            rpe: '8–9',
+            note: 'Lengthened-position curl, moved off PULL to keep that session under an hour. Still one of only two direct curl exercises this block — biceps were over MRV.',
+            llp: true,
+            compound: false,
+            rest: 75,
+            restLabel: '1–1.5 min',
+            muscles: {
+              biceps: 1,
+            },
+          },
         ],
       },
     ],
@@ -1527,10 +1512,11 @@ const PROGRAMS = [
         color: '#4eff91',
         points: [
           'Focus: technique + control at the new baseline volume',
+          'Sessions run 50–70 min including prehab and the Zone 2 finisher',
           '3–4 sec eccentric on every set',
           '1 sec pause in the stretched position',
           'LLP mostly OFF — optional light LLP on lateral raises only',
-          'Baseline volume: calves 8, side delts 13, hamstrings 11.5 sets/week',
+          'Baseline volume: calves 8, side delts 12.5, hamstrings 11.5 sets/week',
           'Set honest starting loads on the two promoted substitutes (hack squat, DB shoulder press)',
         ],
       },
@@ -1541,9 +1527,9 @@ const PROGRAMS = [
         rir: '1–2 reps in reserve',
         color: '#e8ff47',
         points: [
-          '+1 set to: DB lateral raise, lean-away lateral raise (side delts → 15/wk)',
+          '+1 set to: DB lateral raise, lean-away lateral raise (side delts → 14.5/wk)',
           '+1 set to: standing calf, seated calf (calves → 10/wk)',
-          '+1 set to: incline DB press (chest → 12.5/wk)',
+          '+1 set to: incline DB press (chest → 12/wk)',
           '+1 set to: rear delt fly (rear delts → 10/wk)',
           'LLP introduced on lateral raises and leg curls (last set)',
           'Push seated leg curl and machine row to true 1–2 RIR — both were under-loaded last block',
@@ -1556,12 +1542,14 @@ const PROGRAMS = [
         rir: '1–2 RIR on most sets',
         color: '#ff9f47',
         points: [
-          '+1 set to: cable lateral raise (day 1), lean-away lateral raise (side delts → 17/wk)',
+          '+1 set to: cable lateral raise (day 1), lean-away lateral raise (side delts → 16.5/wk)',
           '+1 set to: standing calf, seated calf (calves → 12/wk)',
           '+1 set to: single-arm pulldown, chest-supported row (lats → 14.5/wk, upper back → 14/wk)',
+          '+1 set to: cable fly (chest → 13/wk)',
           'LLP fully integrated on lateral raises, leg curls, calves (last set)',
           '1 drop set per session on an isolation movement',
           'Volume approaching MAV on side delts, calves and back',
+          'Longest sessions of the block — roughly 70 min on PULL and UPPER',
         ],
       },
       {
@@ -1571,7 +1559,8 @@ const PROGRAMS = [
         rir: 'Isolations only near failure — never delts or cuff',
         color: '#ff6b35',
         points: [
-          '+1 set to: DB lateral raise, cable lateral raise (side delts → 19/wk, peak)',
+          '+1 set to: DB lateral raise (side delts → 17.5/wk, peak)',
+          '+1 set to: lying leg curl (hamstrings → 12.5/wk, the one flat muscle)',
           '+1 set to: standing calf (calves → 13/wk, peak)',
           '+1 set to: hanging leg raise, cable crunch (abs → 8/wk)',
           'Highest LLP usage — 2+ exercises per session',
@@ -1921,7 +1910,7 @@ const EXERCISE_ALTERNATIVES = {
     {
       id: 'm3_alt_flat_db_press',
       name: 'Flat DB Press',
-      sets: 3,
+      sets: 4,
       reps: '8–12',
       rpe: '7–8',
       note: 'Free-weight stabilizer demand',
@@ -1933,7 +1922,7 @@ const EXERCISE_ALTERNATIVES = {
     {
       id: 'm3_alt_pec_deck',
       name: 'Pec Deck',
-      sets: 3,
+      sets: 4,
       reps: '10–15',
       rpe: '8',
       note: 'Pure chest, no triceps limit',
@@ -2389,7 +2378,7 @@ const EXERCISE_ALTERNATIVES = {
     {
       id: 'm3_alt_machine_ohp',
       name: 'Machine Shoulder Press',
-      sets: 4,
+      sets: 3,
       reps: '8–12',
       rpe: '7–8',
       note: 'Neutral handles, fixed path',
@@ -2401,7 +2390,7 @@ const EXERCISE_ALTERNATIVES = {
     {
       id: 'm3_alt_landmine_press',
       name: 'Landmine Press',
-      sets: 4,
+      sets: 3,
       reps: '8–10',
       rpe: '7–8',
       note: 'Lowest-stress overhead angle',
@@ -2487,32 +2476,6 @@ const EXERCISE_ALTERNATIVES = {
       compound: false,
       rest: 75,
       restLabel: '1–1.5 min',
-    },
-  ],
-  m3_neutral_cg_press: [
-    {
-      id: 'm3_alt_cg_smith',
-      name: 'Close-Grip Smith Press',
-      sets: 3,
-      reps: '8–12',
-      rpe: '8',
-      note: 'Heavier loading, fixed path',
-      llp: false,
-      compound: true,
-      rest: 120,
-      restLabel: '2 min',
-    },
-    {
-      id: 'm3_alt_machine_dip',
-      name: 'Machine Dip',
-      sets: 3,
-      reps: '8–12',
-      rpe: '8',
-      note: 'Tricep-dominant, no shoulder extension stress',
-      llp: false,
-      compound: true,
-      rest: 120,
-      restLabel: '2 min',
     },
   ],
   m3_rope_hammer_curl: [

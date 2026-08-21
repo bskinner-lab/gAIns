@@ -29,6 +29,26 @@ function seenPrograms() {
 }
 const SEEN = seenPrograms();
 
+// Week-1 set count for the moved exercise. `syncSetCount` pads a shorter logged
+// array up to the current prescription on boot, so every expectation here is
+// "the logged entries, then whatever blanks today's set count adds" — that way
+// re-prescribing the exercise is a program decision, not a test failure.
+const MOVED_SET_COUNT = (() => {
+  const { PROGRAMS, setsForWeek } = loadApp();
+  const meso3 = PROGRAMS[2];
+  const ex = meso3.days
+    .flatMap(d => d.exercises)
+    .find(e => e.id === MOVED);
+  assert.ok(ex, `${MOVED} is missing from meso3`);
+  return setsForWeek(ex, 1, meso3);
+})();
+
+function pad(logged) {
+  const out = logged.slice();
+  while (out.length < MOVED_SET_COUNT) out.push(false);
+  return out;
+}
+
 function emptyDay(extra) {
   return Object.assign(
     { sets: {}, weights: {}, reps: {}, times: {}, effort: {}, protocol: [], swaps: {} },
@@ -86,10 +106,10 @@ test('the logged sets array survives the boot that rewrites storage', () => {
   withApp({ storage: seed({
     [OLD_DAY]: emptyDay({ sets: { [MOVED]: [true, true, true] }, weights: { [MOVED]: 140 } }),
   }) }, app => {
-    assert.deepStrictEqual(app.state[NEW_DAY].sets[MOVED], [true, true, true],
+    assert.deepStrictEqual(app.state[NEW_DAY].sets[MOVED], pad([true, true, true]),
       'the logged sets did not reach the new day in memory');
     const blob = savedBlob(app);
-    assert.deepStrictEqual(blob[NEW_DAY].sets[MOVED], [true, true, true],
+    assert.deepStrictEqual(blob[NEW_DAY].sets[MOVED], pad([true, true, true]),
       'the logged sets were dropped from localStorage on boot');
     assert.strictEqual(blob[OLD_DAY].sets[MOVED], undefined,
       'the old day kept a stale copy');
@@ -136,7 +156,7 @@ test('a swap moves with the exercise, and so do the sets logged under the altern
   }) }, app => {
     assert.strictEqual(app.state[NEW_DAY].swaps[MOVED], altId, 'the swap stayed on the old day');
     assert.strictEqual(app.state[OLD_DAY].swaps[MOVED], undefined);
-    assert.deepStrictEqual(app.state[NEW_DAY].sets[altId], [true, false, false],
+    assert.deepStrictEqual(app.state[NEW_DAY].sets[altId], pad([true, false, false]),
       'the sets logged against the alternative were lost');
     assert.strictEqual(savedBlob(app)[NEW_DAY].weights[altId], 90);
   });
@@ -193,7 +213,7 @@ test('the destination wins when both days hold data for the moved exercise', () 
     }),
   }) }, app => {
     const blob = savedBlob(app);
-    assert.deepStrictEqual(blob[NEW_DAY].sets[MOVED], [false, true, false],
+    assert.deepStrictEqual(blob[NEW_DAY].sets[MOVED], pad([false, true, false]),
       'the incoming array clobbered the sets already on the new day');
     assert.strictEqual(blob[NEW_DAY].weights[MOVED], 200);
     assert.strictEqual(blob[NEW_DAY].weights[`${MOVED}_0`], 200);
