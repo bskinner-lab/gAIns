@@ -272,6 +272,10 @@ body {
 .effort-k { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--muted-2); }
 .eff { font-family: var(--font-mono); font-size: 9px; padding: 0 14px; min-height: var(--tap); border-radius: 3px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); }
 .eff.on { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
+.setwk { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.setstep { border: 1px solid var(--border); background: transparent; color: var(--muted-2); border-radius: 3px; width: var(--tap); min-height: var(--tap); cursor: pointer; font-family: var(--font-mono); font-size: 13px; line-height: 1; }
+.setstep:disabled { opacity: .35; cursor: default; }
+.setstep-n { font-family: var(--font-mono); font-size: 11px; min-width: 16px; text-align: center; }
 .skipex { margin-top: 12px; background: transparent; border: 1px dashed var(--border); border-radius: 4px; color: var(--muted); font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; padding: 0 16px; min-height: var(--tap); cursor: pointer; }
 
 #bottombar:empty { display: none; }
@@ -459,7 +463,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '11';
+const APP_VERSION = '12';
 
 const THEME_KEY = 'gains_theme';
 
@@ -3085,6 +3089,17 @@ function setsForWeek(ex, week = currentWeek, prog = curProg()) {
   return n;
 }
 
+// This week's prescribed count, plus a manual per-week nudge from the +/− SETS
+// stepper (state[dayId].setAdjust[exId], a signed delta, lives in the
+// week-scoped state blob so it never leaks into other weeks). Clamped to
+// [1, 20] the same way setsForWeek clamps deloads — a stepper can't zero out
+// or run away with an exercise.
+function adjustedSetTarget(dayId, exId, ex) {
+  const sd = state[dayId];
+  const adj = (sd && sd.setAdjust && sd.setAdjust[exId]) || 0;
+  return Math.max(1, Math.min(20, setsForWeek(ex) + adj));
+}
+
 // Grow or shrink a live set array to `target` without ever destroying logged
 // work: growth appends unlogged sets, shrinking only pops trailing blanks and
 // stops dead at the first resolved (true / 'skipped') entry from the end. The
@@ -3229,6 +3244,7 @@ function migrateMovedExercises(saved) {
     Object.keys(sd.sets || {}).forEach(consider);
     Object.keys(sd.effort || {}).forEach(consider);
     Object.keys(sd.swaps || {}).forEach(consider);
+    Object.keys(sd.setAdjust || {}).forEach(consider);
     MOVABLE_MAPS.forEach(mapName => {
       Object.keys(sd[mapName] || {}).forEach(k => {
         consider(k);
@@ -3241,6 +3257,7 @@ function migrateMovedExercises(saved) {
       moveEntry(sd, dst, 'sets', exId);
       moveEntry(sd, dst, 'effort', exId);
       moveEntry(sd, dst, 'swaps', exId);
+      moveEntry(sd, dst, 'setAdjust', exId);
       MOVABLE_MAPS.forEach(mapName => {
         moveEntry(sd, dst, mapName, exId);
         Object.keys(sd[mapName] || {}).forEach(k => {
@@ -3275,16 +3292,18 @@ function initState() {
       times: savedDay.times || {},
       effort: savedDay.effort || {},
       protocol: savedDay.protocol || [],
-      swaps: savedDay.swaps || {}
+      swaps: savedDay.swaps || {},
+      setAdjust: savedDay.setAdjust || {}
     };
     day.exercises.forEach(originalEx => {
       const ex = resolveExercise(day.id, originalEx);
       // Seed from the saved blob when there is one, else start empty; either
-      // way syncSetCount reconciles the length to this week's prescription in
-      // both directions, keeping any sets already logged in this week.
+      // way syncSetCount reconciles the length to this week's prescription
+      // (plus any manual setAdjust nudge) in both directions, keeping any
+      // sets already logged in this week.
       const savedArr = savedDay.sets ? savedDay.sets[ex.id] : null;
       state[day.id].sets[ex.id] = Array.isArray(savedArr) ? savedArr : [];
-      syncSetCount(day.id, ex.id, setsForWeek(ex));
+      syncSetCount(day.id, ex.id, adjustedSetTarget(day.id, ex.id, ex));
     });
   });
   saveState();
@@ -3661,6 +3680,30 @@ function skipExercise(dayId, exId) {
   refreshCurrentDay(dayId);
 }
 
+// Manual +1/-1 to an exercise's set count for THIS week only — some weeks
+// there's energy for one more set, some there isn't. Stored as a signed delta
+// (state[dayId].setAdjust[exId]) in the week-scoped state blob, so it never
+// touches the program data or other weeks; adjustedSetTarget re-derives the
+// live target from it on every reload/week-switch. Delegates the actual
+// grow/shrink to syncSetCount, which already refuses to drop a logged set.
+function adjustSetCount(dayId, exId, delta) {
+  const sd = state[dayId];
+  if (!sd || !Array.isArray(sd.sets[exId])) return;
+  const day = DAYS.find(d => d.id === dayId);
+  const originalEx = day && day.exercises.find(o => resolveExercise(dayId, o).id === exId);
+  if (!originalEx) return;
+  const ex = resolveExercise(dayId, originalEx);
+  if (!sd.setAdjust) sd.setAdjust = {};
+  const base = setsForWeek(ex);
+  const current = sd.setAdjust[exId] || 0;
+  const target = Math.max(1, Math.min(20, base + current + delta));
+  sd.setAdjust[exId] = target - base;
+  syncSetCount(dayId, exId, target);
+  saveState();
+  syncCompletion(dayId);
+  refreshCurrentDay(dayId);
+}
+
 function activeExIds(dayId) {
   const day = DAYS.find(d => d.id === dayId);
   if (!day) return [];
@@ -3717,7 +3760,7 @@ function performSwap(dayId, originalExId, newExId) {
   // between exercises of different lengths would otherwise reuse whatever array
   // the previous occupant of this id left behind, at its length.
   if (!state[dayId].sets[ex.id]) state[dayId].sets[ex.id] = [];
-  syncSetCount(dayId, ex.id, setsForWeek(ex));
+  syncSetCount(dayId, ex.id, adjustedSetTarget(dayId, ex.id, ex));
   saveState();
   syncCompletion(dayId);
   switchDay(dayId);
@@ -4348,7 +4391,7 @@ function exercisesHTML(day) {
     const curW = state[day.id].weights[ex.id];
     const curR = state[day.id].reps[ex.id];
 
-    let tags = `<span class="tag">${setsForWeek(ex)}×${esc(ex.reps)}</span>`
+    let tags = `<span class="tag">${arr.length}×${esc(ex.reps)}</span>`
       + `<span class="tag ink hit" data-act="tip" data-t="RPE">RPE ${esc(ex.rpe)}</span>`;
     if (ex.restLabel) tags += `<span class="tag">⏱ ${esc(ex.restLabel)}</span>`;
     if (ex.llp) tags += `<span class="tag acc hit" data-act="tip" data-t="LLP">LLP</span>`;
@@ -4426,6 +4469,11 @@ function exercisesHTML(day) {
         ${rows}
       </div>
       <div class="effort"><span class="effort-k">EFFORT</span><div style="display:flex;gap:8px">${effort}</div></div>
+      <div class="setwk"><span class="effort-k">SETS THIS WEEK</span><div style="display:flex;align-items:center;gap:8px">
+        <button class="setstep" data-act="setrm" data-ex="${ex.id}" aria-label="Remove a set this week"${arr.length <= 1 ? ' disabled' : ''}>−</button>
+        <span class="setstep-n">${arr.length}</span>
+        <button class="setstep" data-act="setadd" data-ex="${ex.id}" aria-label="Add a set this week">+</button>
+      </div></div>
       <button class="skipex" data-act="skipex" data-ex="${ex.id}">${arr.every(v => v === 'skipped') ? 'UNSKIP EXERCISE' : 'SKIP EXERCISE'}</button>
     </div>`;
   }).join('') + `<div style="height:20px"></div>`;
@@ -4920,6 +4968,7 @@ function resetWeek() {
     state[day.id].effort = {};
     state[day.id].reps = {};
     state[day.id].times = {};
+    state[day.id].setAdjust = {};
     day.exercises.forEach(o => {
       const ex = resolveExercise(day.id, o);
       state[day.id].sets[ex.id] = Array(setsForWeek(ex)).fill(false);
@@ -4962,6 +5011,8 @@ document.addEventListener('click', e => {
   else if (act === 'undo')    { undoSet(curDay().id, el.dataset.ex, Number(el.dataset.i)); }
   else if (act === 'skipset') { skipSet(curDay().id, el.dataset.ex, Number(el.dataset.i)); }
   else if (act === 'skipex')  { skipExercise(curDay().id, el.dataset.ex); }
+  else if (act === 'setadd')  { adjustSetCount(curDay().id, el.dataset.ex, 1); }
+  else if (act === 'setrm')   { adjustSetCount(curDay().id, el.dataset.ex, -1); }
   else if (act === 'selectex') {
     const id = el.dataset.ex;
     view.selectedExId = view.selectedExId === id ? null : id;
