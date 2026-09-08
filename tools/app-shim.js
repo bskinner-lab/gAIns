@@ -202,6 +202,7 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       ' getExerciseHistory, lowRep,' +
       ' nowMs, setClock, markTime, clearTime,' +
       ' toggleSet, undoSet, skipExercise, skipDay, completeDay,' +
+      ' adjustSetCount, adjustedSetTarget,' +
       ' setRest, endRest, expireRestIfDue,' +
       ' initState, saveState, loadState, prefillFromPreviousWeeks,' +
       ' exportData, importData,' +
