@@ -108,6 +108,10 @@ function setupApp({ htmlPath, storage: seed } = {}) {
     return elements.get(id);
   };
   let clickHandler = null;
+  // Every document listener and interval callback, so a test can fire a
+  // pointerdown or run the 500ms clock tick itself instead of trusting a stub.
+  const listeners = Object.create(null);
+  const intervals = [];
   const storage = makeStorage(seed);
 
   const doc = {
@@ -123,6 +127,7 @@ function setupApp({ htmlPath, storage: seed } = {}) {
     // audio) and the real `data-act` dispatcher (persistent). We want the
     // dispatcher, so a `{once: true}` listener never wins the slot.
     addEventListener: (type, fn, options) => {
+      (listeners[type] = listeners[type] || []).push(fn);
       if (type === 'click' && !(options && options.once)) clickHandler = fn;
     },
     removeEventListener() {},
@@ -172,7 +177,7 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       if (this.onload) this.onload({ target: { result: file._content } });
     };
   });
-  setGlobal('setInterval', () => 0);
+  setGlobal('setInterval', fn => { intervals.push(fn); return intervals.length; });
   setGlobal('setTimeout', () => 0);
   setGlobal('clearInterval', () => {});
   setGlobal('clearTimeout', () => {});
@@ -244,7 +249,7 @@ function setupApp({ htmlPath, storage: seed } = {}) {
   // clickHandler (already set by the time boot() has run), but wrong for
   // lastBlob, which is still null here and only gets set later when a test
   // calls exportData(). defineProperties keeps both as live accessors.
-  Object.assign(api, { storage, elements });
+  Object.assign(api, { storage, elements, listeners, intervals });
   Object.defineProperties(api, {
     lastBlob: { get: () => lastBlob, enumerable: true, configurable: true },
     clickHandler: { get: () => clickHandler, enumerable: true, configurable: true },
