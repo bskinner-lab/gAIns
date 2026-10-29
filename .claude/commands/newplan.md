@@ -191,7 +191,10 @@ Apply, in this order:
       `superset` key (`'A'`, `'B'`, …) and the app runs them as alternating
       sets: each muscle keeps its full rest, it just spends part of it
       watching the partner's set. Pairs must **share no muscle** at all in
-      their `muscles` maps — `validateProgram` rejects one that does.
+      their `muscles` maps, and both halves must carry the **same set count
+      in every week** (match `sets` and `ramp`) — an uneven pair ends in
+      straight sets on their own full rest, which is the time the pair was
+      meant to save. `validateProgram` rejects either.
       Isolation + isolation of unrelated muscles (lateral raise + pushdown,
       leg curl + calf raise, curl + crunch) is the default; a big compound
       can carry an abs or other no-grip filler; an antagonist compound pair
@@ -234,8 +237,9 @@ Concretely, `validateProgram` will reject the file if:
   does not check that for you ahead of time; `insert-program.js` does, at
   Gate 1.
 - A `superset` key is not a non-empty string, appears on anything other
-  than exactly two exercises in a day, those two are not adjacent, or they
-  share a muscle in their `muscles` maps.
+  than exactly two exercises in a day, those two are not adjacent, they
+  share a muscle in their `muscles` maps, or their set counts differ in any
+  week.
 - **`alternatives` is missing or every entry is empty** — every generated
   program must define at least one exercise alternative. In practice, give
   each exercise **2–3 alternatives**, not just the one required to pass

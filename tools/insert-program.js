@@ -106,10 +106,28 @@ function checkRamp(ramp, where, errors, totalWeeks) {
  * Supersets: a `superset` key pairs exactly two ADJACENT exercises on a day,
  * and the two must share no muscle — the app runs them as alternating sets on
  * the premise that each muscle rests while the other one works, so a shared
- * muscle would quietly cut its rest in half. Pushes every problem onto
- * `errors`. Never throws.
+ * muscle would quietly cut its rest in half. They must also carry the same
+ * set count in every week: the surplus of an uneven pair runs as straight
+ * sets on their own full rest, which is the time the pair was meant to save.
+ * Pushes every problem onto `errors`. Never throws.
  */
-function checkSupersets(day, errors, label = day.id) {
+// The prescribed count for `week`, by the app's ramp rule (setsForWeek in
+// index.html), before any deload halving — which keeps equal counts equal.
+// null when `sets` or the ramp is malformed; checkRamp reports those.
+function countForWeek(ex, week) {
+  if (typeof ex.sets !== 'number') return null;
+  let n = ex.sets;
+  if (ex.ramp !== undefined && ex.ramp !== null) {
+    if (typeof ex.ramp !== 'object' || Array.isArray(ex.ramp)) return null;
+    for (const k of Object.keys(ex.ramp).map(Number).sort((a, b) => a - b)) {
+      if (!Number.isInteger(k) || typeof ex.ramp[k] !== 'number') return null;
+      if (k <= week) n = ex.ramp[k];
+    }
+  }
+  return n;
+}
+
+function checkSupersets(day, errors, label = day.id, totalWeeks = null) {
   const groups = {};
   day.exercises.forEach((ex, ei) => {
     if (!ex || typeof ex !== 'object' || ex.superset === undefined || ex.superset === null) return;
@@ -132,6 +150,13 @@ function checkSupersets(day, errors, label = day.id) {
     const shared = Object.keys(a.muscles || {}).filter(m => b.muscles && m in b.muscles);
     if (shared.length) {
       errors.push(`${label}: superset '${key}' pairs ${a.id} and ${b.id}, which share ${shared.join(', ')} — pair exercises that rest each other`);
+    }
+    for (let w = 1; totalWeeks && w <= totalWeeks; w++) {
+      const na = countForWeek(a, w), nb = countForWeek(b, w);
+      if (na !== null && nb !== null && na !== nb) {
+        errors.push(`${label}: superset '${key}' has ${a.id} at ${na} sets and ${b.id} at ${nb} in week ${w} — give both halves the same count`);
+        break;
+      }
     }
   }
 }
@@ -299,7 +324,7 @@ function validateProgram(prog, existingIds = new Set()) {
         noteId(ex.id, where);
         if (typeof ex.id === 'string' && ex.id.length > 0) definedExerciseIds.add(ex.id);
       });
-      checkSupersets(day, errors, day.id || di);
+      checkSupersets(day, errors, day.id || di, rampWeekLimit);
     });
   }
 

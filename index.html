@@ -466,7 +466,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '15';
+const APP_VERSION = '16';
 
 const THEME_KEY = 'gains_theme';
 
@@ -1721,28 +1721,9 @@ const PROGRAMS = [
             },
           },
           {
-            id: 'm4_pallof_press',
-            name: 'Half-Kneeling Pallof Press',
-            superset: 'A',
-            sets: 2,
-            ramp: {
-              '7': 3,
-            },
-            reps: '10–12 each side',
-            rpe: '8',
-            note: 'Promoted — you chose this over the cable crunch 5 of 8 weeks. It was LOW effort every time: add weight until 10 reps is genuinely hard. Anti-rotation, ribs down, no side bends.',
-            llp: false,
-            compound: false,
-            rest: 45,
-            restLabel: '45 sec',
-            muscles: {
-              abs: 1,
-            },
-          },
-          {
             id: 'm4_db_lateral_raise',
             name: 'DB Lateral Raise',
-            superset: 'B',
+            superset: 'A',
             sets: 4,
             ramp: {
               '3': 5,
@@ -1760,25 +1741,9 @@ const PROGRAMS = [
             },
           },
           {
-            id: 'm4_rope_pushdown',
-            name: 'Rope Pushdown',
-            superset: 'B',
-            sets: 3,
-            reps: '12–15',
-            rpe: '8',
-            note: 'Progressing fine (+1.1 lb/wk). Full extension, squeeze at the bottom.',
-            llp: false,
-            compound: false,
-            rest: 75,
-            restLabel: '1–1.5 min',
-            muscles: {
-              triceps: 1,
-            },
-          },
-          {
             id: 'm4_cable_lat_raise_d1',
             name: 'Cable Lateral Raise',
-            superset: 'C',
+            superset: 'B',
             sets: 3,
             ramp: {
               '5': 4,
@@ -1797,10 +1762,11 @@ const PROGRAMS = [
           {
             id: 'm4_oh_cable_ext',
             name: 'Overhead Cable Extension',
-            superset: 'C',
+            superset: 'B',
             sets: 2,
             ramp: {
               '3': 3,
+              '6': 4,
             },
             reps: '10–12',
             rpe: '8',
@@ -1811,6 +1777,41 @@ const PROGRAMS = [
             restLabel: '1–1.5 min',
             muscles: {
               triceps: 1,
+            },
+          },
+          {
+            id: 'm4_rope_pushdown',
+            name: 'Rope Pushdown',
+            superset: 'C',
+            sets: 3,
+            reps: '12–15',
+            rpe: '8',
+            note: 'Progressing fine (+1.1 lb/wk). Full extension, squeeze at the bottom.',
+            llp: false,
+            compound: false,
+            rest: 75,
+            restLabel: '1–1.5 min',
+            muscles: {
+              triceps: 1,
+            },
+          },
+          {
+            id: 'm4_pallof_press',
+            name: 'Half-Kneeling Pallof Press',
+            superset: 'C',
+            sets: 2,
+            ramp: {
+              '6': 3,
+            },
+            reps: '10–12 each side',
+            rpe: '8',
+            note: 'Promoted — you chose this over the cable crunch 5 of 8 weeks. It was LOW effort every time: add weight until 10 reps is genuinely hard. Anti-rotation, ribs down, no side bends.',
+            llp: false,
+            compound: false,
+            rest: 45,
+            restLabel: '45 sec',
+            muscles: {
+              abs: 1,
             },
           },
         ],
@@ -1830,7 +1831,7 @@ const PROGRAMS = [
             sets: 5,
             ramp: {
               '5': 6,
-              '6': 5,
+              '6': 4,
             },
             reps: '8–12',
             rpe: '7–9',
@@ -1849,6 +1850,9 @@ const PROGRAMS = [
             name: 'Weighted Decline Crunch',
             superset: 'A',
             sets: 3,
+            ramp: {
+              '6': 4,
+            },
             reps: '10–15',
             rpe: '8',
             note: 'Replaces the hanging leg raise — 5 weeks at high effort with zero added load, because bodyweight has no next rung. Hold a plate and progress it. This builds the wall under the fat; the deficit removes the fat.',
@@ -1908,7 +1912,6 @@ const PROGRAMS = [
             sets: 3,
             ramp: {
               '5': 4,
-              '6': 3,
             },
             reps: '12–15',
             rpe: '8',
@@ -1926,6 +1929,9 @@ const PROGRAMS = [
             name: 'Face Pull (prehab + volume)',
             superset: 'B',
             sets: 3,
+            ramp: {
+              '6': 4,
+            },
             reps: '15–20',
             rpe: '7–8',
             note: 'Never deloaded, never dropped — this is cuff and scapular maintenance. You rated it LOW effort 7/7: you progressed 27.5 → 37.5 lb, keep going.',
@@ -2054,6 +2060,7 @@ const PROGRAMS = [
             sets: 3,
             ramp: {
               '3': 4,
+              '6': 6,
             },
             reps: '10–15',
             rpe: '8–9',
@@ -2165,7 +2172,6 @@ const PROGRAMS = [
             sets: 4,
             ramp: {
               '3': 5,
-              '7': 6,
             },
             reps: '12–20',
             rpe: '8–9',
@@ -2185,6 +2191,7 @@ const PROGRAMS = [
             sets: 3,
             ramp: {
               '5': 4,
+              '6': 5,
             },
             reps: '10–15',
             rpe: '8',
@@ -2205,6 +2212,7 @@ const PROGRAMS = [
             sets: 4,
             ramp: {
               '5': 5,
+              '6': 3,
             },
             reps: '12–20',
             rpe: '8–9',
@@ -2290,6 +2298,7 @@ const PROGRAMS = [
             sets: 3,
             ramp: {
               '5': 4,
+              '6': 5,
             },
             reps: '10–15',
             rpe: '8–9',
@@ -2310,6 +2319,7 @@ const PROGRAMS = [
             ramp: {
               '3': 5,
               '5': 6,
+              '6': 5,
             },
             reps: '12–20',
             rpe: '8–9',
@@ -2449,9 +2459,10 @@ const PROGRAMS = [
           '1 drop set per session on an isolation movement — never on a delt or cuff exercise',
           'Week 5 is the longest week of the block — PULL runs over an hour. Week 6 is rebuilt to fit 50 min:',
           'Week 6 on: supersets on every day. Two exercises that share no muscle, alternating sets — each muscle keeps its full rest, the time comes out of standing around',
-          'Week 6 trims: chest-supported machine row 4 → 2 (the third row on PULL), pulldown 6 → 5, cable row 5 → 4, straight-arm pulldown / rear delt row / Bayesian curl 4 → 3, DB shrug 4 → 3 and moved to UPPER',
-          'Week 6 trims: incline press 5 → 4, machine chest press 4 → 3, DB lateral raise 5 → 4, leg press 4 → 3, walking lunge / KB swing 3 → 2, suitcase carry 3 → 2',
-          'Week-6 volume: lats 13.5, chest 12.5, upper back 12.5, biceps 12.5, side delts 15.5, triceps 15, hamstrings 14, glutes 13.5, quads 12, calves 12, rear delts 11.5 sets/week — every muscle still above MEV',
+          'Week 6 trims: chest-supported machine row 4 → 2 (the third row on PULL), pulldown 6 → 4, cable row 5 → 4, rear delt row / Bayesian curl 4 → 3, DB shrug 4 → 3 and moved to UPPER',
+          'Week 6 trims: incline press 5 → 4, machine chest press 4 → 3, DB lateral raise 5 → 4, rear delt fly 5 → 3, seated calf 6 → 5, leg press 4 → 3, walking lunge / KB swing / suitcase carry 3 → 2',
+          'Both halves of every superset run the same number of sets, so no pair ends in straight sets: overhead extension 3 → 4, Pallof 2 → 3, decline crunch / face pull 3 → 4, hammer curl 4 → 5, seated leg curl 4 → 6 on day 3 and 4 → 5 on day 5',
+          'Week-6 volume: hamstrings 17, triceps 16, side delts 15.5, lats 13.5, glutes 13.5, chest 12.5, upper back 13, biceps 13, quads 12, abs 11, calves 11, rear delts 10 sets/week — every muscle above MEV, none past MRV',
         ],
       },
       {
@@ -2461,9 +2472,7 @@ const PROGRAMS = [
         rir: 'Isolations only near failure — never delts, never cuff',
         color: '#ff6b35',
         points: [
-          '+1 set to: lean-away lateral raise (side delts 15.5 → 16.5/wk, peak — MAV 16–24, MRV 26)',
-          '+1 set to: Pallof press (abs 9 → 10/wk, peak)',
-          'Every other muscle holds its week-6 count — the overreach comes from RPE, not added sets, so every session still fits 50 min',
+          'Every muscle holds its week-6 count — the overreach comes from RPE, not added sets, so every session still fits 50 min and every superset stays matched',
           'Highest LLP usage — 2+ exercises per session',
           'Rear/side delt and rotator-cuff work still stops at 1 RIR, and the prehab protocol is untouched',
           '⚠️ Monitor sleep and shoulder joints closely — conditioning is the first thing cut if loads drop, before any working set',

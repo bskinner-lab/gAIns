@@ -3,13 +3,13 @@
 // Supersets: two adjacent exercises on a day that share a `superset` key run
 // as alternating sets. After the first half of a round the timer is only the
 // walk to the partner (and opens minimized, so LOG SET for the partner is
-// already on the bar); after the second half it is the longer of the two
-// prescribed rests, counted from when the first half was logged, floored at
+// already on the bar); after the second half it is a rest long enough for
+// both muscles, counted from when the first half was logged, floored at
 // SUPERSET_MIN_REST_SEC. That is the whole time saving — each muscle keeps its
 // prescribed rest, it just spends part of it watching the partner's set.
 //
-// Meso 4 PUSH from week 6 is the live fixture: Pec Deck (4 sets, 75 s rest)
-// is paired with Half-Kneeling Pallof Press (2 sets, 45 s rest) as 'A'.
+// Meso 4 PUSH from week 6 is the live fixture: Pec Deck and DB Lateral Raise,
+// 4 sets each at 75 s rest, are paired as 'A'.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert');
@@ -54,6 +54,29 @@ test('every superset in every program pairs exactly two adjacent exercises that 
   }
 });
 
+// A pair whose counts differ ends in straight sets on their own full rest —
+// the time the pair was meant to save, and a broken rhythm on the day. Meso 4
+// is held to it in the weeks it was rebuilt for; later programs in every week.
+test('both halves of every pair carry the same number of sets', () => {
+  const meso4Idx = PROGRAMS.findIndex(p => p.id === 'meso4');
+  const app = loadApp();
+  const uneven = [];
+  PROGRAMS.slice(meso4Idx).forEach((prog, k) => {
+    const weeks = k === 0 ? [6, 7, 8] : Array.from({ length: prog.totalWeeks }, (_, i) => i + 1);
+    for (const day of prog.days) {
+      day.exercises.forEach((a, i) => {
+        const b = day.exercises[i + 1];
+        if (!a.superset || !b || b.superset !== a.superset) return;
+        for (const w of weeks) {
+          const na = app.setsForWeek(a, w, prog), nb = app.setsForWeek(b, w, prog);
+          if (na !== nb) uneven.push(`${prog.id} ${day.id} w${w}: ${a.name} ${na} vs ${b.name} ${nb}`);
+        }
+      });
+    }
+  });
+  assert.deepStrictEqual(uneven, []);
+});
+
 test('meso4 runs at least one superset on every day', () => {
   const meso4 = PROGRAMS.find(p => p.id === 'meso4');
   for (const day of meso4.days) {
@@ -66,13 +89,13 @@ test('supersetPartner and supersetLabel read pairs in plan order', () => {
   withApp({ storage: meso4Week(6) }, app => {
     const day = app.DAYS.find(d => d.id === 'day1');
     const pec = day.exercises.find(e => e.id === 'm4_pec_deck');
-    const pallof = day.exercises.find(e => e.id === 'm4_pallof_press');
+    const lat = day.exercises.find(e => e.id === 'm4_db_lateral_raise');
     const incline = day.exercises.find(e => e.id === 'm4_incline_db_press');
-    assert.strictEqual(app.supersetPartner(day, pec), pallof);
-    assert.strictEqual(app.supersetPartner(day, pallof), pec);
+    assert.strictEqual(app.supersetPartner(day, pec), lat);
+    assert.strictEqual(app.supersetPartner(day, lat), pec);
     assert.strictEqual(app.supersetPartner(day, incline), null);
     assert.strictEqual(app.supersetLabel(day, pec), 'A1');
-    assert.strictEqual(app.supersetLabel(day, pallof), 'A2');
+    assert.strictEqual(app.supersetLabel(day, lat), 'A2');
     assert.strictEqual(app.supersetLabel(day, incline), '');
   });
 });
@@ -84,11 +107,11 @@ test('logging the first half moves straight to the partner on a short, minimized
     app.view.dayId = 'day1';
     app.view.selectedExId = 'm4_pec_deck';
     logAt(app, T0);
-    assert.strictEqual(app.view.selectedExId, 'm4_pallof_press');
+    assert.strictEqual(app.view.selectedExId, 'm4_db_lateral_raise');
     assert.strictEqual(app.view.restTotal, app.SUPERSET_TRANSITION_SEC);
     assert.strictEqual(app.view.restMinimized, true);
-    assert.strictEqual(app.activeSet(app.curDay()).ex.id, 'm4_pallof_press');
-    assert.match(app.view.restNext, /Pallof/);
+    assert.strictEqual(app.activeSet(app.curDay()).ex.id, 'm4_db_lateral_raise');
+    assert.match(app.view.restNext, /Lateral Raise/);
   });
 });
 
@@ -97,8 +120,9 @@ test('logging the second half rests the longer prescription, minus time since th
     app.view.dayId = 'day1';
     app.view.selectedExId = 'm4_pec_deck';
     logAt(app, T0);
-    logAt(app, T0 + 30_000); // walk + Pallof set took 30 s
-    // max(75, 45) - 30 = 45 s left for the pec deck's chest to recover.
+    logAt(app, T0 + 30_000); // walk + lateral raise set took 30 s
+    // 75 - 30 = 45 s left for the pec deck's chest to recover; the lateral
+    // raise only needs 75 - (walk 20 + pec set 32) = 23 s of it.
     assert.strictEqual(app.view.restTotal, 45);
     assert.strictEqual(app.view.restMinimized, false);
     assert.strictEqual(app.view.selectedExId, 'm4_pec_deck');
@@ -118,12 +142,15 @@ test('a slow second half never takes the rest under the floor', () => {
 });
 
 test('once the shorter exercise runs out, the leftovers are straight sets with their own rest', () => {
+  // Programs pair equal counts, but the SETS THIS WEEK stepper can still
+  // unbalance a pair on the day.
   withApp({ storage: meso4Week(6) }, app => {
     app.view.dayId = 'day1';
+    app.adjustSetCount('day1', 'm4_db_lateral_raise', -2);
     app.view.selectedExId = 'm4_pec_deck';
     let t = T0;
     for (let round = 0; round < 2; round++) { logAt(app, t += 40_000); logAt(app, t += 30_000); }
-    // Pallof's 2 sets are done; Pec Deck has 2 left.
+    // The lateral raise's 2 sets are done; Pec Deck has 2 left.
     assert.strictEqual(app.activeSet(app.curDay()).ex.id, 'm4_pec_deck');
     logAt(app, t += 40_000);
     const pec = app.curDay().exercises.find(e => e.id === 'm4_pec_deck');
@@ -156,9 +183,9 @@ test('a swapped half still pairs, and rests on the substitute\'s prescription', 
     const sub = app.activeSet(app.curDay()).ex; // resolved: fields the alt omits come from the original
     assert.strictEqual(sub.id, alt.id);
     logAt(app, T0);
-    assert.strictEqual(app.view.selectedExId, 'm4_pallof_press');
+    assert.strictEqual(app.view.selectedExId, 'm4_db_lateral_raise');
     logAt(app, T0 + 20_000);
-    assert.strictEqual(app.view.restTotal, Math.max(sub.rest, 45) - 20);
+    assert.strictEqual(app.view.restTotal, sub.rest - 20);
     assert.strictEqual(app.activeSet(app.curDay()).ex.id, alt.id);
   });
 });
@@ -168,7 +195,7 @@ test('the legacy toggleSet path pairs the same way', () => {
     app.view.dayId = 'day1';
     app.setClock(() => T0);
     app.toggleSet('day1', 'm4_pec_deck', 0);
-    assert.strictEqual(app.view.selectedExId, 'm4_pallof_press');
+    assert.strictEqual(app.view.selectedExId, 'm4_db_lateral_raise');
     assert.strictEqual(app.view.restTotal, app.SUPERSET_TRANSITION_SEC);
   });
 });
@@ -239,13 +266,13 @@ test('a long-rest second half sets the rest after the pair', () => {
 test('skipping the second half goes back to the first, on the rest its muscle still needs', () => {
   withApp({ storage: meso4Week(6) }, app => {
     app.view.dayId = 'day1';
-    app.view.selectedExId = 'm4_db_lateral_raise';
+    app.view.selectedExId = 'm4_pec_deck';
     logAt(app, T0);
     app.setClock(() => T0 + 15_000);
-    app.skipSet('day1', 'm4_rope_pushdown', 0);
-    assert.strictEqual(app.view.selectedExId, 'm4_db_lateral_raise');
-    assert.strictEqual(app.activeSet(app.curDay()).ex.id, 'm4_db_lateral_raise');
-    assert.strictEqual(app.view.restTotal, 75 - 15, 'the lateral raise needs the rest of its 75 s');
+    app.skipSet('day1', 'm4_db_lateral_raise', 0);
+    assert.strictEqual(app.view.selectedExId, 'm4_pec_deck');
+    assert.strictEqual(app.activeSet(app.curDay()).ex.id, 'm4_pec_deck');
+    assert.strictEqual(app.view.restTotal, 75 - 15, 'the pec deck needs the rest of its 75 s');
     assert.strictEqual(app.view.restMinimized, false);
   });
 });
@@ -253,12 +280,12 @@ test('skipping the second half goes back to the first, on the rest its muscle st
 test('a skip that closes the round after the partner has already rested ends the timer', () => {
   withApp({ storage: meso4Week(6) }, app => {
     app.view.dayId = 'day1';
-    app.view.selectedExId = 'm4_db_lateral_raise';
+    app.view.selectedExId = 'm4_pec_deck';
     logAt(app, T0);
     app.setClock(() => T0 + 90_000);
-    app.skipSet('day1', 'm4_rope_pushdown', 0);
+    app.skipSet('day1', 'm4_db_lateral_raise', 0);
     assert.strictEqual(app.view.restEnd, null);
-    assert.strictEqual(app.activeSet(app.curDay()).ex.id, 'm4_db_lateral_raise');
+    assert.strictEqual(app.activeSet(app.curDay()).ex.id, 'm4_pec_deck');
   });
 });
 
@@ -266,8 +293,8 @@ test('skipping the first half moves to the partner and starts no timer', () => {
   withApp({ storage: meso4Week(6) }, app => {
     app.view.dayId = 'day1';
     app.setClock(() => T0);
-    app.skipSet('day1', 'm4_db_lateral_raise', 0);
-    assert.strictEqual(app.view.selectedExId, 'm4_rope_pushdown');
+    app.skipSet('day1', 'm4_pec_deck', 0);
+    assert.strictEqual(app.view.selectedExId, 'm4_db_lateral_raise');
     assert.strictEqual(app.view.restEnd, null);
   });
 });
@@ -301,6 +328,7 @@ test('the validator accepts a well-formed pair', () => {
   const prog = fixtureWith(exs => {
     exs[0].superset = 'A'; exs[1].superset = 'A';
     exs[0].muscles = { chest: 1 }; // the fixture's press also credits triceps
+    exs[0].sets = 3;               // and runs 4 sets against the pushdown's 3
   });
   assert.deepStrictEqual(validateProgram(prog), []);
 });
@@ -308,6 +336,19 @@ test('the validator accepts a well-formed pair', () => {
 test('the validator rejects a pair whose halves share a muscle', () => {
   const prog = fixtureWith(exs => { exs[0].superset = 'A'; exs[1].superset = 'A'; });
   assert.ok(validateProgram(prog).some(e => /share triceps/.test(e)));
+});
+
+test('the validator rejects a pair whose set counts differ in any week', () => {
+  const prog = fixtureWith(exs => {
+    exs[0].superset = 'A'; exs[1].superset = 'A';
+    exs[0].muscles = { chest: 1 };
+    exs[0].sets = 3; exs[1].sets = 3;
+    exs[1].ramp = { 2: 4 };
+  });
+  assert.ok(validateProgram(prog).some(e => /in week 2 — give both halves the same count/.test(e)),
+    validateProgram(prog).join('\n'));
+  prog.days[0].exercises[0].ramp = { 2: 4 };
+  assert.deepStrictEqual(validateProgram(prog), []);
 });
 
 test('the validator rejects a lone, a triple, a non-adjacent or a non-string superset key', () => {
