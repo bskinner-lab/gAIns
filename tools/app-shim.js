@@ -204,7 +204,7 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       ' toggleSet, undoSet, skipExercise, skipDay, completeDay,' +
       ' adjustSetCount, adjustedSetTarget,' +
       ' setRest, endRest, expireRestIfDue,' +
-      ' supersetPartner, supersetLabel, supersetStep, SUPERSET_TRANSITION_SEC, SUPERSET_MIN_REST_SEC,' +
+      ' supersetPartner, supersetLabel, supersetStep, SUPERSET_TRANSITION_SEC, SUPERSET_MIN_REST_SEC, SET_SECONDS,' +
       ' initState, saveState, loadState, prefillFromPreviousWeeks,' +
       ' exportData, importData,' +
       ' backfillProgram, programStartKey,' +

@@ -20,9 +20,10 @@ const app = loadApp();
 const MESO3 = app.PROGRAMS[2];
 
 // Time under load per set, in seconds. A compound set is longer than an
-// isolation set: more reps at a slower tempo, plus unracking and setup.
-const WORK_COMPOUND = 45;
-const WORK_ISOLATION = 32;
+// isolation set: more reps at a slower tempo, plus unracking and setup. Read
+// from the app, which uses the same figures to time a superset's rest.
+const WORK_COMPOUND = app.SET_SECONDS.compound;
+const WORK_ISOLATION = app.SET_SECONDS.isolation;
 
 // Prehab that opens every protocol day: band pull-aparts 2×20 plus external
 // rotations 2×15/arm. Not deloaded, so it is a flat cost in every week.
@@ -44,14 +45,15 @@ function exerciseSeconds(ex, week, prog) {
 }
 
 // A superset round, priced the way supersetStep() runs it: A1, the walk, A2,
-// then the longer of the two rests minus the walk and A2's set (each muscle's
-// rest already includes the partner's work), never under the floor. Sets past
-// the shorter exercise's count run straight, with their own rest.
+// then a rest (walk back included) long enough for both muscles — A1's has
+// been resting through the walk and A2's set, A2's will rest through the
+// timer, the walk and A1's set — never under the floor. Sets past the shorter
+// exercise's count run straight, with their own rest.
 function pairSeconds(a, b, week, prog) {
   const na = app.setsForWeek(a, week, prog), nb = app.setsForWeek(b, week, prog);
   const rounds = Math.min(na, nb);
   const T = app.SUPERSET_TRANSITION_SEC;
-  const rest = Math.max(Math.max(a.rest, b.rest) - T - work(b), app.SUPERSET_MIN_REST_SEC);
+  const rest = Math.max(a.rest - T - work(b), b.rest - T - work(a), app.SUPERSET_MIN_REST_SEC);
   return rounds * (work(a) + T + work(b) + rest)
     + (na - rounds) * (work(a) + a.rest) + (nb - rounds) * (work(b) + b.rest);
 }

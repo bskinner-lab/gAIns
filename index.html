@@ -466,7 +466,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '14';
+const APP_VERSION = '15';
 
 const THEME_KEY = 'gains_theme';
 
@@ -507,7 +507,7 @@ const GLOSSARY = {
   'eccentric': 'The lowering/lengthening phase of a lift (e.g. lowering the bar on a bench press). Controlling this phase 3–4 seconds increases muscle damage and growth stimulus.',
   'rest-pause': 'Take a set to near-failure, rest 10–15 seconds, then squeeze out additional reps. An intensity technique for isolations only.',
   'mesocycle': 'A structured training block, typically 4–8 weeks, with a clear progression strategy and a deload at the end.',
-  'superset': 'Two exercises that share no prime mover, run as alternating sets: A1, walk straight to A2, rest, back to A1. Each muscle still gets its full rest — it spends part of it watching the other exercise — so the session is shorter without the sets getting worse. The rest after the pair counts from when you logged A1, so a slow walk comes out of the rest, not on top of it.',
+  'superset': 'Two exercises that share no prime mover, run as alternating sets: A1, walk straight to A2, rest, back to A1. Each muscle still gets its full rest — it spends part of it watching the other exercise — so the session is shorter without the sets getting worse. The rest after the pair is timed so both muscles get their full rest before their next set — and it counts from when you logged A1, so a slow walk comes out of the rest, not on top of it. Skipping one half moves you on to the other, as logging it would.',
   'double progression': 'Hit the top of your rep range → increase weight next session. Miss the top → repeat same weight. Simple, effective loading strategy.',
   'spot reduction': 'The idea that training a body part burns the fat sitting on it. It does not work — fat is mobilised systemically from the whole body, not from the muscle you just trained. Oblique work builds the wall under the love handles; only an energy deficit removes what is on top of it.',
   'energy deficit': 'Eating fewer calories than you burn. The only thing that removes body fat. Target 0.5–1% of bodyweight lost per week — faster than that and the weight coming off starts including muscle, which makes the waist look worse, not better.',
@@ -5057,6 +5057,25 @@ function skipSet(dayId, exId, setIdx) {
   } else if (current === false) {
     state[dayId].sets[exId][setIdx] = 'skipped';
     markTime(dayId, exId, setIdx, 'skip');
+    // A skipped half of a superset still ends that half of the round: hand
+    // over to the partner as a log would. When the skip closes the round, any
+    // walk timer gives way to whatever rest the partner's muscle still needs —
+    // only the partner's, since nothing was lifted here.
+    const day = DAYS.find(d => d.id === dayId);
+    const orig = day && day.exercises.find(o => resolveExercise(dayId, o).id === exId);
+    const ss = orig ? supersetStep(day, orig, resolveExercise(dayId, orig), { skipped: true }) : null;
+    if (ss) {
+      view.selectedExId = ss.partner.id;
+      if (!ss.transition) {
+        if (ss.sec > 0) {
+          setRest(ss.sec);
+          view.restMinimized = false;
+          view.restInfo = `${resolveExercise(dayId, orig).name} — SET ${setIdx + 1} SKIPPED`;
+          view.restRec = 'SUPERSET · REST AFTER THE PAIR';
+          view.restNext = `Next: ${resolveExercise(dayId, ss.partner).name}`;
+        } else endRest(false);
+      }
+    }
   }
   saveState();
   // Release the selection once the selected exercise has no set left to log.
@@ -5766,8 +5785,10 @@ function supersetLabel(day, orig) {
 
 // What should happen after a set of `orig` (resolved to `ex`) was just logged:
 // null for a straight set, else { partner, sec, transition }. The caller moves
-// the selection to `partner` so the bar offers its set next.
-function supersetStep(day, orig, ex) {
+// the selection to `partner` so the bar offers its set next. With `skipped`,
+// the set was skipped rather than lifted: only the partner's rest counts, and
+// it may come back as 0 (nothing left to wait for).
+function supersetStep(day, orig, ex, { skipped = false } = {}) {
   const partner = supersetPartner(day, orig);
   if (!partner || !hasPendingSet(day, partner)) return null;
   const pEx = resolveExercise(day.id, partner);
@@ -5775,8 +5796,12 @@ function supersetStep(day, orig, ex) {
   const resolved = id => (sets[id] || []).filter(isResolved).length;
   // The partner is a set behind in this round: go straight to it.
   if (resolved(pEx.id) < resolved(ex.id)) return { partner, sec: SUPERSET_TRANSITION_SEC, transition: true };
-  // The round is complete: rest, counted from when the partner's half was logged.
-  const full = Math.max(ex.rest, pEx.rest);
+  // The round is complete. The timer runs until the partner's next set starts
+  // (walk back included) and must cover BOTH muscles: the partner's has been
+  // resting since its half was logged, and this one rests through the timer,
+  // the partner's set and the walk back over here. Either can be the binding
+  // one — a short-rest isolation leading a long-rest compound is the case
+  // where only checking the partner would short this exercise.
   const times = state[day.id].times || {};
   let last = 0;
   (sets[pEx.id] || []).forEach((v, k) => {
@@ -5784,9 +5809,20 @@ function supersetStep(day, orig, ex) {
     if (v === true && t && t.src === 'log' && t.at > last) last = t.at;
   });
   const elapsed = last ? Math.max(0, (nowMs() - last) / 1000) : 0;
-  const sec = Math.round(Math.min(full, Math.max(SUPERSET_MIN_REST_SEC, full - elapsed)));
+  const forPartner = pEx.rest - elapsed;
+  if (skipped) return { partner, sec: Math.round(Math.min(pEx.rest, Math.max(0, forPartner))), transition: false };
+  const forThis = ex.rest - SUPERSET_TRANSITION_SEC - setSeconds(pEx);
+  const sec = Math.round(Math.min(Math.max(ex.rest, pEx.rest),
+    Math.max(SUPERSET_MIN_REST_SEC, forPartner, forThis)));
   return { partner, sec, transition: false };
 }
+
+// How long one working set takes, unracking and setup included. Only used to
+// estimate the partner's set when timing a superset's rest — the app never
+// sees a set start, only its log. tools/session-length.test.js prices every
+// session with the same figures.
+const SET_SECONDS = { compound: 45, isolation: 32 };
+function setSeconds(ex) { return ex.compound ? SET_SECONDS.compound : SET_SECONDS.isolation; }
 
 // Open a rest period after a logged set. Both logging paths (logActiveSet and
 // toggleSet) come through here so the timer's length and the overlay's copy

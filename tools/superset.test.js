@@ -173,6 +173,105 @@ test('the legacy toggleSet path pairs the same way', () => {
   });
 });
 
+// ── Every muscle gets its rest ───────────────────────────────────────────────
+// Run each meso4 pair through logActiveSet on a simulated clock: sets take the
+// app's own SET_SECONDS, the walk to the partner takes the transition, and the
+// walk back happens inside the rest timer (which is how the session-length
+// model prices a round). Measure each exercise's actual rest — end of one set
+// to start of its next — against its prescription. Rear Delt Fly → Neutral-
+// Grip Close Press is the pair that used to fail this: the second half has the
+// longer rest, and the timer only protected the first half's, so the close
+// press got 107 s of its 120.
+
+function restsInPair(app, day, a, b) {
+  const len = ex => (ex.compound ? app.SET_SECONDS.compound : app.SET_SECONDS.isolation);
+  const shortfalls = [];
+  let t = T0 / 1000;
+  const lastEnd = {};
+  app.view.selectedExId = a.id;
+  for (let guard = 0; guard < 40; guard++) {
+    const act = app.activeSet(day);
+    if (!act || (act.orig !== a && act.orig !== b)) break;
+    const ex = act.ex;
+    if (lastEnd[ex.id] != null && t - lastEnd[ex.id] < ex.rest) {
+      shortfalls.push(`${ex.name} set ${act.i + 1}: ${t - lastEnd[ex.id]} s of ${ex.rest}`);
+    }
+    t += len(ex);
+    logAt(app, t * 1000);
+    lastEnd[ex.id] = t;
+    t += app.view.restMinimized ? app.SUPERSET_TRANSITION_SEC : app.view.restTotal;
+  }
+  return shortfalls;
+}
+
+for (const week of [6, 7]) {
+  test(`every meso4 superset in week ${week} gives both muscles their full prescribed rest`, () => {
+    const meso4 = PROGRAMS.find(p => p.id === 'meso4');
+    const shortfalls = [];
+    for (const { id: dayId } of meso4.days) {
+      withApp({ storage: meso4Week(week) }, app => {
+        app.view.dayId = dayId;
+        const day = app.curDay();
+        day.exercises.forEach((a, i) => {
+          const b = day.exercises[i + 1];
+          if (a.superset && b && b.superset === a.superset) shortfalls.push(...restsInPair(app, day, a, b));
+        });
+      });
+    }
+    assert.deepStrictEqual(shortfalls, []);
+  });
+}
+
+test('a long-rest second half sets the rest after the pair', () => {
+  withApp({ storage: meso4Week(6) }, app => {
+    app.view.dayId = 'day4';
+    app.view.selectedExId = 'm4_rear_delt_fly';   // C1, 75 s isolation
+    logAt(app, T0);
+    logAt(app, T0 + 65_000);                       // C2: close press, 120 s compound
+    // The fly's muscle has had 65 s and needs 10 more; the close press needs
+    // 120 - (walk 20 + fly set 32) = 68 s of timer before the fly starts.
+    assert.strictEqual(app.view.restTotal, 120 - app.SUPERSET_TRANSITION_SEC - app.SET_SECONDS.isolation);
+  });
+});
+
+// ── Skipping inside a pair ───────────────────────────────────────────────────
+
+test('skipping the second half goes back to the first, on the rest its muscle still needs', () => {
+  withApp({ storage: meso4Week(6) }, app => {
+    app.view.dayId = 'day1';
+    app.view.selectedExId = 'm4_db_lateral_raise';
+    logAt(app, T0);
+    app.setClock(() => T0 + 15_000);
+    app.skipSet('day1', 'm4_rope_pushdown', 0);
+    assert.strictEqual(app.view.selectedExId, 'm4_db_lateral_raise');
+    assert.strictEqual(app.activeSet(app.curDay()).ex.id, 'm4_db_lateral_raise');
+    assert.strictEqual(app.view.restTotal, 75 - 15, 'the lateral raise needs the rest of its 75 s');
+    assert.strictEqual(app.view.restMinimized, false);
+  });
+});
+
+test('a skip that closes the round after the partner has already rested ends the timer', () => {
+  withApp({ storage: meso4Week(6) }, app => {
+    app.view.dayId = 'day1';
+    app.view.selectedExId = 'm4_db_lateral_raise';
+    logAt(app, T0);
+    app.setClock(() => T0 + 90_000);
+    app.skipSet('day1', 'm4_rope_pushdown', 0);
+    assert.strictEqual(app.view.restEnd, null);
+    assert.strictEqual(app.activeSet(app.curDay()).ex.id, 'm4_db_lateral_raise');
+  });
+});
+
+test('skipping the first half moves to the partner and starts no timer', () => {
+  withApp({ storage: meso4Week(6) }, app => {
+    app.view.dayId = 'day1';
+    app.setClock(() => T0);
+    app.skipSet('day1', 'm4_db_lateral_raise', 0);
+    assert.strictEqual(app.view.selectedExId, 'm4_rope_pushdown');
+    assert.strictEqual(app.view.restEnd, null);
+  });
+});
+
 // ── Rendering ────────────────────────────────────────────────────────────────
 
 test('paired cards carry a header and A1/A2 tags, and the bar names the half', () => {
