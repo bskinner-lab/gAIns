@@ -103,6 +103,40 @@ function checkRamp(ramp, where, errors, totalWeeks) {
 }
 
 /**
+ * Supersets: a `superset` key pairs exactly two ADJACENT exercises on a day,
+ * and the two must share no muscle — the app runs them as alternating sets on
+ * the premise that each muscle rests while the other one works, so a shared
+ * muscle would quietly cut its rest in half. Pushes every problem onto
+ * `errors`. Never throws.
+ */
+function checkSupersets(day, errors, label = day.id) {
+  const groups = {};
+  day.exercises.forEach((ex, ei) => {
+    if (!ex || typeof ex !== 'object' || ex.superset === undefined || ex.superset === null) return;
+    const where = `${label}/exercises[${ei}]`;
+    if (typeof ex.superset !== 'string' || ex.superset.length === 0) {
+      errors.push(`${where}: superset must be a non-empty string (got ${JSON.stringify(ex.superset)})`);
+      return;
+    }
+    (groups[ex.superset] || (groups[ex.superset] = [])).push(ei);
+  });
+  for (const [key, idx] of Object.entries(groups)) {
+    if (idx.length !== 2) {
+      errors.push(`${label}: superset '${key}' must pair exactly two exercises (found ${idx.length})`);
+      continue;
+    }
+    if (idx[1] !== idx[0] + 1) {
+      errors.push(`${label}: superset '${key}' exercises must be adjacent (found at ${idx[0]} and ${idx[1]})`);
+    }
+    const [a, b] = idx.map(i => day.exercises[i]);
+    const shared = Object.keys(a.muscles || {}).filter(m => b.muscles && m in b.muscles);
+    if (shared.length) {
+      errors.push(`${label}: superset '${key}' pairs ${a.id} and ${b.id}, which share ${shared.join(', ')} — pair exercises that rest each other`);
+    }
+  }
+}
+
+/**
  * Validate a generated program. Returns ALL errors so one run surfaces every
  * problem rather than making the caller play whack-a-mole. Never throws —
  * a truncated/malformed LLM response (stray `null`s, wrong types) is the
@@ -265,6 +299,7 @@ function validateProgram(prog, existingIds = new Set()) {
         noteId(ex.id, where);
         if (typeof ex.id === 'string' && ex.id.length > 0) definedExerciseIds.add(ex.id);
       });
+      checkSupersets(day, errors, day.id || di);
     });
   }
 
