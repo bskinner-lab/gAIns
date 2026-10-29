@@ -134,7 +134,9 @@ Apply, in this order:
      3. **The math must check out**: baseline `sets` plus the accumulated
         `points` deltas at the Overreach/High-Stimulus phase should land the
         muscle near MAV-high and must never exceed MRV once you add up what
-        the points actually prescribe.
+        the points actually prescribe. Rule 6's 50-minute session budget
+        outranks MAV-high: if the peak week does not fit after supersetting,
+        land the emphasis muscle in MAV and the rest at MAV-low.
      4. RPE/effort targets per phase (already required by `weekPhases`) are
         the complementary lever — rising RPE across phases is expected
         alongside the points-driven set deltas, not instead of them.
@@ -177,6 +179,34 @@ Apply, in this order:
    close/neutral-grip triceps work preferred over wide-grip barbell variants.
    These hold through Overreach/high-fatigue weeks too — deload cuts volume
    and effort, never the prehab protocol or a banned movement pattern.
+6. **Fit every session into 50 minutes — in every week, peak included.**
+   Meso 4 was designed to MAV and ran 63–87 min from week 5, and the user
+   skipped sets every session to get out of the gym; volume that does not get
+   done is not volume. `tools/session-length.test.js` prices a session as
+   45 s per compound set and 32 s per isolation set plus each set's `rest`,
+   plus 5 min of prehab on protocol days, and **fails any program after meso4
+   whose session goes over 50 min in any week.** Work the budget in this
+   order:
+   1. **Superset first.** Give two ADJACENT exercises on a day the same
+      `superset` key (`'A'`, `'B'`, …) and the app runs them as alternating
+      sets: each muscle keeps its full rest, it just spends part of it
+      watching the partner's set. Pairs must **share no muscle** at all in
+      their `muscles` maps — `validateProgram` rejects one that does.
+      Isolation + isolation of unrelated muscles (lateral raise + pushdown,
+      leg curl + calf raise, curl + crunch) is the default; a big compound
+      can carry an abs or other no-grip filler; an antagonist compound pair
+      (overhead press + chest-supported row) is fine. Never pair two heavy
+      lower-body compounds, never put a grip-heavy exercise (shrug, carry)
+      next to a pull, and keep the day's first one or two anchor compounds
+      as straight sets.
+   2. **Then cut redundancy, not priorities.** A third row or press on the
+      same day, or volume a muscle already gets as secondary credit from
+      every compound (triceps, glutes), goes before a set of the emphasis
+      muscle. Do not shorten a `rest` to make the budget — that buys
+      minutes by degrading the sets you keep.
+   3. **Fewer exercises beats more of them.** Each one costs a station
+      change and, for compounds, warm-up sets the model does not count —
+      6–7 exercises a day, not 9.
 
 ### Writing the JSON
 
@@ -203,6 +233,9 @@ Concretely, `validateProgram` will reject the file if:
   the new program, or already used elsewhere in `index.html` — this command
   does not check that for you ahead of time; `insert-program.js` does, at
   Gate 1.
+- A `superset` key is not a non-empty string, appears on anything other
+  than exactly two exercises in a day, those two are not adjacent, or they
+  share a muscle in their `muscles` maps.
 - **`alternatives` is missing or every entry is empty** — every generated
   program must define at least one exercise alternative. In practice, give
   each exercise **2–3 alternatives**, not just the one required to pass
@@ -250,7 +283,9 @@ Print, in this order:
    the one that puts a real person at risk of injury or overtraining, so
    verify the peak-week figure (baseline + accumulated `points` deltas)
    against MRV explicitly, not just against MEV/MAV.
-2. **Day-by-day exercise list** — name, sets, reps, RPE, for every day.
+2. **Day-by-day exercise list** — name, sets, reps, RPE, superset pairs,
+   and each day's modelled minutes in week 1 and at the peak week (Step 5's
+   rule 6 — every one at or under 50).
 3. **Changed vs. last block, and why** — one line per change. Every line
    must cite either a specific analyzer flag (rejected / substituted /
    stalled / under-stimulating / below-MEV / above-MRV, with the exercise or
@@ -275,7 +310,12 @@ gate and error the script printed, fix `newplan.json`, and retry once. If it
 fails again, stop and show the user the error — do not edit `index.html` by
 hand to work around it.
 
-On success, report the assigned program id and tell the user:
+On success, run `node --test tools/session-length.test.js`. It is not one of
+the four gates, so a program can insert cleanly and still blow the 50-minute
+budget. If it fails, fix `newplan.json` per Step 5's rule 6, revert
+`index.html` with `git checkout index.html`, and re-insert.
+
+Then report the assigned program id and tell the user:
 
 - The change is uncommitted — review it with `git diff index.html`.
 - The new program will be auto-selected next time the app loads.

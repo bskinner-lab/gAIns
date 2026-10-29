@@ -239,6 +239,9 @@ body {
 .tag[data-act] { cursor: help; }
 .tag.ink { border-color: var(--ink); color: var(--ink); }
 .tag.acc { border-color: var(--accent); color: var(--accent); }
+.ss-head { display: flex; justify-content: space-between; gap: 12px; margin: 18px 20px -10px; padding-top: 10px; border-top: 2px solid var(--ink); font-family: var(--font-mono); font-size: 9px; letter-spacing: .08em; color: var(--muted); }
+.ss-head span:first-child { color: var(--ink); font-weight: 600; flex: none; }
+.ss-head span:last-child { text-align: right; }
 .ex-note { font-family: var(--font-mono); font-size: 9.5px; color: var(--muted-2); margin-top: 6px; line-height: 1.5; }
 .trend { display: flex; align-items: flex-end; gap: 14px; margin-top: 10px; }
 .bars { display: flex; align-items: flex-end; gap: 6px; height: 46px; }
@@ -463,7 +466,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '13';
+const APP_VERSION = '14';
 
 const THEME_KEY = 'gains_theme';
 
@@ -504,6 +507,7 @@ const GLOSSARY = {
   'eccentric': 'The lowering/lengthening phase of a lift (e.g. lowering the bar on a bench press). Controlling this phase 3–4 seconds increases muscle damage and growth stimulus.',
   'rest-pause': 'Take a set to near-failure, rest 10–15 seconds, then squeeze out additional reps. An intensity technique for isolations only.',
   'mesocycle': 'A structured training block, typically 4–8 weeks, with a clear progression strategy and a deload at the end.',
+  'superset': 'Two exercises that share no prime mover, run as alternating sets: A1, walk straight to A2, rest, back to A1. Each muscle still gets its full rest — it spends part of it watching the other exercise — so the session is shorter without the sets getting worse. The rest after the pair counts from when you logged A1, so a slow walk comes out of the rest, not on top of it.',
   'double progression': 'Hit the top of your rep range → increase weight next session. Miss the top → repeat same weight. Simple, effective loading strategy.',
   'spot reduction': 'The idea that training a body part burns the fat sitting on it. It does not work — fat is mobilised systemically from the whole body, not from the muscle you just trained. Oblique work builds the wall under the love handles; only an energy deficit removes what is on top of it.',
   'energy deficit': 'Eating fewer calories than you burn. The only thing that removes body fat. Target 0.5–1% of bodyweight lost per week — faster than that and the weight coming off starts including muscle, which makes the waist look worse, not better.',
@@ -1661,6 +1665,7 @@ const PROGRAMS = [
             sets: 4,
             ramp: {
               '3': 5,
+              '6': 4,
             },
             reps: '6–10',
             rpe: '7–9',
@@ -1681,6 +1686,7 @@ const PROGRAMS = [
             sets: 3,
             ramp: {
               '5': 4,
+              '6': 3,
             },
             reps: '8–12',
             rpe: '8',
@@ -1698,6 +1704,7 @@ const PROGRAMS = [
           {
             id: 'm4_pec_deck',
             name: 'Pec Deck',
+            superset: 'A',
             sets: 3,
             ramp: {
               '5': 4,
@@ -1714,12 +1721,32 @@ const PROGRAMS = [
             },
           },
           {
+            id: 'm4_pallof_press',
+            name: 'Half-Kneeling Pallof Press',
+            superset: 'A',
+            sets: 2,
+            ramp: {
+              '7': 3,
+            },
+            reps: '10–12 each side',
+            rpe: '8',
+            note: 'Promoted — you chose this over the cable crunch 5 of 8 weeks. It was LOW effort every time: add weight until 10 reps is genuinely hard. Anti-rotation, ribs down, no side bends.',
+            llp: false,
+            compound: false,
+            rest: 45,
+            restLabel: '45 sec',
+            muscles: {
+              abs: 1,
+            },
+          },
+          {
             id: 'm4_db_lateral_raise',
             name: 'DB Lateral Raise',
+            superset: 'B',
             sets: 4,
             ramp: {
               '3': 5,
-              '7': 6,
+              '6': 4,
             },
             reps: '10–15',
             rpe: '8–9',
@@ -1733,8 +1760,25 @@ const PROGRAMS = [
             },
           },
           {
+            id: 'm4_rope_pushdown',
+            name: 'Rope Pushdown',
+            superset: 'B',
+            sets: 3,
+            reps: '12–15',
+            rpe: '8',
+            note: 'Progressing fine (+1.1 lb/wk). Full extension, squeeze at the bottom.',
+            llp: false,
+            compound: false,
+            rest: 75,
+            restLabel: '1–1.5 min',
+            muscles: {
+              triceps: 1,
+            },
+          },
+          {
             id: 'm4_cable_lat_raise_d1',
             name: 'Cable Lateral Raise',
+            superset: 'C',
             sets: 3,
             ramp: {
               '5': 4,
@@ -1751,23 +1795,9 @@ const PROGRAMS = [
             },
           },
           {
-            id: 'm4_rope_pushdown',
-            name: 'Rope Pushdown',
-            sets: 3,
-            reps: '12–15',
-            rpe: '8',
-            note: 'Progressing fine (+1.1 lb/wk). Full extension, squeeze at the bottom.',
-            llp: false,
-            compound: false,
-            rest: 75,
-            restLabel: '1–1.5 min',
-            muscles: {
-              triceps: 1,
-            },
-          },
-          {
             id: 'm4_oh_cable_ext',
             name: 'Overhead Cable Extension',
+            superset: 'C',
             sets: 2,
             ramp: {
               '3': 3,
@@ -1783,24 +1813,6 @@ const PROGRAMS = [
               triceps: 1,
             },
           },
-          {
-            id: 'm4_pallof_press',
-            name: 'Half-Kneeling Pallof Press',
-            sets: 2,
-            ramp: {
-              '7': 3,
-            },
-            reps: '10–12 each side',
-            rpe: '8',
-            note: 'Promoted — you chose this over the cable crunch 5 of 8 weeks. It was LOW effort every time: add weight until 10 reps is genuinely hard. Anti-rotation, ribs down, no side bends.',
-            llp: false,
-            compound: false,
-            rest: 45,
-            restLabel: '45 sec',
-            muscles: {
-              abs: 1,
-            },
-          },
         ],
       },
       {
@@ -1814,9 +1826,11 @@ const PROGRAMS = [
           {
             id: 'm4_neutral_pulldown',
             name: 'Neutral-Grip Pulldown',
+            superset: 'A',
             sets: 5,
             ramp: {
               '5': 6,
+              '6': 5,
             },
             reps: '8–12',
             rpe: '7–9',
@@ -1831,11 +1845,28 @@ const PROGRAMS = [
             },
           },
           {
+            id: 'm4_decline_crunch',
+            name: 'Weighted Decline Crunch',
+            superset: 'A',
+            sets: 3,
+            reps: '10–15',
+            rpe: '8',
+            note: 'Replaces the hanging leg raise — 5 weeks at high effort with zero added load, because bodyweight has no next rung. Hold a plate and progress it. This builds the wall under the fat; the deficit removes the fat.',
+            llp: false,
+            compound: false,
+            rest: 60,
+            restLabel: '1 min',
+            muscles: {
+              abs: 1,
+            },
+          },
+          {
             id: 'm4_cable_row',
             name: 'Chest-Supported Cable Row',
             sets: 4,
             ramp: {
               '5': 5,
+              '6': 4,
             },
             reps: '8–12',
             rpe: '8',
@@ -1856,6 +1887,7 @@ const PROGRAMS = [
             sets: 3,
             ramp: {
               '3': 4,
+              '6': 2,
             },
             reps: '10–12',
             rpe: '8',
@@ -1872,9 +1904,11 @@ const PROGRAMS = [
           {
             id: 'm4_straight_arm_pulldown',
             name: 'Straight-Arm Pulldown',
+            superset: 'B',
             sets: 3,
             ramp: {
               '5': 4,
+              '6': 3,
             },
             reps: '12–15',
             rpe: '8',
@@ -1888,26 +1922,9 @@ const PROGRAMS = [
             },
           },
           {
-            id: 'm4_rear_delt_row',
-            name: 'Cable Rear Delt Row (high elbow)',
-            sets: 3,
-            ramp: {
-              '3': 4,
-            },
-            reps: '12–15',
-            rpe: '8',
-            note: 'Flat 20 lb for 5 weeks and 26% skipped — the load is the problem, not the movement. Set it heavy enough to matter. Stops at 1 RIR.',
-            llp: false,
-            compound: false,
-            rest: 75,
-            restLabel: '1–1.5 min',
-            muscles: {
-              rear_delt: 1,
-            },
-          },
-          {
             id: 'm4_face_pull',
             name: 'Face Pull (prehab + volume)',
+            superset: 'B',
             sets: 3,
             reps: '15–20',
             rpe: '7–8',
@@ -1923,29 +1940,33 @@ const PROGRAMS = [
             },
           },
           {
-            id: 'm4_shrug',
-            name: 'DB Shrug',
+            id: 'm4_rear_delt_row',
+            name: 'Cable Rear Delt Row (high elbow)',
+            superset: 'C',
             sets: 3,
-            reps: '10–15',
+            ramp: {
+              '3': 4,
+              '6': 3,
+            },
+            reps: '12–15',
             rpe: '8',
-            note: 'New. Traps averaged 1.9 sets/week last block against an MAV of 6–14 — this is the fix. Straight up, pause at the top, no rolling.',
+            note: 'Flat 20 lb for 5 weeks and 26% skipped — the load is the problem, not the movement. Set it heavy enough to matter. Stops at 1 RIR.',
             llp: false,
             compound: false,
             rest: 75,
             restLabel: '1–1.5 min',
             muscles: {
-              traps: 1,
-            },
-            ramp: {
-              '3': 4,
+              rear_delt: 1,
             },
           },
           {
             id: 'm4_bayesian_curl',
             name: 'Bayesian Cable Curl',
+            superset: 'C',
             sets: 3,
             ramp: {
               '5': 4,
+              '6': 3,
             },
             reps: '10–12',
             rpe: '8',
@@ -1956,21 +1977,6 @@ const PROGRAMS = [
             restLabel: '1–1.5 min',
             muscles: {
               biceps: 1,
-            },
-          },
-          {
-            id: 'm4_decline_crunch',
-            name: 'Weighted Decline Crunch',
-            sets: 3,
-            reps: '10–15',
-            rpe: '8',
-            note: 'Replaces the hanging leg raise — 5 weeks at high effort with zero added load, because bodyweight has no next rung. Hold a plate and progress it. This builds the wall under the fat; the deficit removes the fat.',
-            llp: false,
-            compound: false,
-            rest: 60,
-            restLabel: '1 min',
-            muscles: {
-              abs: 1,
             },
           },
         ],
@@ -2008,6 +2014,7 @@ const PROGRAMS = [
             sets: 3,
             ramp: {
               '5': 4,
+              '6': 3,
             },
             reps: '10–15',
             rpe: '8',
@@ -2025,6 +2032,9 @@ const PROGRAMS = [
             id: 'm4_walking_lunge',
             name: 'Walking Lunge',
             sets: 3,
+            ramp: {
+              '6': 2,
+            },
             reps: '10–12 each leg',
             rpe: '8',
             note: 'Flat 45 lb all block at mostly low-to-medium effort. Same movement, heavier DBs — this is a loading fix, not an exercise problem.',
@@ -2040,6 +2050,7 @@ const PROGRAMS = [
           {
             id: 'm4_seated_leg_curl',
             name: 'Seated Leg Curl',
+            superset: 'A',
             sets: 3,
             ramp: {
               '3': 4,
@@ -2058,11 +2069,11 @@ const PROGRAMS = [
           {
             id: 'm4_standing_calf',
             name: 'Standing Calf Raise',
+            superset: 'A',
             sets: 4,
             ramp: {
               '3': 5,
               '5': 6,
-              '7': 7,
             },
             reps: '10–15',
             rpe: '8–9',
@@ -2081,6 +2092,7 @@ const PROGRAMS = [
             sets: 2,
             ramp: {
               '5': 3,
+              '6': 2,
             },
             reps: '40 m each side',
             rpe: '8',
@@ -2101,13 +2113,14 @@ const PROGRAMS = [
         id: 'day4',
         label: 'Day 4',
         title: 'UPPER',
-        subtitle: 'Delts · Upper Back · Arms · Waist',
+        subtitle: 'Delts · Upper Back · Traps · Arms',
         note: '🩺 Prehab first: band pull-aparts 2×20, external rotations 2×15/arm. Neutral grip on the press. Optional 10-min bike or incline walk to finish.',
         protocol: true,
         exercises: [
           {
             id: 'm4_db_shoulder_press',
             name: 'DB Shoulder Press (neutral)',
+            superset: 'A',
             sets: 4,
             ramp: {
               '5': 5,
@@ -2128,6 +2141,7 @@ const PROGRAMS = [
           {
             id: 'm4_machine_row',
             name: 'Machine Row',
+            superset: 'A',
             sets: 4,
             ramp: {
               '3': 5,
@@ -2147,6 +2161,7 @@ const PROGRAMS = [
           {
             id: 'm4_lean_away_lat_raise',
             name: 'Lean-Away Cable Lateral Raise',
+            superset: 'B',
             sets: 4,
             ramp: {
               '3': 5,
@@ -2164,8 +2179,29 @@ const PROGRAMS = [
             },
           },
           {
+            id: 'm4_rope_hammer_curl',
+            name: 'Rope Hammer Curl',
+            superset: 'B',
+            sets: 3,
+            ramp: {
+              '5': 4,
+            },
+            reps: '10–15',
+            rpe: '8',
+            note: 'Progressing (50 → 62.5 lb), 11% skip. Brachialis and forearm.',
+            llp: false,
+            compound: false,
+            rest: 75,
+            restLabel: '1–1.5 min',
+            muscles: {
+              biceps: 1,
+              forearms: 0.5,
+            },
+          },
+          {
             id: 'm4_rear_delt_fly',
             name: 'Rear Delt Fly (machine)',
+            superset: 'C',
             sets: 4,
             ramp: {
               '5': 5,
@@ -2184,6 +2220,7 @@ const PROGRAMS = [
           {
             id: 'm4_neutral_cg_press',
             name: 'Neutral-Grip Close Press',
+            superset: 'C',
             sets: 3,
             reps: '8–12',
             rpe: '8',
@@ -2198,22 +2235,22 @@ const PROGRAMS = [
             },
           },
           {
-            id: 'm4_rope_hammer_curl',
-            name: 'Rope Hammer Curl',
+            id: 'm4_shrug',
+            name: 'DB Shrug',
             sets: 3,
-            ramp: {
-              '5': 4,
-            },
             reps: '10–15',
             rpe: '8',
-            note: 'Progressing (50 → 62.5 lb), 11% skip. Brachialis and forearm.',
+            note: 'Traps averaged 1.9 sets/week last block against an MAV of 6–14 — this is the fix. Moved off PULL in week 6 to get that session under 50 min. Straight up, pause at the top, no rolling.',
             llp: false,
             compound: false,
             rest: 75,
             restLabel: '1–1.5 min',
             muscles: {
-              biceps: 1,
-              forearms: 0.5,
+              traps: 1,
+            },
+            ramp: {
+              '3': 4,
+              '6': 3,
             },
           },
         ],
@@ -2249,6 +2286,7 @@ const PROGRAMS = [
           {
             id: 'm4_seated_leg_curl_d5',
             name: 'Seated Leg Curl',
+            superset: 'A',
             sets: 3,
             ramp: {
               '5': 4,
@@ -2265,9 +2303,32 @@ const PROGRAMS = [
             },
           },
           {
+            id: 'm4_seated_calf',
+            name: 'Seated Calf Raise',
+            superset: 'A',
+            sets: 4,
+            ramp: {
+              '3': 5,
+              '5': 6,
+            },
+            reps: '12–20',
+            rpe: '8–9',
+            note: 'Flat 110 lb all block — soleus work needs the load pushed. Second calf hit; calves averaged 9.9 vs an MAV of 12–18.',
+            llp: true,
+            compound: false,
+            rest: 75,
+            restLabel: '1–1.5 min',
+            muscles: {
+              calves: 1,
+            },
+          },
+          {
             id: 'm4_kb_swing',
             name: 'Kettlebell Swing',
             sets: 3,
+            ramp: {
+              '6': 2,
+            },
             reps: '12–15',
             rpe: '8',
             note: 'Promoted from substitute — you swapped away from the hip thrust 7 of 8 weeks and this was the dominant replacement. Hips, not arms; hard glute lockout.',
@@ -2297,27 +2358,9 @@ const PROGRAMS = [
             },
           },
           {
-            id: 'm4_seated_calf',
-            name: 'Seated Calf Raise',
-            sets: 4,
-            ramp: {
-              '3': 5,
-              '5': 6,
-            },
-            reps: '12–20',
-            rpe: '8–9',
-            note: 'Flat 110 lb all block — soleus work needs the load pushed. Second calf hit; calves averaged 9.9 vs an MAV of 12–18.',
-            llp: true,
-            compound: false,
-            rest: 75,
-            restLabel: '1–1.5 min',
-            muscles: {
-              calves: 1,
-            },
-          },
-          {
             id: 'm4_cable_curl',
             name: 'Cable Curl',
+            superset: 'B',
             sets: 3,
             reps: '10–15',
             rpe: '8',
@@ -2333,6 +2376,7 @@ const PROGRAMS = [
           {
             id: 'm4_cable_crunch',
             name: 'Cable Crunch',
+            superset: 'B',
             sets: 3,
             reps: '12–15',
             rpe: '8',
@@ -2403,7 +2447,11 @@ const PROGRAMS = [
           '+1 set to: Bayesian curl, rope hammer curl (biceps 11.5 → 14/wk)',
           '+1 set to: rear delt fly (rear delts 11.5 → 13/wk); +1 set to leg press, seated leg curl day 5, suitcase carry',
           '1 drop set per session on an isolation movement — never on a delt or cuff exercise',
-          'Longest sessions of the block — roughly 70–75 min on PULL and UPPER',
+          'Week 5 is the longest week of the block — PULL runs over an hour. Week 6 is rebuilt to fit 50 min:',
+          'Week 6 on: supersets on every day. Two exercises that share no muscle, alternating sets — each muscle keeps its full rest, the time comes out of standing around',
+          'Week 6 trims: chest-supported machine row 4 → 2 (the third row on PULL), pulldown 6 → 5, cable row 5 → 4, straight-arm pulldown / rear delt row / Bayesian curl 4 → 3, DB shrug 4 → 3 and moved to UPPER',
+          'Week 6 trims: incline press 5 → 4, machine chest press 4 → 3, DB lateral raise 5 → 4, leg press 4 → 3, walking lunge / KB swing 3 → 2, suitcase carry 3 → 2',
+          'Week-6 volume: lats 13.5, chest 12.5, upper back 12.5, biceps 12.5, side delts 15.5, triceps 15, hamstrings 14, glutes 13.5, quads 12, calves 12, rear delts 11.5 sets/week — every muscle still above MEV',
         ],
       },
       {
@@ -2413,10 +2461,9 @@ const PROGRAMS = [
         rir: 'Isolations only near failure — never delts, never cuff',
         color: '#ff6b35',
         points: [
-          '+1 set to: DB lateral raise, lean-away lateral raise (side delts 16.5 → 18.5/wk, peak — MAV 16–24, MRV 26)',
-          '+1 set to: standing calf (calves 12 → 13/wk, peak — MAV 12–18)',
-          '+1 set to: Pallof press (abs 9.5 → 10.5/wk, peak)',
-          'Every other muscle holds its week-5 count — the peak is deliberately narrow, and no muscle in this block reaches its MRV',
+          '+1 set to: lean-away lateral raise (side delts 15.5 → 16.5/wk, peak — MAV 16–24, MRV 26)',
+          '+1 set to: Pallof press (abs 9 → 10/wk, peak)',
+          'Every other muscle holds its week-6 count — the overreach comes from RPE, not added sets, so every session still fits 50 min',
           'Highest LLP usage — 2+ exercises per session',
           'Rear/side delt and rotator-cuff work still stops at 1 RIR, and the prehab protocol is untouched',
           '⚠️ Monitor sleep and shoulder joints closely — conditioning is the first thing cut if loads drop, before any working set',
@@ -4946,12 +4993,15 @@ function toggleSet(dayId, exId, setIdx) {
   // reloads `state` for the next week, so these must be read first.
   const dayDone = isDayComplete(dayId);
   const day = DAYS.find(d => d.id === dayId);
+  const orig = day.exercises.find(e => resolveExercise(dayId, e).id === exId);
+  const ex = resolveExercise(dayId, orig);
+  const ss = dayDone ? null : supersetStep(day, orig, ex);
+  if (ss) view.selectedExId = ss.partner.id;
   const nxt = dayDone ? null : activeSet(day);
-  const ex = resolveExercise(dayId, day.exercises.find(e => resolveExercise(dayId, e).id === exId));
   syncCompletion(dayId);
   refreshCurrentDay(dayId);
 
-  if (!dayDone) beginRest(ex, setIdx, nxt);
+  if (!dayDone) beginRest(ex, setIdx, nxt, ss);
 }
 
 function saveWeight(dayId, exId) {
@@ -5671,10 +5721,71 @@ function logActiveSet() {
   // the app on to the next one, which reloads `state` out from under us — so
   // isDayComplete() would then be answering about a different week entirely.
   const dayDone = isDayComplete(day.id);
+  const ss = dayDone ? null : supersetStep(day, act.orig, ex);
+  if (ss) view.selectedExId = ss.partner.id;
   const nxt = dayDone ? null : activeSet(day);
   syncCompletion(day.id);
 
-  if (!dayDone) beginRest(ex, i, nxt);
+  if (!dayDone) beginRest(ex, i, nxt, ss);
+}
+
+// ── Supersets ────────────────────────────────────────────────────────────────
+// Two ADJACENT exercises on a day that carry the same `superset` key (a short
+// letter, 'A', 'B', …) run as alternating sets: A1, walk over, A2, rest, A1 …
+// Pairs are chosen so they never share a prime mover, which is the whole trick:
+// each muscle still gets its prescribed rest, it just spends part of that rest
+// watching the partner's set instead of a timer. That is where the time comes
+// from — not from shorter rests.
+//
+// After the FIRST half of a round the timer is only the walk to the partner,
+// and it opens minimized so LOG SET for the partner is already on the bar.
+// After the SECOND half it is the longer of the two prescribed rests, minus
+// however long ago the first half was actually logged — so a slow walk or a
+// long set comes out of the rest, never on top of it. Floored so there is
+// always time to set the first station back up.
+//
+// A pair with uneven set counts runs as a superset until the shorter one runs
+// out, then the leftovers run as straight sets with their own rest.
+const SUPERSET_TRANSITION_SEC = 20;
+const SUPERSET_MIN_REST_SEC = 30;
+
+// The other half of `orig`'s pair (ORIGINAL day.exercises entries), or null.
+function supersetPartner(day, orig) {
+  if (!orig || !orig.superset) return null;
+  const i = day.exercises.indexOf(orig);
+  const near = [day.exercises[i - 1], day.exercises[i + 1]];
+  return near.find(o => o && o.superset === orig.superset) || null;
+}
+
+// 'A1' / 'A2' for a paired exercise, '' otherwise. The number is plan order.
+function supersetLabel(day, orig) {
+  const partner = supersetPartner(day, orig);
+  if (!partner) return '';
+  return `${orig.superset}${day.exercises.indexOf(orig) < day.exercises.indexOf(partner) ? 1 : 2}`;
+}
+
+// What should happen after a set of `orig` (resolved to `ex`) was just logged:
+// null for a straight set, else { partner, sec, transition }. The caller moves
+// the selection to `partner` so the bar offers its set next.
+function supersetStep(day, orig, ex) {
+  const partner = supersetPartner(day, orig);
+  if (!partner || !hasPendingSet(day, partner)) return null;
+  const pEx = resolveExercise(day.id, partner);
+  const sets = state[day.id].sets;
+  const resolved = id => (sets[id] || []).filter(isResolved).length;
+  // The partner is a set behind in this round: go straight to it.
+  if (resolved(pEx.id) < resolved(ex.id)) return { partner, sec: SUPERSET_TRANSITION_SEC, transition: true };
+  // The round is complete: rest, counted from when the partner's half was logged.
+  const full = Math.max(ex.rest, pEx.rest);
+  const times = state[day.id].times || {};
+  let last = 0;
+  (sets[pEx.id] || []).forEach((v, k) => {
+    const t = times[`${pEx.id}_${k}`];
+    if (v === true && t && t.src === 'log' && t.at > last) last = t.at;
+  });
+  const elapsed = last ? Math.max(0, (nowMs() - last) / 1000) : 0;
+  const sec = Math.round(Math.min(full, Math.max(SUPERSET_MIN_REST_SEC, full - elapsed)));
+  return { partner, sec, transition: false };
 }
 
 // Open a rest period after a logged set. Both logging paths (logActiveSet and
@@ -5682,11 +5793,14 @@ function logActiveSet() {
 // cannot drift apart. `next` is the set that follows, or null on the last one
 // of the day — read it BEFORE syncCompletion, since closing out a week reloads
 // `state` and activeSet() would then be answering about a different week.
-function beginRest(ex, setIdx, next) {
-  setRest(ex.rest);
-  view.restMinimized = false;
+// `ss` is supersetStep()'s answer for this set, or null for a straight set.
+function beginRest(ex, setIdx, next, ss = null) {
+  setRest(ss ? ss.sec : ex.rest);
+  view.restMinimized = !!(ss && ss.transition);
   view.restInfo = `${ex.name} — SET ${setIdx + 1} DONE`;
-  view.restRec = ex.restLabel ? `RECOMMENDED ${ex.restLabel}` : '';
+  view.restRec = ss
+    ? (ss.transition ? 'SUPERSET · STRAIGHT TO THE PAIR' : 'SUPERSET · REST AFTER THE PAIR')
+    : (ex.restLabel ? `RECOMMENDED ${ex.restLabel}` : '');
   view.restNext = next
     ? (next.ex.id === ex.id ? `Next: ${ex.name} — Set ${next.i + 1}` : `Next: ${next.ex.name}`)
     : 'Last set of the day!';
@@ -5750,6 +5864,8 @@ function exercisesHTML(day) {
     if (ex.restLabel) tags += `<span class="tag">⏱ ${esc(ex.restLabel)}</span>`;
     if (ex.llp) tags += `<span class="tag acc hit" data-act="tip" data-t="LLP">LLP</span>`;
     if (ex.compound) tags += `<span class="tag hit" data-act="tip" data-t="compounds">COMPOUND</span>`;
+    const ssLabel = supersetLabel(day, orig);
+    if (ssLabel) tags += `<span class="tag ink hit" data-act="tip" data-t="superset">SUPERSET ${esc(ssLabel)}</span>`;
 
     const hist = getExerciseHistory(day.id, ex.id).filter(h => h.weight != null);
     let trend = `<div class="trend-empty">▂ LOG 2+ WEEKS TO SEE A TREND</div>`;
@@ -5807,7 +5923,12 @@ function exercisesHTML(day) {
     const isSel = view.selectedExId === orig.id && !allDone;
     const topCls = `ex-top${allDone ? '' : ' pick'}`;
     const topAttrs = allDone ? '' : ` data-act="selectex" data-ex="${orig.id}"`;
-    return `<div class="ex${isSel ? ' sel' : ''}">
+    // The first half of a pair carries the pair's header, so the two cards read
+    // as one block. No rest figure here: supersetStep() works it out live.
+    const ssHead = ssLabel.endsWith('1')
+      ? `<div class="ss-head"><span>SUPERSET ${esc(orig.superset)}</span><span>ALTERNATE SETS · REST AFTER THE PAIR</span></div>`
+      : '';
+    return `${ssHead}<div class="ex${isSel ? ' sel' : ''}">
       <div class="${topCls}"${topAttrs}>
         <div class="ex-name${allDone ? ' done' : ''}">${String(xi + 1).padStart(2, '0')} ${esc(ex.name)}</div>
         <div class="ex-right">
@@ -6136,7 +6257,7 @@ function renderBottomBar() {
     body = `<div class="log-row">
       <div class="log-top">
         <div class="log-name">${esc(act.ex.name)}</div>
-        <div class="log-set">SET ${act.i + 1}/${(state[day.id].sets[act.ex.id] || []).length} · ${esc(act.ex.reps)} REPS</div>
+        <div class="log-set">SET ${act.i + 1}/${(state[day.id].sets[act.ex.id] || []).length} · ${esc(act.ex.reps)} REPS${supersetLabel(day, act.orig) ? ` · ${esc(supersetLabel(day, act.orig))}` : ''}</div>
       </div>
       <div class="log-ctl">
         <div class="log-steps">
