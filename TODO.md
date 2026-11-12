@@ -1,7 +1,8 @@
 # gAIns — Improvement Backlog
 
 Ordered by what it costs to defer, not by effort. Findings are grounded in the
-state of `index.html` as of 2026-07-29 (3893 lines / 177 KB).
+state of `index.html` as of 2026-11-12 (6588 lines / 276 KB, `APP_VERSION` 14).
+First written 2026-07-29 at 3893 lines / 177 KB.
 
 Hosting decision: **staying on GitHub Pages** for now. Private-hosting options
 (Cloudflare Pages, GitHub Pro) were evaluated and deferred — revisit only if the
@@ -24,19 +25,18 @@ Nothing in the persisted model knew when anything happened. `state` was keyed
 `program → week → day → {sets, weights, reps, effort, protocol, swaps}` with no
 timestamp anywhere. `advanceToCurrentWeek()` bumps the week when the previous one
 is *fully complete*, so "Week 5" was an ordinal counter disconnected from the
-calendar. The export (then `version: 3`) carried no dates either — the only date
-in the whole system was the export filename.
+calendar. The export carried no dates either — the only date in the whole system
+was the export filename.
 
 Couldn't answer: when did I last train legs, what's my actual training
 frequency, was this mesocycle run over 8 weeks or dragged across 5 months, is
 this a deload or a vacation.
 
-**Why first:** it is the only item in this file that is retroactively
-unrecoverable. Everything else can be built six months from now against data that
-still exists. Every session logged without a date loses its date permanently.
-
 - [x] Add `completedAt` per set (minimum: per day)
-- [x] Bump export to v4 with a migration from v3
+- [x] Carry timestamps in the export. The file stays labelled `version: 3` on
+      purpose: the version integer is the import gate, so a `4` would be
+      rejected by older builds. `times` and `startDate` are extra keys older
+      builds ignore (see the comment above `exportData`'s `data` object).
 - [x] Keep v1/v2/v3 import paths working
 
 ---
@@ -45,19 +45,19 @@ still exists. Every session logged without a date loses its date permanently.
 
 ### 2. Service worker + self-hosted fonts
 
-**Status:** not started
+**Status:** done — 2026-07-29 to 2026-08-02 (PR #17). See
+`docs/superpowers/specs/2026-07-30-service-worker-design.md`.
 
-GitHub Pages hard-codes `cache-control: max-age=600` on `index.html` and offers
-no way to change it. More than 10 minutes after the last load, every cold launch
-needs live network — and in `display: standalone` a failure is a blank screen
-with no reload affordance. Fonts (Oswald, IBM Plex Mono, Archivo) come from the
-Google Fonts CDN, adding a third-party origin to the critical path.
+GitHub Pages hard-codes `cache-control: max-age=600` on `index.html`, so a cold
+launch used to need live network, and the fonts came from the Google Fonts CDN.
 
-- [ ] Service worker, cache-first precache of the shell
-- [ ] Inline the three fonts as base64 `@font-face`; drop the CDN links
-- [ ] Deliberate update path (versioned cache, `skipWaiting` + `clients.claim`,
-      background revalidate) so pushes still reach the phone
-- [ ] Fix stale README — it claims Bebas Neue / DM Sans / DM Mono
+- [x] Service worker (`sw.js`) precaches the shell and fonts
+- [x] Fonts self-hosted as `.woff2` files in `fonts/`, served cache-first. This
+      replaced the original base64-inline idea; the CDN links are gone.
+- [x] Deliberate update path: versioned cache (`CACHE` in `sw.js`, kept in
+      lockstep with `APP_VERSION`), `skipWaiting` + `clients.claim`,
+      stale-while-revalidate for navigations, build number shown in Settings
+- [x] README fonts fixed (Oswald, IBM Plex Mono, Archivo)
 
 ### 3. Make backups durable
 
@@ -75,33 +75,30 @@ export you have to remember to run.
 
 ### 4. Per-set weights
 
-**Status:** not started
+**Status:** partly done
 
-Partially done already. Both `toggleSet` and `logActiveSet` write
-`weights[exId_i]` alongside `weights[exId]` — only `saveWeight()` (the text
-input path) writes exercise-level only. Remaining work is narrower than first
-written up: make `saveWeight()` per-set and make the progress view read per-set
-weights.
+`toggleSet` and `logActiveSet` already write
+`weights[exId_i]` alongside `weights[exId]`. What is left: `saveWeight()` (the
+text input path) still writes exercise-level only, and `progressHTML()` still
+charts the exercise-level `h.weight`.
 
-- [ ] Store weight per set, mirroring the reps shape
+- [ ] Make `saveWeight()` per-set, mirroring the reps shape
 - [ ] Migrate existing per-exercise weights forward
+- [ ] Make the progress view read per-set weights
 
 ### 5. Weekly volume per muscle vs. landmarks
 
-**Status:** not started
+**Status:** in progress
 
-`tools/muscle-map.json` and `tools/volume-landmarks.json` already exist, and
+`tools/muscle-map.json` and `tools/volume-landmarks.json` exist, generated
+programs (meso3+) carry inline `muscles` credits, and
 `docs/training-evidence.md` is built around weekly hard sets per muscle vs.
 MEV/MAV/MRV — but none of it is surfaced in the app. It's only consumed by
-`/newplan` at generation time.
-
-Surfacing "chest: 14 sets this week, MAV 18, MRV 22" turns the app from a
-checklist into what the evidence file says actually matters. The data all exists;
-it just isn't wired to the UI.
+`/newplan` and `tools/analyze-history.js`.
 
 - [ ] Load muscle map + landmarks into the app
 - [ ] Weekly set count per muscle, against MEV/MAV/MRV
-- [ ] Surface in PROGRESS (or a new view)
+- [ ] Surface in PROGRESS
 
 ### 6. Progress view beyond weight
 
@@ -124,11 +121,12 @@ become available — both better hypertrophy signals.
 
 **Status:** not started
 
-`PROGRAMS` + `EXERCISE_ALTERNATIVES` are 78 KB of the 176 KB file (44%). Actual
-application code is only ~75 KB.
+`PROGRAMS` (~78 KB) + `EXERCISE_ALTERNATIVES` (~57 KB) are about 135 KB of the
+276 KB file, roughly half. Four programs now live inline.
 
 - [ ] Move to `data/programs.json`, fetch at boot
-- [ ] Ensure the service worker caches it alongside the shell
+- [ ] Add it to the service worker's `PRECACHE` alongside the shell
+- [ ] Keep `tools/insert-program.js` and `/newplan` writing to the new location
 
 ### 8. Modularize with an inline-back build
 
@@ -141,7 +139,25 @@ a build step, which is why it's last.
 
 ---
 
+## Shipped outside this list
+
+For context on where the app is now; each has its own tests in `tools/`.
+
+- 2026-07-21 — `/newplan` program generator and `tools/insert-program.js`
+- 2026-07-23 — out-of-order set logging and per-set reps
+- 2026-08-03 — loud day completion, and the week auto-advances when finished
+- 2026-08-12 — per-week set ramp across the block, and a real week-8 deload
+- 2026-08-13 — logged work survives an exercise moving days
+- 2026-08-14 — rest-timer chime and a readable minimized timer
+- 2026-08-20 — waist + Zone 2 finisher block for meso3
+- 2026-08-21 / 2026-10-29 — sessions capped by `tools/session-length.test.js`
+- 2026-09-07 — per-week ± sets stepper on each exercise card
+- 2026-09-21 — Mesocycle 4 (8-week MAV push, shoulder-cautious)
+- 2026-10-29 — supersets for meso4 from week 6
+
+---
+
 ## Suggested sequence
 
-1 → 2 → 4 → 5, folding in 3 whenever convenient. Item 1 first strictly because of
-the clock on it; item 2 next because that's the one that bites mid-workout.
+5 (in progress) → 3 → 4 → 6. Item 3 is small and protects everything else, so
+fold it in whenever convenient; item 6 builds on item 4's per-set weights.

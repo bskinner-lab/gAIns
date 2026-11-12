@@ -39,7 +39,7 @@ Each rebuilds its container's `innerHTML`. **All interaction goes through one de
 ## Key Design Decisions
 
 - **Single file by design** — self-contained and portable. Don't split into separate files unless explicitly asked.
-- **No build step** — uses Google Fonts CDN (Oswald, IBM Plex Mono, Archivo) directly.
+- **No build step** — fonts (Oswald, IBM Plex Mono, Archivo) are self-hosted `.woff2` files in `fonts/`, precached by `sw.js`.
 - **localStorage persistence** — all progress, weights, effort, and swaps stored client-side.
 - **Light + dark themes** — toggled in Settings, defaults to `prefers-color-scheme`.
 - **Shoulder-cautious program** — tailored for a user with shoulder considerations. Protocol sections appear on push/pull/upper days.
