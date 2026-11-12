@@ -158,6 +158,7 @@ For context on where the app is now; each has its own tests in `tools/`.
 - 2026-09-07 — per-week ± sets stepper on each exercise card
 - 2026-09-21 — Mesocycle 4 (8-week MAV push, shoulder-cautious)
 - 2026-10-29 — supersets for meso4 from week 6
+- 2026-11-12 — break up or make supersets from the card, this week or every week
 
 ---
 

@@ -28,7 +28,7 @@ Each rebuilds its container's `innerHTML`. **All interaction goes through one de
 ### Data and state
 
 - **Data constants**: `PROGRAMS` (multi-program: days, exercises, `mesocycle`, `weekPhases`, `protocolItems`), `EXERCISE_ALTERNATIVES` (swap options), `GLOSSARY`. `DAYS`/`MESOCYCLE`/`WEEK_PHASES`/`PROTOCOL_ITEMS` are reassigned from the active program on switch.
-- **Supersets**: two ADJACENT exercises on a day with the same `superset` key (`'A'`, `'B'`, …) run as alternating sets. `supersetStep()` decides the rest after each logged set: after the first half, a `SUPERSET_TRANSITION_SEC` walk (minimized, with the selection moved to the partner); after the second, the longer of the two `rest`s minus the time since the partner's half was logged, floored at `SUPERSET_MIN_REST_SEC`. Pairs must share no muscle — `tools/superset.test.js` and `insert-program.js` both enforce it.
+- **Supersets**: two ADJACENT exercises on a day with the same `superset` key (`'A'`, `'B'`, …) run as alternating sets. `supersetStep()` decides the rest after each logged set: after the first half, a `SUPERSET_TRANSITION_SEC` walk (minimized, with the selection moved to the partner); after the second, the longer of the two `rest`s minus the time since the partner's half was logged, floored at `SUPERSET_MIN_REST_SEC`. Pairs must share no muscle — `tools/superset.test.js` and `insert-program.js` both enforce it. Read the key through `pairKey(day, orig)`, never `orig.superset` directly: the card's UNPAIR / PAIR WITH NEXT buttons override it this week (`state[dayId].pairs`) or every week (`hypertrophy_pairs_<progId>`), week winning. Hand-made pairs may share a muscle; the dialog warns instead of refusing.
 - **Globals**: the current week is `currentWeek` (not `week`); the program index is `currentProgramIdx`; workout data is `state`, keyed by day id → `{sets, weights, effort, protocol, swaps}`. `sets[exId]` entries are `true`, `'skipped'`, or `false`.
 - **Persistence**: `localStorage` under `hypertrophy_state_<progId>_w<week>`, plus `hypertrophy_week_<progId>`, `hypertrophy_program`, `hypertrophy_migrated_v3`. Theme preference lives in `gains_theme` (`light`/`dark`/absent = auto). Migration functions handle legacy v1/v2 layouts — don't break them.
 
@@ -68,7 +68,7 @@ To develop:
 There is no build step, but there **is** a test suite — Node's built-in runner, no dependencies, no `package.json`:
 
 ```bash
-node --test tools/*.test.js                # full suite (418 tests)
+node --test tools/*.test.js                # full suite (433 tests)
 node tools/smoke-render.js                 # render gate, program 0
 node tools/smoke-render.js index.html 2    # render gate, a specific program
 ```

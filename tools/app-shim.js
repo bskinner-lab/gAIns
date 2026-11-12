@@ -205,6 +205,7 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       ' adjustSetCount, adjustedSetTarget,' +
       ' setRest, endRest, expireRestIfDue,' +
       ' supersetPartner, supersetLabel, supersetStep, SUPERSET_TRANSITION_SEC, SUPERSET_MIN_REST_SEC,' +
+      ' pairKey, pairableNext, pairSuperset, unpairSuperset, sharedMuscles, programPairs, pairsKey, exercisesHTML,' +
       ' initState, saveState, loadState, prefillFromPreviousWeeks,' +
       ' exportData, importData,' +
       ' backfillProgram, programStartKey,' +

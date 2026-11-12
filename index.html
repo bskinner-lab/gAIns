@@ -278,6 +278,8 @@ body {
 .setwk { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .setstep { border: 1px solid var(--border); background: transparent; color: var(--muted-2); border-radius: 3px; width: var(--tap); min-height: var(--tap); cursor: pointer; font-family: var(--font-mono); font-size: 13px; line-height: 1; }
 .setstep:disabled { opacity: .35; cursor: default; }
+.pairrow .effort-k { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pairbtn { flex: none; border: 1px solid var(--border); background: transparent; color: var(--muted-2); border-radius: 3px; min-height: var(--tap); padding: 0 12px; cursor: pointer; font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 1px; }
 .setstep-n { font-family: var(--font-mono); font-size: 11px; min-width: 16px; text-align: center; }
 .skipex { margin-top: 12px; background: transparent; border: 1px dashed var(--border); border-radius: 4px; color: var(--muted); font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; padding: 0 16px; min-height: var(--tap); cursor: pointer; }
 
@@ -481,7 +483,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '15';
+const APP_VERSION = '16';
 
 const THEME_KEY = 'gains_theme';
 
@@ -4804,7 +4806,8 @@ function initState() {
       effort: savedDay.effort || {},
       protocol: savedDay.protocol || [],
       swaps: savedDay.swaps || {},
-      setAdjust: savedDay.setAdjust || {}
+      setAdjust: savedDay.setAdjust || {},
+      pairs: savedDay.pairs || {}
     };
     day.exercises.forEach(originalEx => {
       const ex = resolveExercise(day.id, originalEx);
@@ -5443,6 +5446,10 @@ function exportData() {
     allPrograms[prog.id] = startDate
       ? { weeks, currentWeek: weekNum, startDate }
       : { weeks, currentWeek: weekNum };
+    // Every-week superset changes. Only written when there are some, so a
+    // backup from someone who never re-paired is byte-for-byte what it was.
+    const pairs = programPairs(prog.id);
+    if (Object.keys(pairs).length) allPrograms[prog.id].pairs = pairs;
   });
   // Stays labelled 3 deliberately. The version integer is the import gate, so a
   // file labelled 4 is rejected outright by builds that predate `times`. The
@@ -5483,6 +5490,11 @@ function importData(event) {
             // Otherwise a start date from the pre-import state would survive and
             // be shown against restored data it has nothing to do with.
             localStorage.removeItem(programStartKey(progId));
+          }
+          if (progData.pairs && typeof progData.pairs === 'object') {
+            localStorage.setItem(pairsKey(progId), JSON.stringify(progData.pairs));
+          } else {
+            localStorage.removeItem(pairsKey(progId));
           }
         }
         if (typeof data.currentProgram === 'number') {
@@ -5599,6 +5611,7 @@ function advanceToCurrentWeek() {
 })();
 
 const view = { name: 'day', dayId: null, openPhase: 2, tip: null, confirm: null, swap: null, done: null,
+               pairAsk: null,
                importMsg: '', importOk: true, sessionStart: Date.now(), now: Date.now(),
                // pendR's "not set" sentinel is '' (not null, unlike most of this
                // codebase's == null convention) because it feeds straight into
@@ -5859,19 +5872,130 @@ function logActiveSet() {
 const SUPERSET_TRANSITION_SEC = 20;
 const SUPERSET_MIN_REST_SEC = 30;
 
+// ── Re-pairing ──
+// The plan's `superset` key can be overridden, so a pair can be broken up when
+// one station is taken, or two adjacent exercises paired on the fly. Two
+// layers, each a map { origId: key } where '' means "not in a superset":
+//   - this week only: state[dayId].pairs, in the week blob like setAdjust, so
+//     it is exported with the week and cleared with it;
+//   - every week of the program: localStorage hypertrophy_pairs_<progId>,
+//     { dayId: { origId: key } }.
+// The week layer wins, then the program layer, then the plan. Nothing here
+// touches set arrays, so logged sets, weekly volume and history are untouched:
+// a superset only changes the order sets are offered in and the rest after.
+function pairsKey(progId = currentProgramId()) { return `hypertrophy_pairs_${progId}`; }
+
+function programPairs(progId) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(pairsKey(progId)) || '{}');
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  } catch(e) { return {}; }
+}
+
+function saveProgramPairs(map) {
+  const clean = {};
+  Object.keys(map).forEach(d => { if (Object.keys(map[d] || {}).length) clean[d] = map[d]; });
+  try {
+    if (Object.keys(clean).length) localStorage.setItem(pairsKey(), JSON.stringify(clean));
+    else localStorage.removeItem(pairsKey());
+  } catch(e) {}
+}
+
+const hasOwn = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
+
+// The superset key `orig` runs under right now, or null for a straight set.
+function pairKey(day, orig) {
+  if (!orig) return null;
+  const wk = state[day.id] && state[day.id].pairs;
+  if (hasOwn(wk, orig.id)) return wk[orig.id] || null;
+  const pp = programPairs()[day.id];
+  if (hasOwn(pp, orig.id)) return pp[orig.id] || null;
+  return orig.superset || null;
+}
+
 // The other half of `orig`'s pair (ORIGINAL day.exercises entries), or null.
 function supersetPartner(day, orig) {
-  if (!orig || !orig.superset) return null;
+  const key = pairKey(day, orig);
+  if (!key) return null;
   const i = day.exercises.indexOf(orig);
   const near = [day.exercises[i - 1], day.exercises[i + 1]];
-  return near.find(o => o && o.superset === orig.superset) || null;
+  return near.find(o => o && pairKey(day, o) === key) || null;
 }
 
 // 'A1' / 'A2' for a paired exercise, '' otherwise. The number is plan order.
 function supersetLabel(day, orig) {
   const partner = supersetPartner(day, orig);
   if (!partner) return '';
-  return `${orig.superset}${day.exercises.indexOf(orig) < day.exercises.indexOf(partner) ? 1 : 2}`;
+  return `${pairKey(day, orig)}${day.exercises.indexOf(orig) < day.exercises.indexOf(partner) ? 1 : 2}`;
+}
+
+// The exercise after `orig` on the day, when both are straight sets right now —
+// the only pair the card offers to make. Pairs have to be adjacent (that is
+// what supersetPartner looks for), and joining a half of an existing pair
+// would make a three-way chain.
+function pairableNext(day, orig) {
+  const next = day.exercises[day.exercises.indexOf(orig) + 1];
+  if (!next || supersetPartner(day, orig) || supersetPartner(day, next)) return null;
+  return next;
+}
+
+// Muscles two exercises both train. Plan pairs never share one
+// (tools/superset.test.js); a pair made by hand might, and then neither muscle
+// really rests while the other half runs, so the pairing dialog says so.
+function sharedMuscles(day, a, b) {
+  const ma = musclesFor(resolveExercise(day.id, a), a.id);
+  const mb = musclesFor(resolveExercise(day.id, b), b.id);
+  return Object.keys(ma).filter(m => mb[m]);
+}
+
+// Break up `orig`'s pair, or pair `a` with `b`, this week only or every week.
+// Both halves are always written at the same layer. An every-week change also
+// drops any this-week override on the two, or this week would keep ignoring it.
+function setPair(dayId, ids, key, scope) {
+  const day = DAYS.find(d => d.id === dayId);
+  if (!day) return;
+  if (scope === 'week') {
+    const sd = state[dayId];
+    if (!sd.pairs) sd.pairs = {};
+    ids.forEach(id => { sd.pairs[id] = key; });
+  } else {
+    const map = programPairs();
+    const dm = map[dayId] || (map[dayId] = {});
+    ids.forEach(id => {
+      const orig = day.exercises.find(e => e.id === id);
+      // Back to what the plan says: store nothing, so a later plan change wins.
+      if ((orig && (orig.superset || '')) === key) delete dm[id];
+      else dm[id] = key;
+      if (state[dayId].pairs) delete state[dayId].pairs[id];
+    });
+    saveProgramPairs(map);
+  }
+  saveState();
+}
+
+function unpairSuperset(dayId, origId, scope) {
+  const day = DAYS.find(d => d.id === dayId);
+  const orig = day && day.exercises.find(e => e.id === origId);
+  const partner = orig && supersetPartner(day, orig);
+  if (!partner) return;
+  setPair(dayId, [orig.id, partner.id], '', scope);
+}
+
+function pairSuperset(dayId, aId, bId, scope) {
+  const day = DAYS.find(d => d.id === dayId);
+  const a = day && day.exercises.find(e => e.id === aId);
+  if (!a || pairableNext(day, a) !== day.exercises.find(e => e.id === bId)) return;
+  const b = day.exercises.find(e => e.id === bId);
+  // Re-pairing the plan's own pair gets its own letter back.
+  let key = a.superset && a.superset === b.superset ? a.superset : '';
+  if (!key) {
+    const used = new Set();
+    const pp = programPairs()[dayId] || {}, wk = state[dayId].pairs || {};
+    day.exercises.forEach(e => { if (e.superset) used.add(e.superset); });
+    Object.values(pp).concat(Object.values(wk)).forEach(k => { if (k) used.add(k); });
+    key = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').find(k => !used.has(k)) || 'Z';
+  }
+  setPair(dayId, [a.id, b.id], key, scope);
 }
 
 // What should happen after a set of `orig` (resolved to `ex`) was just logged:
@@ -5952,6 +6076,47 @@ function addRest(delta) {
 }
 
 const EFF_LABEL = { low: 'LOW', medium: 'MED', high: 'HIGH' };
+
+// The card's superset row: break up the pair this exercise is in, or pair it
+// with the next exercise when both are straight sets. Both ask the scope first.
+function pairRowHTML(day, orig) {
+  const partner = supersetPartner(day, orig);
+  if (partner) {
+    const pName = resolveExercise(day.id, partner).name;
+    return `<div class="setwk pairrow"><span class="effort-k">SUPERSET · WITH ${esc(pName.toUpperCase())}</span>
+      <button class="pairbtn" data-act="pairask" data-mode="unpair" data-ex="${orig.id}">UNPAIR</button></div>`;
+  }
+  const next = pairableNext(day, orig);
+  if (!next) return '';
+  return `<div class="setwk pairrow"><span class="effort-k">STRAIGHT SETS</span>
+    <button class="pairbtn" data-act="pairask" data-mode="pair" data-ex="${orig.id}" data-b="${next.id}">PAIR WITH NEXT ↓</button></div>`;
+}
+
+function pairAskHTML(ask) {
+  const day = DAYS.find(d => d.id === ask.dayId);
+  const name = id => resolveExercise(day.id, day.exercises.find(e => e.id === id)).name;
+  let title, msg;
+  if (ask.mode === 'unpair') {
+    const orig = day.exercises.find(e => e.id === ask.a);
+    const partner = orig && supersetPartner(day, orig);
+    if (!partner) return '';
+    title = `Break up Superset ${pairKey(day, orig)}?`;
+    msg = `${name(ask.a)} and ${name(partner.id)} run as straight sets, each with its own rest. Logged sets stay as they are.`;
+  } else {
+    title = 'Pair as a superset?';
+    msg = `${name(ask.a)} and ${name(ask.b)} alternate sets, with the rest after the pair. Logged sets stay as they are.`;
+    const shared = sharedMuscles(day, day.exercises.find(e => e.id === ask.a), day.exercises.find(e => e.id === ask.b));
+    if (shared.length) msg += ` Both work ${shared.map(m => m.replace(/_/g, ' ')).join(', ')}, so that muscle won't really rest between them.`;
+  }
+  return `<div class="ov scrim"><div class="modal">
+    <div class="modal-t">${esc(title)}</div>
+    <div class="modal-m">${esc(msg)}</div>
+    <div class="modal-row">
+      <button class="ra ink" style="flex:1" data-act="pairdo" data-scope="week">THIS WEEK</button>
+      <button class="ra solid" style="flex:1" data-act="pairdo" data-scope="program">EVERY WEEK</button>
+    </div>
+    <button class="ra" style="width:100%;margin-top:10px" data-act="pairx">CANCEL</button></div></div>`;
+}
 
 function exercisesHTML(day) {
   const act = activeSet(day);
@@ -6036,7 +6201,7 @@ function exercisesHTML(day) {
     // The first half of a pair carries the pair's header, so the two cards read
     // as one block. No rest figure here: supersetStep() works it out live.
     const ssHead = ssLabel.endsWith('1')
-      ? `<div class="ss-head"><span>SUPERSET ${esc(orig.superset)}</span><span>ALTERNATE SETS · REST AFTER THE PAIR</span></div>`
+      ? `<div class="ss-head"><span>SUPERSET ${esc(pairKey(day, orig))}</span><span>ALTERNATE SETS · REST AFTER THE PAIR</span></div>`
       : '';
     return `${ssHead}<div class="ex${isSel ? ' sel' : ''}">
       <div class="${topCls}"${topAttrs}>
@@ -6059,6 +6224,7 @@ function exercisesHTML(day) {
         <span class="setstep-n">${arr.length}</span>
         <button class="setstep" data-act="setadd" data-ex="${ex.id}" aria-label="Add a set this week">+</button>
       </div></div>
+      ${pairRowHTML(day, orig)}
       <button class="skipex" data-act="skipex" data-ex="${ex.id}">${arr.every(v => v === 'skipped') ? 'UNSKIP EXERCISE' : 'SKIP EXERCISE'}</button>
     </div>`;
   }).join('') + `<div style="height:20px"></div>`;
@@ -6549,6 +6715,11 @@ function renderOverlays() {
     return;
   }
 
+  if (view.pairAsk) {
+    el.innerHTML = pairAskHTML(view.pairAsk);
+    return;
+  }
+
   if (view.done) {
     el.innerHTML = `<div class="ov done">${doneCardHTML(view.done)}</div>`;
     return;
@@ -6634,6 +6805,7 @@ function resetWeek() {
     state[day.id].reps = {};
     state[day.id].times = {};
     state[day.id].setAdjust = {};
+    state[day.id].pairs = {};
     day.exercises.forEach(o => {
       const ex = resolveExercise(day.id, o);
       state[day.id].sets[ex.id] = Array(setsForWeek(ex)).fill(false);
@@ -6689,6 +6861,13 @@ document.addEventListener('click', e => {
   }
   else if (act === 'eff')     { saveEffort(curDay().id, el.dataset.ex, el.dataset.l); }
   else if (act === 'swap')    { view.swap = { dayId: curDay().id, origId: el.dataset.orig }; }
+  else if (act === 'pairask') { view.pairAsk = { dayId: curDay().id, mode: el.dataset.mode, a: el.dataset.ex, b: el.dataset.b || null }; }
+  else if (act === 'pairx')   { view.pairAsk = null; }
+  else if (act === 'pairdo')  {
+    const a = view.pairAsk; view.pairAsk = null;
+    if (a && a.mode === 'unpair') unpairSuperset(a.dayId, a.a, el.dataset.scope);
+    else if (a) pairSuperset(a.dayId, a.a, a.b, el.dataset.scope);
+  }
   else if (act === 'log')     { logActiveSet(); }
   else if (act === 'w-') { view.pendW = Math.max(0, view.pendW - 2.5); }
   else if (act === 'w+') { view.pendW = view.pendW + 2.5; }
