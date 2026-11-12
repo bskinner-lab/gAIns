@@ -68,7 +68,7 @@ To develop:
 There is no build step, but there **is** a test suite — Node's built-in runner, no dependencies, no `package.json`:
 
 ```bash
-node --test tools/*.test.js                # full suite (404 tests)
+node --test tools/*.test.js                # full suite (418 tests)
 node tools/smoke-render.js                 # render gate, program 0
 node tools/smoke-render.js index.html 2    # render gate, a specific program
 ```

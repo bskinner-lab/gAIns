@@ -1,7 +1,8 @@
 # gAIns — Improvement Backlog
 
 Ordered by what it costs to defer, not by effort. Findings are grounded in the
-state of `index.html` as of 2026-11-12 (6588 lines / 276 KB, `APP_VERSION` 14).
+state of `index.html` as of 2026-11-12 (6588 lines / 276 KB, `APP_VERSION` 14,
+before item 5 landed).
 First written 2026-07-29 at 3893 lines / 177 KB.
 
 Hosting decision: **staying on GitHub Pages** for now. Private-hosting options
@@ -88,17 +89,20 @@ charts the exercise-level `h.weight`.
 
 ### 5. Weekly volume per muscle vs. landmarks
 
-**Status:** in progress
+**Status:** done — 2026-11-12 (`APP_VERSION` 15). Tests in
+`tools/muscle-volume.test.js`.
 
-`tools/muscle-map.json` and `tools/volume-landmarks.json` exist, generated
-programs (meso3+) carry inline `muscles` credits, and
-`docs/training-evidence.md` is built around weekly hard sets per muscle vs.
-MEV/MAV/MRV — but none of it is surfaced in the app. It's only consumed by
-`/newplan` and `tools/analyze-history.js`.
+PROGRESS now opens with WEEKLY SETS: for the selected week, done / planned hard
+sets per muscle (secondary credit counts half), a bar with the MAV band shaded
+and MEV/MRV ticks, and a status judged on the plan (BELOW MEV, BELOW MAV,
+IN MAV, ABOVE MAV, OVER MRV; a deload week only flags OVER MRV).
 
-- [ ] Load muscle map + landmarks into the app
-- [ ] Weekly set count per muscle, against MEV/MAV/MRV
-- [ ] Surface in PROGRESS
+- [x] Load muscle map + landmarks into the app (`MUSCLE_MAP`,
+      `VOLUME_LANDMARKS`, inlined copies pinned to the JSON in `tools/`)
+- [x] Weekly set count per muscle, against MEV/MAV/MRV
+      (`weeklyMuscleVolume()`, `volumeStatus()`)
+- [x] Surface in PROGRESS (`muscleVolumeHTML()`)
+- [ ] Later, if wanted: a week-by-week trend per muscle across the block
 
 ### 6. Progress view beyond weight
 
@@ -159,5 +163,5 @@ For context on where the app is now; each has its own tests in `tools/`.
 
 ## Suggested sequence
 
-5 (in progress) → 3 → 4 → 6. Item 3 is small and protects everything else, so
+3 → 4 → 6. Item 3 is small and protects everything else, so
 fold it in whenever convenient; item 6 builds on item 4's per-set weights.

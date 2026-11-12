@@ -225,6 +225,7 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       ' get setsForWeek() { return typeof setsForWeek === "function" ? setsForWeek : undefined; },' +
       ' get syncSetCount() { return typeof syncSetCount === "function" ? syncSetCount : undefined; },' +
       ' APP_VERSION,' +
+      ' MUSCLE_MAP, VOLUME_LANDMARKS, musclesFor, weeklyMuscleVolume, volumeStatus, muscleVolumeHTML, progressHTML, resolveExercise,' +
       ' isDayComplete, isWeekComplete, advanceToCurrentWeek, seedCompleteFlags,' +
       ' get currentWeek() { return currentWeek; },' +
       ' get currentProgramIdx() { return currentProgramIdx; },' +

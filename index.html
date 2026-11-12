@@ -373,6 +373,21 @@ body {
 .cell-w { font-family: var(--font-mono); font-size: 7px; color: var(--muted-2); }
 .cell-v { font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--ink-soft); }
 .cell.now .cell-v { color: var(--accent); }
+.pw-sub { margin-top: 26px; }
+.mv-key { font-family: var(--font-mono); font-size: 8px; letter-spacing: .8px; color: var(--muted-2); margin-top: 6px; line-height: 1.5; }
+.mv { padding: 9px 0 8px; border-bottom: 1px solid var(--border-lt); }
+.mv-top { display: flex; align-items: baseline; gap: 10px; }
+.mv-n { flex: 1; font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 1px; color: var(--ink); }
+.mv-c { font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--ink-soft); }
+.mv-s { font-family: var(--font-mono); font-size: 8px; font-weight: 600; letter-spacing: 1px; min-width: 64px; text-align: right; color: var(--muted-2); }
+.mv-s.in { color: var(--ok); }
+.mv-s.high { color: var(--accent); }
+.mv-s.under, .mv-s.over { color: var(--danger); }
+.mv-bar { position: relative; height: 8px; margin-top: 6px; background: var(--border-lt); border-radius: 2px; overflow: hidden; }
+.mv-mav { position: absolute; top: 0; bottom: 0; background: var(--border); }
+.mv-plan { position: absolute; top: 2px; bottom: 2px; left: 0; background: var(--faint); border-radius: 1px; }
+.mv-done { position: absolute; top: 2px; bottom: 2px; left: 0; background: var(--ink); border-radius: 1px; }
+.mv-tick { position: absolute; top: 0; bottom: 0; width: 1.5px; margin-left: -.75px; background: var(--ink-soft); }
 .cell.empty .cell-v { color: var(--faint); }
 .cell-dot { height: 4px; width: 4px; border-radius: 50%; margin: 2px auto 0; background: transparent; }
 .big-btn { width: 100%; min-height: 48px; background: var(--ink); border: none; border-radius: 4px; color: var(--on-ink); font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; cursor: pointer; }
@@ -466,7 +481,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '14';
+const APP_VERSION = '15';
 
 const THEME_KEY = 'gains_theme';
 
@@ -4266,6 +4281,101 @@ let MESOCYCLE = PROGRAMS[0].mesocycle;
 let WEEK_PHASES = PROGRAMS[0].weekPhases;
 let PROTOCOL_ITEMS = PROGRAMS[0].protocolItems;
 
+// Weekly hard sets per muscle, against the evidence landmarks. Both tables are
+// copies of the canonical JSON in tools/ (muscle-map.json, volume-landmarks.json),
+// inlined because the app is a single file; tools/muscle-volume.test.js fails if
+// they drift. MUSCLE_MAP credits the legacy meso1/meso2 ids; generated programs
+// (meso3+) carry the same shape inline as each exercise's own `muscles`.
+// 1 = the muscle is the target, 0.5 = it gets meaningful secondary work.
+const MUSCLE_MAP = {
+  incline_db_press:      { chest: 1, front_delt: 0.5, triceps: 0.5 },
+  machine_chest_press:   { chest: 1, front_delt: 0.5, triceps: 0.5 },
+  seated_db_press:       { front_delt: 1, side_delt: 0.5, triceps: 0.5 },
+  cable_chest_fly:       { chest: 1 },
+  cable_lat_raise_push:  { side_delt: 1 },
+  rope_pushdown:         { triceps: 1 },
+  overhead_cable_ext:    { triceps: 1 },
+  pullups_pulldown:      { lats: 1, upper_back: 0.5, biceps: 0.5 },
+  chest_supported_row:   { upper_back: 1, lats: 1, biceps: 0.5 },
+  single_arm_cable_row:  { lats: 1, upper_back: 0.5, biceps: 0.5 },
+  face_pulls:            { rear_delt: 1, upper_back: 0.5, traps: 0.5 },
+  rear_delt_cable_fly:   { rear_delt: 1 },
+  incline_db_curl:       { biceps: 1 },
+  hammer_curl:           { biceps: 1, forearms: 0.5 },
+  squat:                 { quads: 1, glutes: 0.5, spinal_erectors: 0.5 },
+  rdl:                   { hamstrings: 1, glutes: 0.5, spinal_erectors: 0.5 },
+  leg_curl:              { hamstrings: 1 },
+  leg_press:             { quads: 1, glutes: 0.5 },
+  walking_lunges:        { quads: 1, glutes: 1 },
+  calf_raises:           { calves: 1 },
+  core:                  { abs: 1 },
+  cable_fly_upper:       { chest: 1 },
+  neutral_pulldown:      { lats: 1, biceps: 0.5 },
+  chest_row_upper:       { upper_back: 1, lats: 1, biceps: 0.5 },
+  close_grip_bench:      { triceps: 1, chest: 0.5, front_delt: 0.5 },
+  cable_lat_raise_upper: { side_delt: 1 },
+  rear_delt_fly:         { rear_delt: 1 },
+  ez_bar_curl:           { biceps: 1 },
+  trap_bar_dl:           { glutes: 1, spinal_erectors: 1, quads: 0.5, hamstrings: 0.5, traps: 0.5 },
+  dips:                  { chest: 1, triceps: 1, front_delt: 0.5 },
+  cable_pull_through:    { glutes: 1, hamstrings: 0.5 },
+  seated_row:            { upper_back: 1, lats: 0.5, biceps: 0.5 },
+  optional_arms:         { biceps: 0.5, triceps: 0.5, side_delt: 0.5 },
+  m2_incline_smith:      { chest: 1, front_delt: 0.5, triceps: 0.5 },
+  m2_landmine_press:     { front_delt: 1, chest: 0.5, triceps: 0.5 },
+  m2_cable_fly:          { chest: 1 },
+  m2_rope_pushdown_d1:   { triceps: 1 },
+  m2_single_oh_ext:      { triceps: 1 },
+  m2_cable_lat_raise_d1: { side_delt: 1 },
+  m2_lean_lat_raise:     { side_delt: 1 },
+  m2_weighted_pullup:    { lats: 1, upper_back: 0.5, biceps: 0.5 },
+  m2_chest_row_d2:       { upper_back: 1, lats: 1, biceps: 0.5 },
+  m2_single_pulldown:    { lats: 1, biceps: 0.5 },
+  m2_rear_delt_row:      { rear_delt: 1, upper_back: 0.5, biceps: 0.5 },
+  m2_face_pull:          { rear_delt: 1, upper_back: 0.5, traps: 0.5 },
+  m2_bayesian_curl:      { biceps: 1 },
+  m2_hammer_curl:        { biceps: 1, forearms: 0.5 },
+  m2_ssb_squat:          { quads: 1, glutes: 0.5, spinal_erectors: 0.5 },
+  m2_rdl:                { hamstrings: 1, glutes: 0.5, spinal_erectors: 0.5 },
+  m2_leg_press:          { quads: 1, glutes: 0.5 },
+  m2_seated_leg_curl:    { hamstrings: 1 },
+  m2_bss:                { quads: 1, glutes: 1 },
+  m2_standing_calf:      { calves: 1 },
+  m2_hanging_leg_raise:  { abs: 1 },
+  m2_machine_press:      { chest: 1, front_delt: 0.5, triceps: 0.5 },
+  m2_neutral_pulldown:   { lats: 1, biceps: 0.5 },
+  m2_chest_row_d4:       { upper_back: 1, lats: 1, biceps: 0.5 },
+  m2_cg_smith:           { triceps: 1, chest: 0.5, front_delt: 0.5 },
+  m2_cable_lat_raise_d4: { side_delt: 1 },
+  m2_rear_delt_fly:      { rear_delt: 1 },
+  m2_ez_curl:            { biceps: 1 },
+  m2_cable_lat_raise_d5: { side_delt: 1 },
+  m2_rear_delt_fly_d5:   { rear_delt: 1 },
+  m2_cable_curl:         { biceps: 1 },
+  m2_rope_pushdown_d5:   { triceps: 1 },
+  m2_cable_crunch:       { abs: 1 },
+};
+
+// mev / mavLow–mavHigh / mrv in weekly hard sets. See docs/training-evidence.md.
+const VOLUME_LANDMARKS = {
+  chest:           { mev: 8, mavLow: 12, mavHigh: 20, mrv: 22 },
+  front_delt:      { mev: 0, mavLow: 6, mavHigh: 12, mrv: 16 },
+  side_delt:       { mev: 8, mavLow: 16, mavHigh: 24, mrv: 26 },
+  rear_delt:       { mev: 6, mavLow: 10, mavHigh: 18, mrv: 24 },
+  lats:            { mev: 10, mavLow: 14, mavHigh: 20, mrv: 25 },
+  upper_back:      { mev: 8, mavLow: 12, mavHigh: 20, mrv: 25 },
+  traps:           { mev: 0, mavLow: 6, mavHigh: 14, mrv: 20 },
+  biceps:          { mev: 8, mavLow: 12, mavHigh: 18, mrv: 20 },
+  triceps:         { mev: 6, mavLow: 10, mavHigh: 16, mrv: 18 },
+  forearms:        { mev: 0, mavLow: 4, mavHigh: 10, mrv: 15 },
+  quads:           { mev: 8, mavLow: 12, mavHigh: 18, mrv: 20 },
+  hamstrings:      { mev: 6, mavLow: 10, mavHigh: 16, mrv: 20 },
+  glutes:          { mev: 6, mavLow: 10, mavHigh: 18, mrv: 22 },
+  calves:          { mev: 8, mavLow: 12, mavHigh: 18, mrv: 20 },
+  abs:             { mev: 4, mavLow: 8, mavHigh: 16, mrv: 24 },
+  spinal_erectors: { mev: 0, mavLow: 4, mavHigh: 10, mrv: 12 },
+};
+
 // PROGRAM TRACKING
 let currentProgramIdx = 0;
 
@@ -6024,6 +6134,84 @@ function planHTML() {
 
 const DOT_COLOR = { low: 'var(--muted-2)', medium: 'var(--accent)', high: 'var(--ink)' };
 
+// Muscle credits for a RESOLVED exercise in the slot `originalId`. Same order as
+// resolveMuscles() in tools/analyze-history.js: the exercise's own inline
+// `muscles` first (an alt without one already inherits its slot's through
+// resolveExercise's spread), then MUSCLE_MAP for the performed id, then for the
+// slot's original id — an alt_* swap target is never in the map itself.
+function musclesFor(ex, originalId) {
+  return ex.muscles || MUSCLE_MAP[ex.id] || MUSCLE_MAP[originalId] || {};
+}
+
+// This week's hard sets per muscle, as { muscle: { done, planned } }.
+// `planned` is the live set array's length — the prescription after ramp,
+// deload and the ± SETS stepper, which syncSetCount keeps in step and which
+// never drops logged work — so it matches the cards and dayStats(). `done`
+// counts completed sets only: a skipped set is exactly the stimulus that did
+// not happen. Each set is worth its credit, so a 0.5 muscle gets half a set.
+function weeklyMuscleVolume() {
+  const out = {};
+  DAYS.forEach(d => d.exercises.forEach(o => {
+    const ex = resolveExercise(d.id, o);
+    const arr = state[d.id] && state[d.id].sets ? state[d.id].sets[ex.id] : null;
+    const planned = Array.isArray(arr) ? arr.length : adjustedSetTarget(d.id, ex.id, ex);
+    const done = Array.isArray(arr) ? arr.filter(v => v === true).length : 0;
+    Object.entries(musclesFor(ex, o.id)).forEach(([m, credit]) => {
+      const row = out[m] || (out[m] = { done: 0, planned: 0 });
+      row.done += done * credit;
+      row.planned += planned * credit;
+    });
+  }));
+  return out;
+}
+
+// Where a week's PLANNED volume lands against a muscle's landmarks. Judged on
+// the plan, not on what is done so far — mid-week every muscle would otherwise
+// read "below MEV" until the last session. A deload week is meant to sit low,
+// so only an over-MRV plan is flagged there.
+function volumeStatus(planned, l, deload) {
+  if (planned > l.mrv) return { key: 'over', label: 'OVER MRV' };
+  if (deload) return { key: 'deload', label: 'DELOAD' };
+  if (l.mev > 0 && planned < l.mev) return { key: 'under', label: 'BELOW MEV' };
+  if (planned < l.mavLow) return { key: 'low', label: 'BELOW MAV' };
+  if (planned <= l.mavHigh) return { key: 'in', label: 'IN MAV' };
+  return { key: 'high', label: 'ABOVE MAV' };
+}
+
+// Rows: every muscle this week's plan touches, plus any with a real MEV that it
+// misses entirely — a muscle at 0 sets is the most useful thing this can show.
+function muscleVolumeHTML() {
+  const vol = weeklyMuscleVolume();
+  const phase = curProg().weekPhases ? curProg().weekPhases[currentWeek - 1] : null;
+  const deload = !!(phase && phase.deload);
+  const n = x => String(Math.round(x * 10) / 10);
+  const pct = (x, max) => `${Math.min(100, x / max * 100).toFixed(1)}%`;
+
+  let rows = '';
+  Object.keys(VOLUME_LANDMARKS).forEach(m => {
+    const l = VOLUME_LANDMARKS[m];
+    const v = vol[m] || { done: 0, planned: 0 };
+    if (!v.planned && !l.mev) return;
+    const st = volumeStatus(v.planned, l, deload);
+    const max = Math.max(l.mrv, v.planned) * 1.08;
+    rows += `<div class="mv">
+      <div class="mv-top"><div class="mv-n">${esc(m.replace(/_/g, ' ').toUpperCase())}</div>
+        <div class="mv-c">${n(v.done)} / ${n(v.planned)}</div>
+        <div class="mv-s ${st.key}">${st.label}</div></div>
+      <div class="mv-bar">
+        <div class="mv-mav" style="left:${pct(l.mavLow, max)};width:${pct(l.mavHigh - l.mavLow, max)}"></div>
+        <div class="mv-plan" style="width:${pct(v.planned, max)}"></div>
+        <div class="mv-done" style="width:${pct(Math.min(v.done, v.planned), max)}"></div>
+        ${l.mev ? `<div class="mv-tick" style="left:${pct(l.mev, max)}"></div>` : ''}
+        <div class="mv-tick" style="left:${pct(l.mrv, max)}"></div>
+      </div></div>`;
+  });
+
+  return `<div class="pd-h">WEEKLY SETS · WEEK ${currentWeek}${deload ? ' · DELOAD' : ''}</div>
+    <div class="mv-key">DONE / PLANNED HARD SETS · SECONDARY WORK COUNTS HALF · SHADED = MAV · TICKS = MEV, MRV</div>
+    ${rows}`;
+}
+
 function progressHTML() {
   const prog = curProg(), max = prog.totalWeeks;
   let out = '', any = false;
@@ -6057,7 +6245,9 @@ function progressHTML() {
   const empty = `<div style="text-align:center;padding:48px 20px;font-size:12px;color:var(--muted-2);line-height:1.6">
     No weights or effort logged yet.<br>Track a few sessions and your progression appears here.</div>`;
 
-  return `<div class="vw"><div class="vw-sub">${esc(prog.name.toUpperCase())} · ● EFFORT · ▮ = THIS WEEK</div>
+  return `<div class="vw"><div class="vw-sub">${esc(prog.name.toUpperCase())}</div>
+    ${muscleVolumeHTML()}
+    <div class="vw-sub pw-sub">WEIGHT BY WEEK · ● EFFORT · ▮ = THIS WEEK</div>
     ${any ? out : empty}</div>`;
 }
 
