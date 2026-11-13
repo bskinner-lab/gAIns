@@ -35,6 +35,13 @@ const isZone2 = ex => ex.reps.includes('min') && !ex.compound && ex.rpe === '5â€
 
 const work = ex => (ex.compound ? WORK_COMPOUND : WORK_ISOLATION);
 
+// The RIR calibration set (once per block, first High Stimulus week, one
+// isolation per day) carries on past the normal stop to true failure: a few
+// more reps, about 20 s on top of the set.
+const CALIBRATION_SECONDS = 20;
+const calibrationCost = (day, week, prog) =>
+  (app.calibrationTarget(day, week - 1, prog) ? CALIBRATION_SECONDS : 0);
+
 // Sets consume n rests, not n-1: the last one doubles as the walk to the next
 // station and the setup there.
 function exerciseSeconds(ex, week, prog) {
@@ -57,7 +64,7 @@ function pairSeconds(a, b, week, prog) {
 }
 
 function sessionMinutes(day, week, prog = MESO3) {
-  let s = day.protocol ? PREHAB_SECONDS : 0;
+  let s = (day.protocol ? PREHAB_SECONDS : 0) + calibrationCost(day, week, prog);
   const priced = new Set();
   for (const ex of day.exercises) {
     if (priced.has(ex)) continue;
@@ -178,4 +185,24 @@ test('the meso4 supersets are what make the budget hold', () => {
   const over = MESO4.days.filter(d => straight(d, 7) > MESO4_MAX_MINUTES + 5);
   assert.ok(over.length >= 3,
     `only ${over.length} meso4 sessions run 5+ min over budget as straight sets in week 7`);
+});
+
+test('the RIR calibration set is priced into the model, and costs one failure set', () => {
+  // meso4 calibrates in week 5, which predates the 50-minute budget (see
+  // above), so this pins the cost rather than the ceiling: every day with a
+  // target pays CALIBRATION_SECONDS once, and no other day or week pays at all.
+  const calWeek = MESO4.weekPhases.findIndex(p => p.label === 'High Stimulus') + 1;
+  assert.strictEqual(calWeek, 5);
+  const withCal = MESO4.days.filter(d => calibrationCost(d, calWeek, MESO4) > 0);
+  assert.ok(withCal.length >= 3, `only ${withCal.length} meso4 days calibrate`);
+  for (const d of MESO4.days) {
+    for (let w = 1; w <= MESO4.totalWeeks; w++) {
+      const cost = calibrationCost(d, w, MESO4);
+      assert.strictEqual(cost, w === calWeek && withCal.includes(d) ? CALIBRATION_SECONDS : 0);
+    }
+  }
+  // The budgeted weeks never carry it, so they still fit with it priced in.
+  for (const w of MESO4_BUDGET_WEEKS) {
+    for (const d of MESO4.days) assert.ok(sessionMinutes(d, w, MESO4) <= MESO4_MAX_MINUTES);
+  }
 });

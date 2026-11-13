@@ -844,3 +844,97 @@ test('a single-variant slot behaves exactly as before (regression guard)', () =>
   assert.strictEqual(press.lastWeight, 70);
   assert.strictEqual(press.slope, 5);
 });
+
+// ── Shoulder flags (state[dayId].joint) ────────────────────────────────────
+
+// v3 with a `joint` map on each week: the press twinges in weeks 2 and 3, the
+// machine press hurts once, the pushdown is fine every week.
+function v3WithJoint() {
+  const raw = JSON.parse(JSON.stringify(v3));
+  const weeks = raw.programs.meso1.weeks;
+  weeks['1'].day1.joint = { incline_db_press: 'ok', machine_chest_press: 'ok', rope_pushdown: 'ok' };
+  weeks['2'].day1.joint = { incline_db_press: 'twinge', machine_chest_press: 'pain', rope_pushdown: 'ok' };
+  weeks['3'].day1.joint = { incline_db_press: 'twinge', rope_pushdown: 'ok', bogus: 'maybe' };
+  return raw;
+}
+
+test('perExercise counts joint responses per slot and per variant', () => {
+  const stats = perExercise(normalizeExport(v3WithJoint()));
+  const press = stats.meso1.incline_db_press;
+  assert.deepStrictEqual(press.jointCounts, { ok: 1, twinge: 2, pain: 0 });
+  assert.deepStrictEqual(press.variants.incline_db_press.jointCounts, { ok: 1, twinge: 2, pain: 0 });
+  assert.deepStrictEqual(stats.meso1.machine_chest_press.jointCounts, { ok: 1, twinge: 0, pain: 1 });
+  assert.deepStrictEqual(stats.meso1.rope_pushdown.jointCounts, { ok: 3, twinge: 0, pain: 0 });
+});
+
+test('an export without joint data counts zero everywhere and flags nothing', () => {
+  const stats = perExercise(normalizeExport(v3));
+  for (const s of Object.values(stats.meso1)) assert.deepStrictEqual(s.jointCounts, { ok: 0, twinge: 0, pain: 0 });
+  assert.deepStrictEqual(flagExercises(stats.meso1).jointFlagged, []);
+});
+
+test('flagExercises: any pain, or a twinge in 2+ sessions, is jointFlagged', () => {
+  const { jointFlagged } = flagExercises(perExercise(normalizeExport(v3WithJoint())).meso1);
+  const ids = jointFlagged.map(f => f.exId).sort();
+  assert.deepStrictEqual(ids, ['incline_db_press', 'machine_chest_press']);
+  const press = jointFlagged.find(f => f.exId === 'incline_db_press');
+  assert.match(press.reason, /twinge in 2 sessions of 3 rated/);
+  const machine = jointFlagged.find(f => f.exId === 'machine_chest_press');
+  assert.match(machine.reason, /pain in 1 session/);
+});
+
+test('a single twinge is not enough to flag', () => {
+  const raw = v3WithJoint();
+  raw.programs.meso1.weeks['3'].day1.joint.incline_db_press = 'ok';
+  const { jointFlagged } = flagExercises(perExercise(normalizeExport(raw)).meso1);
+  assert.ok(!jointFlagged.some(f => f.exId === 'incline_db_press'));
+});
+
+test('a flag on a swapped-in variant names the movement that drew it', () => {
+  const raw = v3WithJoint();
+  const d3 = raw.programs.meso1.weeks['3'].day1;
+  d3.swaps = { incline_db_press: 'alt_x_press' };
+  d3.sets.alt_x_press = d3.sets.incline_db_press;
+  delete d3.sets.incline_db_press;
+  d3.joint = { alt_x_press: 'pain' };
+  raw.programs.meso1.weeks['2'].day1.joint.incline_db_press = 'ok';
+  const { jointFlagged } = flagExercises(perExercise(normalizeExport(raw)).meso1);
+  const f = jointFlagged.find(x => x.exId === 'incline_db_press');
+  assert.ok(f, 'pain on the substitute should flag the slot');
+  assert.deepStrictEqual(f.variants, ['alt_x_press']);
+  assert.match(f.reason, /\(on alt_x_press\)/);
+});
+
+test('renderReport has a Shoulder flags section listing the flagged exercises', () => {
+  const report = renderReport(analyze(v3WithJoint(), muscleMap, landmarks));
+  assert.match(report, /### Shoulder flags/);
+  const section = report.split('### Shoulder flags')[1].split('### Volume gaps')[0];
+  assert.match(section, /`incline_db_press` — twinge in 2 sessions/);
+  assert.match(section, /`machine_chest_press` — pain in 1 session/);
+  assert.doesNotMatch(section, /rope_pushdown/);
+  const plain = renderReport(analyze(v3, muscleMap, landmarks));
+  assert.match(plain.split('### Shoulder flags')[1].split('### Volume gaps')[0], /_none_/);
+});
+
+// ── RIR calibration (state[dayId].calib) ───────────────────────────────────
+
+test('calibrationSummary lists each record and the mean offset', () => {
+  const { calibrationSummary } = require('./analyze-history');
+  const raw = JSON.parse(JSON.stringify(v3));
+  raw.programs.meso1.weeks['2'].day1.calib = { rope_pushdown: { setIdx: 2, prescribedRir: 1, extra: 3, at: 1 } };
+  raw.programs.meso1.weeks['3'].day1.calib = { incline_db_press: { setIdx: 3, prescribedRir: 1, extra: 2 }, junk: { extra: 'x' } };
+  const sum = calibrationSummary(normalizeExport(raw).programs.meso1.weeks);
+  assert.deepStrictEqual(sum.entries.map(e => [e.week, e.exId, e.error]), [[2, 'rope_pushdown', 2], [3, 'incline_db_press', 1]]);
+  assert.strictEqual(sum.meanOffset, 1.5);
+
+  const report = renderReport(analyze(raw, muscleMap, landmarks));
+  const section = report.split('## RIR calibration — meso1')[1];
+  assert.ok(section, 'no RIR calibration section');
+  assert.match(section, /\| 2 \| rope_pushdown \| 1 \| 3 \| \+2 \|/);
+  assert.match(section, /\*\*Mean offset: \+1\.5\*\* over 2 sets/);
+});
+
+test('an export without calibration says none recorded', () => {
+  const report = renderReport(analyze(v3, muscleMap, landmarks));
+  assert.match(report.split('## RIR calibration — meso1')[1], /_none recorded_/);
+});

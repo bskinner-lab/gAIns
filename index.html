@@ -242,6 +242,19 @@ body {
 .ss-head { display: flex; justify-content: space-between; gap: 12px; margin: 18px 20px -10px; padding-top: 10px; border-top: 2px solid var(--ink); font-family: var(--font-mono); font-size: 9px; letter-spacing: .08em; color: var(--muted); }
 .ss-head span:first-child { color: var(--ink); font-weight: 600; flex: none; }
 .ss-head span:last-child { text-align: right; }
+.ex-flag { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; padding: 4px 4px 4px 9px; border-left: 2px solid var(--accent); background: var(--surface); font-family: var(--font-mono); font-size: 9.5px; line-height: 1.45; color: var(--ink-soft); }
+.ex-flag b { color: var(--accent); font-weight: 600; letter-spacing: 1px; }
+.ex-flag.light { border-left-color: var(--ink-soft); }
+.ex-flag.light b { color: var(--ink); }
+.ex-flag.joint { border-left-color: var(--danger); }
+.ex-flag.joint b { color: var(--danger); }
+.calib-b { display: inline-block; margin-left: 4px; font-family: var(--font-mono); font-size: 7.5px; font-weight: 600; letter-spacing: 1px; color: var(--on-dark); background: var(--accent); border-radius: 2px; padding: 1px 4px; vertical-align: 1px; }
+.calib-n { font-family: var(--font-mono); font-size: 9.5px; line-height: 1.5; color: var(--ink-soft); margin-top: 6px; }
+.calib-n b { color: var(--accent); font-weight: 600; letter-spacing: 1px; }
+.calib-step { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 4px 0 16px; }
+.calib-v { font-family: var(--font-display); font-size: 40px; font-weight: 600; min-width: 48px; text-align: center; }
+.calib-mean { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 1px; color: var(--accent); margin-top: 8px; }
+.ex-flag-swap { flex: none; min-height: var(--tap); padding: 0 14px; font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 1px; background: transparent; color: var(--ink); border: 1px solid var(--ink); border-radius: 3px; cursor: pointer; }
 .ex-note { font-family: var(--font-mono); font-size: 9.5px; color: var(--muted-2); margin-top: 6px; line-height: 1.5; }
 .trend { display: flex; align-items: flex-end; gap: 14px; margin-top: 10px; }
 .bars { display: flex; align-items: flex-end; gap: 6px; height: 46px; }
@@ -275,6 +288,9 @@ body {
 .effort-k { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--muted-2); }
 .eff { font-family: var(--font-mono); font-size: 9px; padding: 0 14px; min-height: var(--tap); border-radius: 3px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); }
 .eff.on { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
+.effort.joint { margin-top: 8px; }
+.eff.jnt.on.twinge { border-color: var(--accent); background: var(--accent); color: var(--on-dark); }
+.eff.jnt.on.pain { border-color: var(--danger); background: var(--danger); color: var(--on-dark); }
 .setwk { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .setstep { border: 1px solid var(--border); background: transparent; color: var(--muted-2); border-radius: 3px; width: var(--tap); min-height: var(--tap); cursor: pointer; font-family: var(--font-mono); font-size: 13px; line-height: 1; }
 .setstep:disabled { opacity: .35; cursor: default; }
@@ -374,6 +390,11 @@ body {
 .cell-v { font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--ink-soft); }
 .cell.now .cell-v { color: var(--accent); }
 .cell.empty .cell-v { color: var(--faint); }
+.flag-tag { display: inline-block; vertical-align: 2px; margin-left: 7px; font-family: var(--font-mono); font-size: 8px; font-weight: 600; letter-spacing: 1px; color: var(--accent); border: 1px solid var(--accent); border-radius: 2px; padding: 1px 4px; }
+.flag-tag.light { color: var(--ink-soft); border-color: var(--ink-soft); }
+.pe-flag { font-family: var(--font-mono); font-size: 9px; color: var(--accent); margin-top: 6px; line-height: 1.45; }
+.cell.j-twinge .cell-dot { box-shadow: 0 0 0 1.5px var(--surface), 0 0 0 3px var(--accent); }
+.cell.j-pain .cell-dot { box-shadow: 0 0 0 1.5px var(--surface), 0 0 0 3px var(--danger); }
 .cell-dot { height: 4px; width: 4px; border-radius: 50%; margin: 2px auto 0; background: transparent; }
 .big-btn { width: 100%; min-height: 48px; background: var(--ink); border: none; border-radius: 4px; color: var(--on-ink); font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; cursor: pointer; }
 .big-btn.ghost { background: transparent; border: 1.5px solid var(--ink); color: var(--ink); }
@@ -434,6 +455,9 @@ body {
 .dc-move b { display: block; font-weight: 600; }
 .dc-move span { display: block; font-size: 9px; opacity: .75; margin-top: 4px; }
 .dc-go { display: block; width: 100%; margin-top: 20px; background: var(--accent); border: none; border-radius: 6px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 1.5px; min-height: 54px; cursor: pointer; }
+.dc-bk { display: block; width: 100%; margin-top: 9px; background: none; border: 1px solid var(--bar-edge); border-radius: 6px; color: var(--on-dark); font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; min-height: var(--tap); cursor: pointer; }
+.bk-age { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; color: var(--muted-2); margin-bottom: 10px; }
+.bk-age.stale { color: var(--accent); font-weight: 600; }
 .dc-alt { display: block; width: 100%; margin-top: 9px; background: none; border: none; color: var(--on-dark); opacity: .5; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; min-height: var(--tap); cursor: pointer; }
 .tip-t { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; color: var(--accent); }
 .tip-d { font-size: 12.5px; line-height: 1.55; margin-top: 8px; }
@@ -466,7 +490,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '14';
+const APP_VERSION = '18';
 
 const THEME_KEY = 'gains_theme';
 
@@ -4646,6 +4670,8 @@ function migrateMovedExercises(saved) {
     Object.keys(sd.effort || {}).forEach(consider);
     Object.keys(sd.swaps || {}).forEach(consider);
     Object.keys(sd.setAdjust || {}).forEach(consider);
+    Object.keys(sd.joint || {}).forEach(consider);
+    Object.keys(sd.calib || {}).forEach(consider);
     MOVABLE_MAPS.forEach(mapName => {
       Object.keys(sd[mapName] || {}).forEach(k => {
         consider(k);
@@ -4659,6 +4685,8 @@ function migrateMovedExercises(saved) {
       moveEntry(sd, dst, 'effort', exId);
       moveEntry(sd, dst, 'swaps', exId);
       moveEntry(sd, dst, 'setAdjust', exId);
+      moveEntry(sd, dst, 'joint', exId);
+      moveEntry(sd, dst, 'calib', exId);
       MOVABLE_MAPS.forEach(mapName => {
         moveEntry(sd, dst, mapName, exId);
         Object.keys(sd[mapName] || {}).forEach(k => {
@@ -4694,7 +4722,13 @@ function initState() {
       effort: savedDay.effort || {},
       protocol: savedDay.protocol || [],
       swaps: savedDay.swaps || {},
-      setAdjust: savedDay.setAdjust || {}
+      setAdjust: savedDay.setAdjust || {},
+      // Shoulder response per exercise: 'ok' | 'twinge' | 'pain'. Never
+      // prefilled from earlier weeks (see prefillFromPreviousWeeks): a symptom
+      // belongs to the session it was felt in.
+      joint: savedDay.joint || {},
+      // RIR calibration results: { [exId]: { setIdx, prescribedRir, extra, at } }.
+      calib: savedDay.calib || {}
     };
     day.exercises.forEach(originalEx => {
       const ex = resolveExercise(day.id, originalEx);
@@ -4758,6 +4792,7 @@ function getExerciseHistory(dayId, exId) {
     const rawR = (dayState.reps || {})[exId];
     const reps = (rawR === '' || rawR == null) ? null : Number(rawR);
     const eff = (dayState.effort || {})[exId] || '';
+    const joint = (dayState.joint || {})[exId] || '';
     // Per-set reps, keyed by set index. The suffix must be all digits: a bare
     // startsWith(exId + '_') would credit `m3_squat_pause_0` to `m3_squat`,
     // silently mixing two different exercises' reps together.
@@ -4768,10 +4803,240 @@ function getExerciseHistory(dayId, exId) {
       const suffix = k.slice(exId.length + 1);
       if (/^\d+$/.test(suffix)) setReps[suffix] = Number(repsMap[k]);
     });
-    if (weight == null && reps == null && !eff) continue;
-    out.push({ week: w, weight, reps, effort: eff, setReps });
+    if (weight == null && reps == null && !eff && !joint) continue;
+    // How much of the exercise was actually performed that week. Weight and
+    // effort are prefilled from earlier weeks, so a week can carry both with
+    // nothing logged; progressionFlag() needs to tell those apart.
+    const arr = Array.isArray((dayState.sets || {})[exId]) ? dayState.sets[exId] : [];
+    const doneSets = arr.filter(v => v === true).length;
+    const openSets = arr.filter(v => v === false).length;
+    out.push({ week: w, weight, reps, effort: eff, joint, setReps, doneSets, openSets });
   }
   return out;
+}
+
+// ── Live progression flags ──────────────────────────────────────────────────
+// An early warning, mid-block, for the two findings /newplan keeps reporting
+// after the fact: a lift that stopped moving, and one rated LOW week after
+// week with the load never going up. Deliberately looser than
+// tools/analyze-history.js (STALL_MIN_WEEKS = 4, slope-based): that is the
+// end-of-block verdict, this is a nudge while a swap or a heavier plate can
+// still help THIS block.
+const STALL_WINDOW = 3;
+
+function isDeloadPhase(phase) {
+  return !!phase && (phase.deload === true || phase.label === 'Deload');
+}
+
+function bestReps(h) {
+  const vals = Object.values(h.setReps || {}).filter(v => typeof v === 'number' && isFinite(v));
+  if (vals.length) return Math.max(...vals);
+  return (typeof h.reps === 'number' && isFinite(h.reps)) ? h.reps : null;
+}
+
+// hist = getExerciseHistory(dayId, exId), ascending by week.
+// opts.currentWeek: that week only counts once nothing is left open in it.
+// Returns null | { kind: 'stalled' | 'light', weeks: n, reason: '…' }.
+function progressionFlag(hist, weekPhases, opts = {}) {
+  const phases = weekPhases || [];
+  const deload = w => isDeloadPhase(phases[w - 1]);
+  const usable = (hist || []).filter(h =>
+    !deload(h.week) &&
+    // Prefilled but never performed: not a data point.
+    !(h.doneSets === 0) &&
+    // The week in progress counts only once it is finished.
+    !(opts.currentWeek != null && h.week === opts.currentWeek && h.openSets > 0));
+  if (usable.length < STALL_WINDOW) return null;
+  const win = usable.slice(-STALL_WINDOW);
+  // Consecutive in training weeks: a deload in between is not a break, a
+  // week that was simply not logged is.
+  const rank = w => { let n = 0; for (let i = 1; i <= w; i++) if (!deload(i)) n++; return n; };
+  for (let i = 1; i < win.length; i++) {
+    if (rank(win[i].week) !== rank(win[i - 1].week) + 1) return null;
+  }
+  const load = h => (h.weight == null || !isFinite(h.weight)) ? 0 : h.weight;
+  const loadUp = win.slice(1).some(h => load(h) > load(win[0]));
+  const r0 = bestReps(win[0]);
+  const repsUp = r0 != null && win.slice(1).some(h => { const r = bestReps(h); return r != null && r > r0; });
+  if (!loadUp && win.every(h => h.effort === 'low')) {
+    return { kind: 'light', weeks: STALL_WINDOW, reason: `rated LOW ${STALL_WINDOW} weeks running with no load increase: add weight` };
+  }
+  if (!loadUp && !repsUp && win.some(h => h.effort === 'high')) {
+    return { kind: 'stalled', weeks: STALL_WINDOW, reason: `no load or rep gain in ${STALL_WINDOW} weeks at high effort` };
+  }
+  return null;
+}
+
+const FLAG_LABEL = { stalled: 'STALLED', light: 'TOO LIGHT' };
+
+// Should this exercise's card warn about the shoulder before today's session?
+// Yes if LAST week's entry was PAIN, or it drew a TWINGE (or worse) in 2 of
+// the last 3 weeks. Returns null | { reason }.
+const JOINT_TWINGE_WINDOW = 3;
+const JOINT_TWINGE_MIN = 2;
+function jointCarryFlag(hist, week) {
+  const byWeek = {};
+  (hist || []).forEach(h => { byWeek[h.week] = h.joint || ''; });
+  if (byWeek[week - 1] === 'pain') return { reason: `PAIN logged in week ${week - 1}` };
+  let n = 0;
+  for (let w = week - JOINT_TWINGE_WINDOW; w < week; w++) {
+    if (byWeek[w] === 'twinge' || byWeek[w] === 'pain') n++;
+  }
+  return n >= JOINT_TWINGE_MIN ? { reason: `twinge in ${n} of the last ${JOINT_TWINGE_WINDOW} weeks` } : null;
+}
+
+// ── RIR calibration ─────────────────────────────────────────────────────────
+// Lifters underestimate reps in reserve by about one rep. Once per block, on
+// one safe isolation per day, the last set goes to true failure after the
+// normal stopping point, and the extra reps measure the personal offset.
+//
+// Week: the FIRST High Stimulus week. At RPE 9–9.5 (Overreach) there is too
+// little left in the tank to measure an error; RPE 8 is where the bias bites.
+//
+// Exercise: the last isolation on the day (after swaps) whose inline
+// `muscles` are ALL in the allowlist below. No delts, chest or back: delts are
+// never taken to 0 RIR, and flys load the shoulder in the stretch. A superset
+// member qualifies only as the SECOND half of its pair with no partner set
+// left after its last one, so the failure set ends the pair's final round and
+// cannot eat into the partner's rest. (The plan said "skip superset members"
+// outright, but meso4 pairs every eligible isolation, which would have left it
+// with no calibration at all; this keeps the reason for the rule intact.)
+const CALIB_MUSCLES = ['biceps', 'triceps', 'hamstrings', 'quads', 'calves', 'abs'];
+const CALIB_KEY = 'gains_calib';
+
+function calibrationEnabled() {
+  try { return localStorage.getItem(CALIB_KEY) !== 'off'; } catch (e) { return true; }
+}
+
+function calibrationWeekIdx(prog = curProg()) {
+  return (prog.weekPhases || []).findIndex(p => p.label === 'High Stimulus');
+}
+
+// 'RPE 8–9' → 9 → RIR 1. The upper bound is the target the lifter stops at.
+function prescribedRirFromRpe(rpeStr) {
+  const m = /([\d.]+)\s*$/.exec(String(rpeStr || '').trim());
+  if (!m) return null;
+  const rir = 10 - Number(m[1]);
+  return isFinite(rir) ? Math.max(0, Math.round(rir * 2) / 2) : null;
+}
+
+// Per-side and timed work has no single countable failure point: which side's
+// extra reps would count, and what is "failure" on a Pallof press or a plank?
+function calibratableReps(reps) {
+  const r = String(reps || '');
+  return !/\beach\b/i.test(r) && !/\d\s*(s|sec|min)\b/i.test(r);
+}
+
+// { exId, setIdx } | null. `weekIdx` is 0-based. On the active program the
+// day's live swaps and this week's set count are honoured; for any other
+// program (the session-length model) the plan as written is used.
+function calibrationTarget(day, weekIdx, prog = curProg()) {
+  if (!day || weekIdx < 0 || weekIdx !== calibrationWeekIdx(prog)) return null;
+  const live = prog === curProg() && weekIdx === currentWeek - 1 && state[day.id];
+  const resolve = o => (live ? resolveExercise(day.id, o) : o);
+  const setCount = ex => {
+    const arr = live && state[day.id].sets[ex.id];
+    return Array.isArray(arr) && arr.length ? arr.length : setsForWeek(ex, weekIdx + 1, prog);
+  };
+  const eligible = (orig, ex) => {
+    if (ex.compound !== false || !ex.muscles) return false;
+    if (!calibratableReps(ex.reps)) return false;
+    const ms = Object.keys(ex.muscles);
+    if (!ms.length || !ms.every(m => CALIB_MUSCLES.includes(m))) return false;
+    const partner = supersetPartner(day, orig);
+    if (!partner) return true;
+    const second = day.exercises.indexOf(orig) > day.exercises.indexOf(partner);
+    return second && setCount(resolve(partner)) <= setCount(ex);
+  };
+  for (let i = day.exercises.length - 1; i >= 0; i--) {
+    const orig = day.exercises[i], ex = resolve(orig);
+    if (eligible(orig, ex)) return { exId: ex.id, setIdx: setCount(ex) - 1 };
+  }
+  return null;
+}
+
+// The live target for a day this week, or null when calibration is off, the
+// week is not the calibration week, or the day already has its result.
+function liveCalibration(day) {
+  if (!calibrationEnabled()) return null;
+  const t = calibrationTarget(day, currentWeek - 1);
+  if (!t) return null;
+  const done = (state[day.id].calib || {})[t.exId];
+  return done ? null : t;
+}
+
+// Called by both logging paths right after a set is marked done, BEFORE
+// syncCompletion — closing out the week moves the app to the next one, so the
+// week and program are captured here and the save writes back to them.
+function maybeOpenCalib(dayId, exId, setIdx) {
+  const day = DAYS.find(d => d.id === dayId);
+  const t = day && liveCalibration(day);
+  if (!t || t.exId !== exId || t.setIdx !== setIdx) return;
+  const phase = curProg().weekPhases[currentWeek - 1];
+  view.calib = {
+    progId: curProg().id, week: currentWeek, dayId, exId, setIdx,
+    name: (resolveExercise(dayId, day.exercises.find(o => resolveExercise(dayId, o).id === exId)) || {}).name || exId,
+    prescribedRir: prescribedRirFromRpe(phase && phase.rpe),
+    extra: 0,
+  };
+}
+
+function saveCalib() {
+  const c = view.calib;
+  view.calib = null;
+  if (!c) return;
+  const rec = { setIdx: c.setIdx, prescribedRir: c.prescribedRir, extra: c.extra, at: nowMs() };
+  if (c.progId === curProg().id && c.week === currentWeek && state[c.dayId]) {
+    if (!state[c.dayId].calib) state[c.dayId].calib = {};
+    state[c.dayId].calib[c.exId] = rec;
+    saveState();
+    return;
+  }
+  // The week closed underneath the overlay; write into the week it belongs to.
+  const key = `${STORAGE_KEY}_${c.progId}_w${c.week}`;
+  try {
+    const blob = JSON.parse(localStorage.getItem(key) || '{}');
+    const sd = blob[c.dayId] || (blob[c.dayId] = {});
+    if (!sd.calib) sd.calib = {};
+    sd.calib[c.exId] = rec;
+    localStorage.setItem(key, JSON.stringify(blob));
+  } catch (e) {}
+}
+
+// Every calibration recorded on the current program, in week order.
+function calibrationResults() {
+  const out = [];
+  const prog = curProg();
+  for (let w = 1; w <= prog.totalWeeks; w++) {
+    let blob;
+    if (w === currentWeek) blob = state;
+    else { try { blob = JSON.parse(localStorage.getItem(weekStorageKey(w)) || '{}'); } catch (e) { blob = {}; } }
+    DAYS.forEach(day => {
+      const cal = (blob[day.id] || {}).calib || {};
+      Object.entries(cal).forEach(([exId, r]) => {
+        if (!r || typeof r.extra !== 'number' || typeof r.prescribedRir !== 'number') return;
+        const ex = exerciseById(exId);
+        out.push({ week: w, dayId: day.id, exId, name: ex ? ex.name : exId,
+                   predicted: r.prescribedRir, actual: r.extra, error: r.extra - r.prescribedRir });
+      });
+    });
+  }
+  return out;
+}
+
+function exerciseById(id) {
+  for (const d of DAYS) for (const o of d.exercises) {
+    if (o.id === id) return o;
+    const a = (EXERCISE_ALTERNATIVES[o.id] || []).find(x => x.id === id);
+    if (a) return a;
+  }
+  return null;
+}
+
+// The flag for an exercise on the current program and week. `ex` is the
+// RESOLVED (swapped-in) exercise, so the history is the one actually trained.
+function exerciseFlag(dayId, ex, hist = getExerciseHistory(dayId, ex.id)) {
+  return progressionFlag(hist, WEEK_PHASES, { currentWeek });
 }
 
 // Most recent logged entry strictly before the current week, or null.
@@ -4989,6 +5254,7 @@ function toggleSet(dayId, exId, setIdx) {
   state[dayId].sets[exId][setIdx] = true;
   markTime(dayId, exId, setIdx, 'log');
   saveState();
+  maybeOpenCalib(dayId, exId, setIdx);
   // Both ordered ahead of syncCompletion: finishing the last day of a week
   // reloads `state` for the next week, so these must be read first.
   const dayDone = isDayComplete(dayId);
@@ -5037,6 +5303,18 @@ function saveEffort(dayId, exId, level) {
     const btnLevel = btn.getAttribute('data-level');
     btn.className = 'effort-btn' + (btnLevel === state[dayId].effort[exId] ? ` active-${btnLevel}` : '');
   });
+}
+
+// Shoulder response for one exercise this session. Tapping the active level
+// clears it, the same as effort. No DOM patching: the click handler's
+// render() repaints the card.
+const JOINT_LEVELS = ['ok', 'twinge', 'pain'];
+function saveJoint(dayId, exId, level) {
+  if (!state[dayId] || !JOINT_LEVELS.includes(level)) return;
+  if (!state[dayId].joint) state[dayId].joint = {};
+  if (state[dayId].joint[exId] === level) delete state[dayId].joint[exId];
+  else state[dayId].joint[exId] = level;
+  saveState();
 }
 
 // Compatibility shim — the preserved logic layer calls this; it now just re-renders.
@@ -5316,7 +5594,9 @@ document.addEventListener('touchstart', primeAudio, { once: true, passive: true 
 document.addEventListener('click', primeAudio, { once: true });
 
 // EXPORT / IMPORT
-function exportData() {
+// The export payload, built once and shared by the plain EXPORT download and
+// the week-complete SAVE BACKUP share sheet, so the two can never drift apart.
+function buildExportBlob() {
   const savedProgIdx = currentProgramIdx;
   const allPrograms = {};
   PROGRAMS.forEach((prog, pi) => {
@@ -5336,19 +5616,92 @@ function exportData() {
   });
   // Stays labelled 3 deliberately. The version integer is the import gate, so a
   // file labelled 4 is rejected outright by builds that predate `times`. The
-  // format is a structural superset of v3 — `times` and `startDate` are extra
-  // keys older builds ignore — so a 3-labelled file imports into both.
+  // format is a structural superset of v3 — `times`, `startDate` and any later
+  // per-day key are extra keys older builds ignore — so a 3-labelled file
+  // imports into both. Device-local metadata (gains_last_backup, …) is never
+  // part of it.
   const data = { programs: allPrograms, currentProgram: savedProgIdx, version: 3 };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const text = JSON.stringify(data, null, 2);
+  const blob = new Blob([text], { type: 'application/json' });
+  const date = new Date().toISOString().slice(0, 10);
+  return { blob, text, filename: `gains-backup-${date}.json` };
+}
+
+function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const date = new Date().toISOString().slice(0, 10);
   a.href = url;
-  a.download = `gains-backup-${date}.json`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function downloadExport() {
+  const { blob, filename } = buildExportBlob();
+  downloadBlob(blob, filename);
+}
+
+function exportData() {
+  downloadExport();
+  markBackedUp();
   view.importMsg = 'Exported all programs & weeks.';
   view.importOk = true;
+}
+
+// When the last backup left this device. Device-local on purpose: it is not
+// in the export and an import does not touch it — restoring a file says
+// nothing about whether THIS phone's data has been saved anywhere.
+const LAST_BACKUP_KEY = 'gains_last_backup';
+const BACKUP_STALE_DAYS = 7;
+
+function markBackedUp() {
+  try { localStorage.setItem(LAST_BACKUP_KEY, String(nowMs())); } catch (e) {}
+}
+
+// Whole days since the last backup, or null when there has never been one.
+function backupAgeDays() {
+  let raw = null;
+  try { raw = localStorage.getItem(LAST_BACKUP_KEY); } catch (e) {}
+  const t = Number(raw);
+  if (!raw || !isFinite(t) || t <= 0) return null;
+  return Math.max(0, Math.floor((nowMs() - t) / 86400000));
+}
+
+function backupAgeLabel(days) {
+  if (days == null) return 'NEVER';
+  if (days === 0) return 'TODAY';
+  return days === 1 ? '1 DAY AGO' : `${days} DAYS AGO`;
+}
+
+function backupIsStale(days) { return days == null || days > BACKUP_STALE_DAYS; }
+
+// A File the share sheet will take, or null. iOS Safari accepts
+// application/json; Chrome on Android rejects it but takes text/plain, so
+// retry with that before giving up (the .json filename is kept either way).
+function shareableBackupFile(blob, filename) {
+  if (typeof File !== 'function' || !navigator.canShare || !navigator.share) return null;
+  for (const type of ['application/json', 'text/plain']) {
+    try {
+      const file = new File([blob], filename, { type });
+      if (navigator.canShare({ files: [file] })) return file;
+    } catch (e) {}
+  }
+  return null;
+}
+
+// SAVE BACKUP. Must run synchronously inside the click handler: Safari only
+// opens the share sheet from inside a user gesture. A cancelled sheet rejects
+// with AbortError, which is not a backup and is not an error worth showing.
+function backupShare() {
+  const { blob, filename } = buildExportBlob();
+  const file = shareableBackupFile(blob, filename);
+  if (file) {
+    navigator.share({ files: [file], title: 'gAIns backup' })
+      .then(() => { markBackedUp(); render(); }, () => {});
+  } else {
+    downloadBlob(blob, filename);
+    markBackedUp();
+  }
 }
 
 function importData(event) {
@@ -5488,7 +5841,7 @@ function advanceToCurrentWeek() {
   document.head.appendChild(link);
 })();
 
-const view = { name: 'day', dayId: null, openPhase: 2, tip: null, confirm: null, swap: null, done: null,
+const view = { name: 'day', dayId: null, openPhase: 2, tip: null, confirm: null, swap: null, done: null, calib: null,
                importMsg: '', importOk: true, sessionStart: Date.now(), now: Date.now(),
                // pendR's "not set" sentinel is '' (not null, unlike most of this
                // codebase's == null convention) because it feeds straight into
@@ -5710,6 +6063,7 @@ function logActiveSet() {
   }
   markTime(day.id, ex.id, i, 'log');
   saveState();
+  maybeOpenCalib(day.id, ex.id, i);
 
   view.latestPr = (maxPrior > 0 && w > maxPrior)
     ? { type: 'WEIGHT PR', text: `${ex.name} — ${w} lb beats your W${hist.find(h => h.weight === maxPrior).week} best of ${maxPrior} lb` }
@@ -5842,9 +6196,20 @@ function addRest(delta) {
 }
 
 const EFF_LABEL = { low: 'LOW', medium: 'MED', high: 'HIGH' };
+const JOINT_LABEL = { ok: 'OK', twinge: 'TWINGE', pain: 'PAIN' };
+
+// A one-line warning under an exercise's name, with an optional SWAP link that
+// opens the same sheet as the card's ⇄ button. Shared by the progression flags
+// and anything else that wants to say "look at this exercise".
+function cardBannerHTML(kind, label, reason, swapOrigId) {
+  const swap = swapOrigId && EXERCISE_ALTERNATIVES[swapOrigId]
+    ? `<button class="ex-flag-swap" data-act="swap" data-orig="${esc(swapOrigId)}">SWAP</button>` : '';
+  return `<div class="ex-flag ${esc(kind)}"><div class="ex-flag-t"><b>${esc(label)}</b> · ${esc(reason)}</div>${swap}</div>`;
+}
 
 function exercisesHTML(day) {
   const act = activeSet(day);
+  const calT = liveCalibration(day);
   return day.exercises.map((orig, xi) => {
     const ex = resolveExercise(day.id, orig);
     const swapped = ex.id !== orig.id;
@@ -5867,7 +6232,18 @@ function exercisesHTML(day) {
     const ssLabel = supersetLabel(day, orig);
     if (ssLabel) tags += `<span class="tag ink hit" data-act="tip" data-t="superset">SUPERSET ${esc(ssLabel)}</span>`;
 
-    const hist = getExerciseHistory(day.id, ex.id).filter(h => h.weight != null);
+    const fullHist = getExerciseHistory(day.id, ex.id);
+    const hist = fullHist.filter(h => h.weight != null);
+    const flag = exerciseFlag(day.id, ex, fullHist);
+    // A stall can be a poor exercise fit, so offer the swap. TOO LIGHT never
+    // does: the fix there is load, not exercise choice.
+    const jointFlag = jointCarryFlag(fullHist, currentWeek);
+    const flagBanner = (jointFlag
+      ? cardBannerHTML('joint', 'SHOULDER FLAGGED LAST WEEK', jointFlag.reason, orig.id) : '')
+      + (flag
+      // One SWAP per card: the shoulder banner already carries it.
+      ? cardBannerHTML(flag.kind, FLAG_LABEL[flag.kind], flag.reason, flag.kind === 'stalled' && !jointFlag ? orig.id : null)
+      : '');
     let trend = `<div class="trend-empty">▂ LOG 2+ WEEKS TO SEE A TREND</div>`;
     if (hist.length >= 2) {
       const vals = hist.map(h => h.weight), mn = Math.min(...vals), mx = Math.max(...vals);
@@ -5901,10 +6277,11 @@ function exercisesHTML(day) {
       // Prior week's performed reps for this set index, same fallback order.
       const priorSetR = prior && prior.setReps ? prior.setReps[i] : null;
       const priorPerformedR = priorSetR != null ? priorSetR : (prior && prior.reps != null ? prior.reps : null);
+      const calBadge = calT && calT.exId === ex.id && calT.setIdx === i ? ' <span class="calib-b">CALIBRATE</span>' : '';
       return `<div class="grid-r${isActive ? ' active' : ''}${v === true ? ' done' : ''}">
         <span class="n">${i + 1}</span>
         <span class="last">${prior && prior.weight != null ? esc(prior.weight) + (priorPerformedR != null ? ' × ' + esc(priorPerformedR) : '') : '—'}</span>
-        <span>${esc(prescribedReps)}</span>
+        <span>${esc(prescribedReps)}${calBadge}</span>
         ${cell}</div>`;
     }).join('');
 
@@ -5912,6 +6289,11 @@ function exercisesHTML(day) {
       const on = (state[day.id].effort[ex.id] || '') === l;
       return `<button class="eff${on ? ' on' : ''}" data-act="eff" data-ex="${ex.id}" data-l="${l}">${EFF_LABEL[l]}</button>`;
     }).join('');
+
+    const jointNow = (state[day.id].joint || {})[ex.id] || '';
+    const joint = JOINT_LEVELS.map(l =>
+      `<button class="eff jnt${jointNow === l ? ' on ' + l : ''}" data-act="joint" data-ex="${ex.id}" data-l="${l}">${JOINT_LABEL[l]}</button>`
+    ).join('');
 
     const lastCol = prior
       ? `W${prior.week}${prior.effort ? ' · ' + EFF_LABEL[prior.effort] : ''}` : 'LAST';
@@ -5936,14 +6318,17 @@ function exercisesHTML(day) {
           <div class="ex-count">${dh + sk}/${arr.length}</div>
         </div>
       </div>
+      ${flagBanner}
       <div class="tags">${tags}</div>
       ${ex.note ? `<div class="ex-note">${esc(ex.note)}${swapped ? '  ·  swapped' : ''}</div>` : ''}
+      ${calT && calT.exId === ex.id ? `<div class="calib-n"><b>RIR CALIBRATION</b> · Last set: stop where you'd normally stop, log the reps, then keep going to true failure.</div>` : ''}
       ${trend}
       <div class="grid">
         <div class="grid-h"><span>SET</span><span>${esc(lastCol)}</span><span>REPS</span><span>TODAY</span></div>
         ${rows}
       </div>
       <div class="effort"><span class="effort-k">EFFORT</span><div style="display:flex;gap:8px">${effort}</div></div>
+      <div class="effort joint"><span class="effort-k">SHOULDER</span><div style="display:flex;gap:8px">${joint}</div></div>
       <div class="setwk"><span class="effort-k">SETS THIS WEEK</span><div style="display:flex;align-items:center;gap:8px">
         <button class="setstep" data-act="setrm" data-ex="${ex.id}" aria-label="Remove a set this week"${arr.length <= 1 ? ' disabled' : ''}>−</button>
         <span class="setstep-n">${arr.length}</span>
@@ -6026,7 +6411,7 @@ const DOT_COLOR = { low: 'var(--muted-2)', medium: 'var(--accent)', high: 'var(-
 
 function progressHTML() {
   const prog = curProg(), max = prog.totalWeeks;
-  let out = '', any = false;
+  let out = '', any = false, flags = 0;
 
   DAYS.forEach(d => {
     let rows = '';
@@ -6041,15 +6426,20 @@ function progressHTML() {
       for (let w = 1; w <= max; w++) {
         const h = byWeek[w], now = w === currentWeek;
         const val = h && h.weight != null ? (h.weight % 1 ? h.weight.toFixed(1) : h.weight) : '·';
-        cells += `<div class="cell${now && h ? ' now' : ''}${h ? '' : ' empty'}">
+        const jf = h && (h.joint === 'twinge' || h.joint === 'pain') ? ` j-${h.joint}` : '';
+        cells += `<div class="cell${now && h ? ' now' : ''}${h ? '' : ' empty'}${jf}">
           <div class="cell-w">W${w}</div><div class="cell-v">${val}</div>
           <div class="cell-dot" style="background:${h && h.effort ? DOT_COLOR[h.effort] : 'transparent'}"></div></div>`;
       }
       const ws = hist.filter(h => h.weight != null).map(h => h.weight);
       const diff = ws.length >= 2 ? ws[ws.length - 1] - ws[0] : null;
       const delta = diff == null ? '—' : `${diff >= 0 ? '+' : ''}${diff % 1 ? diff.toFixed(1) : diff} lb`;
-      rows += `<div class="pe"><div class="pe-top"><div class="pe-n">${esc(ex.name)}</div>
-        <div class="pe-d">${delta}</div></div><div class="cells">${cells}</div></div>`;
+      const flag = exerciseFlag(d.id, ex, hist);
+      if (flag) flags++;
+      const tag = flag ? `<span class="flag-tag ${flag.kind}">${FLAG_LABEL[flag.kind]}</span>` : '';
+      const why = flag ? `<div class="pe-flag">${esc(flag.reason)}</div>` : '';
+      rows += `<div class="pe"><div class="pe-top"><div class="pe-n">${esc(ex.name)}${tag}</div>
+        <div class="pe-d">${delta}</div></div><div class="cells">${cells}</div>${why}</div>`;
     });
     if (rows) out += `<div class="pd-h">${esc(d.label)} · ${esc(d.title)}</div>${rows}`;
   });
@@ -6057,14 +6447,29 @@ function progressHTML() {
   const empty = `<div style="text-align:center;padding:48px 20px;font-size:12px;color:var(--muted-2);line-height:1.6">
     No weights or effort logged yet.<br>Track a few sessions and your progression appears here.</div>`;
 
-  return `<div class="vw"><div class="vw-sub">${esc(prog.name.toUpperCase())} · ● EFFORT · ▮ = THIS WEEK</div>
-    ${any ? out : empty}</div>`;
+  const flagNote = flags ? ` · ${flags} FLAG${flags === 1 ? '' : 'S'}` : '';
+  const cal = calibrationResults();
+  let calPanel = '';
+  if (cal.length) {
+    const mean = cal.reduce((a, r) => a + r.error, 0) / cal.length;
+    const fmt = n => (n > 0 ? '+' : '') + (n % 1 ? n.toFixed(1) : n);
+    const abs = Math.abs(mean), amt = abs % 1 ? abs.toFixed(1) : abs;
+    const verdict = abs < 0.5 ? 'YOUR RIR CALLS ARE ON TARGET'
+      : mean > 0 ? `YOU STOP ~${amt} REPS EARLIER THAN YOU THINK`
+      : `YOU STOP ~${amt} REPS LATER THAN YOU THINK`;
+    calPanel = `<div class="panel" style="margin-left:0;margin-right:0"><div class="panel-h">RIR CALIBRATION</div>
+      ${cal.map(r => `<div class="kv"><span>${esc(r.name)}</span><span>predicted ${r.predicted} · actual ${r.actual} · ${fmt(r.error)}</span></div>`).join('')}
+      <div class="calib-mean">${verdict}</div></div>`;
+  }
+  return `<div class="vw"><div class="vw-sub">${esc(prog.name.toUpperCase())} · ● EFFORT · ▮ = THIS WEEK${flagNote}</div>
+    ${calPanel}${any ? out : empty}</div>`;
 }
 
 function settingsHTML() {
   const prog = curProg(), s = dayStats(curDay().id);
   const cur = storedTheme() || 'auto';
   const tb = (v, l) => `<button class="theme-b${cur === v ? ' on' : ''}" data-act="theme" data-v="${v}">${l}</button>`;
+  const bkDays = backupAgeDays();
 
   return `<div class="vw">
     <div class="vw-sub">BACKUP &amp; RESTORE · v3 · ALL PROGRAMS &amp; WEEKS</div>
@@ -6075,8 +6480,15 @@ function settingsHTML() {
     </div>
 
     <div class="panel" style="margin-left:0;margin-right:0">
+      <div class="panel-h">RIR CALIBRATION</div>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Once per block, in the first High Stimulus week, one safe isolation per day takes its last set to failure, so you can see how far your "RPE 8" is from the real thing.</div>
+      <div class="theme-row"><button class="theme-b${calibrationEnabled() ? ' on' : ''}" data-act="calibtoggle">RIR CALIBRATION · ${calibrationEnabled() ? 'ON' : 'OFF'}</button></div>
+    </div>
+
+    <div class="panel" style="margin-left:0;margin-right:0">
       <div class="panel-h">EXPORT</div>
-      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Download every logged set, weight, rep count, effort rating, timestamp, swap and protocol check across all programs and weeks as a JSON file.</div>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Download every logged set, weight, rep count, effort rating, shoulder flag, RIR calibration, timestamp, swap and protocol check across all programs and weeks as a JSON file.</div>
+      <div class="bk-age${backupIsStale(bkDays) ? ' stale' : ''}">LAST BACKUP · ${backupAgeLabel(bkDays)}</div>
       <button class="big-btn" data-act="export">↓ EXPORT DATA</button>
     </div>
 
@@ -6336,6 +6748,14 @@ function doneCardHTML(d) {
   } else {
     cta = `<button class="dc-go" data-act="donex">DONE</button>`;
   }
+  // The end of a week is the natural moment to get the data off the phone.
+  if (d.weekDone) {
+    const days = backupAgeDays();
+    const label = days === 0 ? 'BACKUP SAVED TODAY ✓'
+      : (days != null && backupIsStale(days)) ? `SAVE BACKUP · LAST ${backupAgeLabel(days)}`
+      : 'SAVE BACKUP';
+    cta += `<button class="dc-bk" data-act="backupshare">${label}</button>`;
+  }
 
   return `<div class="dc">
     <div class="dc-mark">✓</div>
@@ -6361,6 +6781,24 @@ function renderOverlays() {
 
   if (view.done) {
     el.innerHTML = `<div class="ov done">${doneCardHTML(view.done)}</div>`;
+    return;
+  }
+
+  // Above tip/swap/rest: the rest timer keeps counting underneath.
+  if (view.calib) {
+    const c = view.calib;
+    el.innerHTML = `<div class="ov scrim"><div class="modal">
+      <div class="modal-t">How many more reps to failure?</div>
+      <div class="modal-m">${esc(c.name)} — after you'd normally have stopped${c.prescribedRir != null ? ` (target: ${c.prescribedRir} in reserve)` : ''}, how many more did you get?</div>
+      <div class="calib-step">
+        <button class="setstep" data-act="calib-" aria-label="One fewer"${c.extra <= 0 ? ' disabled' : ''}>−</button>
+        <span class="calib-v">${c.extra}</span>
+        <button class="setstep" data-act="calib+" aria-label="One more"${c.extra >= 10 ? ' disabled' : ''}>+</button>
+      </div>
+      <div class="modal-row">
+        <button class="ra" style="flex:1" data-act="calibskip">SKIP</button>
+        <button class="ra solid" style="flex:1" data-act="calibsave">SAVE</button>
+      </div></div></div>`;
     return;
   }
 
@@ -6444,6 +6882,8 @@ function resetWeek() {
     state[day.id].reps = {};
     state[day.id].times = {};
     state[day.id].setAdjust = {};
+    state[day.id].joint = {};
+    state[day.id].calib = {};
     day.exercises.forEach(o => {
       const ex = resolveExercise(day.id, o);
       state[day.id].sets[ex.id] = Array(setsForWeek(ex)).fill(false);
@@ -6469,7 +6909,7 @@ document.addEventListener('click', e => {
   // miss one and leave the bar frozen behind an overlay showing a stale set.
   if (act !== 'editw' && act !== 'editr') view.editing = null;
   // Any deliberate navigation retires a celebration that's still up.
-  if (act !== 'donex' && act !== 'doneback' && act !== 'donenext' && act !== 'doneprog') view.done = null;
+  if (act !== 'donex' && act !== 'doneback' && act !== 'donenext' && act !== 'doneprog' && act !== 'backupshare') view.done = null;
   if (act === 'prog')     { switchProgram(Number(el.dataset.i)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.selectedExId = null; }
   else if (act === 'wk')  { changeWeek(Number(el.dataset.d)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; endRest(false); view.selectedExId = null; }
   else if (act === 'day') { view.name = 'day'; view.dayId = el.dataset.id; view.pendKey = ''; view.selectedExId = null; }
@@ -6498,6 +6938,14 @@ document.addEventListener('click', e => {
     // away and re-prefilled from scratch.
   }
   else if (act === 'eff')     { saveEffort(curDay().id, el.dataset.ex, el.dataset.l); }
+  else if (act === 'joint')   { saveJoint(curDay().id, el.dataset.ex, el.dataset.l); }
+  else if (act === 'calib+')  { if (view.calib) view.calib.extra = Math.min(10, view.calib.extra + 1); }
+  else if (act === 'calib-')  { if (view.calib) view.calib.extra = Math.max(0, view.calib.extra - 1); }
+  else if (act === 'calibsave') { saveCalib(); }
+  else if (act === 'calibskip') { view.calib = null; }
+  else if (act === 'calibtoggle') {
+    try { localStorage.setItem(CALIB_KEY, calibrationEnabled() ? 'off' : 'on'); } catch (e) {}
+  }
   else if (act === 'swap')    { view.swap = { dayId: curDay().id, origId: el.dataset.orig }; }
   else if (act === 'log')     { logActiveSet(); }
   else if (act === 'w-') { view.pendW = Math.max(0, view.pendW - 2.5); }
@@ -6513,9 +6961,10 @@ document.addEventListener('click', e => {
   else if (act === 'phase')  { view.openPhase = view.openPhase === Number(el.dataset.i) ? -1 : Number(el.dataset.i); }
   else if (act === 'theme')  { setTheme(el.dataset.v === 'auto' ? null : el.dataset.v); return; }
   else if (act === 'export') { exportData(); }
+  else if (act === 'backupshare') { backupShare(); }
   else if (act === 'import') { document.getElementById('importFile').click(); return; }
   else if (act === 'clearweek') {
-    view.confirm = { title: 'Clear Week?', msg: "This week's logged sets, weights, reps, effort, timestamps and protocol checks will be reset.", act: 'clearweek' };
+    view.confirm = { title: 'Clear Week?', msg: "This week's logged sets, weights, reps, effort, shoulder flags, RIR calibrations, timestamps and protocol checks will be reset.", act: 'clearweek' };
   }
   else if (act === 'restmin') { view.restMinimized = true; }
   else if (act === 'preset')  { setRest(Number(el.dataset.s)); }

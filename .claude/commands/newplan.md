@@ -109,6 +109,17 @@ Apply, in this order:
    - **Under-stimulating** (majority-low effort with no load progress):
      usually a loading or rep-range problem, not an exercise problem —
      tighten RPE targets or adjust load before swapping the movement out.
+   - **Shoulder flags** (`jointFlagged`: any PAIN, or TWINGE in 2+ sessions,
+     tapped on the exercise's SHOULDER row in the app): the movement hurt.
+     Replace it, or move it to a more shoulder-neutral variant (neutral grip,
+     cable or machine path, shorter range at the top of a press) — it must
+     **never** be carried forward unchanged, whatever its slope or adherence
+     say, and rule 1's "carry forward what works" does not override this.
+     Cite the count in the replacement's `note`, in the same style as the
+     existing notes (e.g. `'Replaces Incline DB Press — pain 1×, twinge 2× last
+     block. Neutral handles, elbows tucked.'`). When the report names a
+     swapped-in variant (`on alt_…`), it was that movement that drew the flag,
+     so don't promote it via the Substituted bucket either.
 3. **Allocate volume per muscle** using the report's volume table against
    `docs/training-evidence.md`'s landmarks (MEV/MAV/MRV), biased by the
    emphasis answer. Check every muscle against **both** ends — cutting below
@@ -208,6 +219,15 @@ Apply, in this order:
       change and, for compounds, warm-up sets the model does not count —
       6–7 exercises a day, not 9.
 
+7. **Apply the RIR calibration**, if the report's "RIR calibration" section
+   has entries. A **mean offset ≥ +1.5** means the user stops well short of
+   the effort they think they are giving: say so in the program intro (the
+   first `mesocycle[].points` entry or the brief), and raise the RPE targets
+   of **isolation** exercises (`compound: false`) by half a point (e.g.
+   `'8–9'` → `'8.5–9.5'`). **Never raise them for compounds** — "no failure on
+   compounds" stands whatever the calibration says. An offset under +1.5, or
+   negative, changes nothing; mention it in the brief either way.
+
 ### Writing the JSON
 
 Write the result to `newplan.json` (gitignored) in exactly the shape
@@ -288,7 +308,7 @@ Print, in this order:
    rule 6 — every one at or under 50).
 3. **Changed vs. last block, and why** — one line per change. Every line
    must cite either a specific analyzer flag (rejected / substituted /
-   stalled / under-stimulating / below-MEV / above-MRV, with the exercise or
+   stalled / under-stimulating / shoulder-flagged / below-MEV / above-MRV, with the exercise or
    muscle name) or a named rule from `docs/training-evidence.md` (e.g.
    "frequency ≥2×/week per muscle" or "shoulder-cautious: neutral grip
    default"). A line that just asserts "this is better" without a citation
