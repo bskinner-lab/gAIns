@@ -242,6 +242,11 @@ body {
 .ss-head { display: flex; justify-content: space-between; gap: 12px; margin: 18px 20px -10px; padding-top: 10px; border-top: 2px solid var(--ink); font-family: var(--font-mono); font-size: 9px; letter-spacing: .08em; color: var(--muted); }
 .ss-head span:first-child { color: var(--ink); font-weight: 600; flex: none; }
 .ss-head span:last-child { text-align: right; }
+.ex-flag { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; padding: 4px 4px 4px 9px; border-left: 2px solid var(--accent); background: var(--surface); font-family: var(--font-mono); font-size: 9.5px; line-height: 1.45; color: var(--ink-soft); }
+.ex-flag b { color: var(--accent); font-weight: 600; letter-spacing: 1px; }
+.ex-flag.light { border-left-color: var(--ink-soft); }
+.ex-flag.light b { color: var(--ink); }
+.ex-flag-swap { flex: none; min-height: var(--tap); padding: 0 14px; font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 1px; background: transparent; color: var(--ink); border: 1px solid var(--ink); border-radius: 3px; cursor: pointer; }
 .ex-note { font-family: var(--font-mono); font-size: 9.5px; color: var(--muted-2); margin-top: 6px; line-height: 1.5; }
 .trend { display: flex; align-items: flex-end; gap: 14px; margin-top: 10px; }
 .bars { display: flex; align-items: flex-end; gap: 6px; height: 46px; }
@@ -374,6 +379,9 @@ body {
 .cell-v { font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--ink-soft); }
 .cell.now .cell-v { color: var(--accent); }
 .cell.empty .cell-v { color: var(--faint); }
+.flag-tag { display: inline-block; vertical-align: 2px; margin-left: 7px; font-family: var(--font-mono); font-size: 8px; font-weight: 600; letter-spacing: 1px; color: var(--accent); border: 1px solid var(--accent); border-radius: 2px; padding: 1px 4px; }
+.flag-tag.light { color: var(--ink-soft); border-color: var(--ink-soft); }
+.pe-flag { font-family: var(--font-mono); font-size: 9px; color: var(--accent); margin-top: 6px; line-height: 1.45; }
 .cell-dot { height: 4px; width: 4px; border-radius: 50%; margin: 2px auto 0; background: transparent; }
 .big-btn { width: 100%; min-height: 48px; background: var(--ink); border: none; border-radius: 4px; color: var(--on-ink); font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; cursor: pointer; }
 .big-btn.ghost { background: transparent; border: 1.5px solid var(--ink); color: var(--ink); }
@@ -469,7 +477,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '15';
+const APP_VERSION = '16';
 
 const THEME_KEY = 'gains_theme';
 
@@ -4772,9 +4780,75 @@ function getExerciseHistory(dayId, exId) {
       if (/^\d+$/.test(suffix)) setReps[suffix] = Number(repsMap[k]);
     });
     if (weight == null && reps == null && !eff) continue;
-    out.push({ week: w, weight, reps, effort: eff, setReps });
+    // How much of the exercise was actually performed that week. Weight and
+    // effort are prefilled from earlier weeks, so a week can carry both with
+    // nothing logged; progressionFlag() needs to tell those apart.
+    const arr = Array.isArray((dayState.sets || {})[exId]) ? dayState.sets[exId] : [];
+    const doneSets = arr.filter(v => v === true).length;
+    const openSets = arr.filter(v => v === false).length;
+    out.push({ week: w, weight, reps, effort: eff, setReps, doneSets, openSets });
   }
   return out;
+}
+
+// ── Live progression flags ──────────────────────────────────────────────────
+// An early warning, mid-block, for the two findings /newplan keeps reporting
+// after the fact: a lift that stopped moving, and one rated LOW week after
+// week with the load never going up. Deliberately looser than
+// tools/analyze-history.js (STALL_MIN_WEEKS = 4, slope-based): that is the
+// end-of-block verdict, this is a nudge while a swap or a heavier plate can
+// still help THIS block.
+const STALL_WINDOW = 3;
+
+function isDeloadPhase(phase) {
+  return !!phase && (phase.deload === true || phase.label === 'Deload');
+}
+
+function bestReps(h) {
+  const vals = Object.values(h.setReps || {}).filter(v => typeof v === 'number' && isFinite(v));
+  if (vals.length) return Math.max(...vals);
+  return (typeof h.reps === 'number' && isFinite(h.reps)) ? h.reps : null;
+}
+
+// hist = getExerciseHistory(dayId, exId), ascending by week.
+// opts.currentWeek: that week only counts once nothing is left open in it.
+// Returns null | { kind: 'stalled' | 'light', weeks: n, reason: '…' }.
+function progressionFlag(hist, weekPhases, opts = {}) {
+  const phases = weekPhases || [];
+  const deload = w => isDeloadPhase(phases[w - 1]);
+  const usable = (hist || []).filter(h =>
+    !deload(h.week) &&
+    // Prefilled but never performed: not a data point.
+    !(h.doneSets === 0) &&
+    // The week in progress counts only once it is finished.
+    !(opts.currentWeek != null && h.week === opts.currentWeek && h.openSets > 0));
+  if (usable.length < STALL_WINDOW) return null;
+  const win = usable.slice(-STALL_WINDOW);
+  // Consecutive in training weeks: a deload in between is not a break, a
+  // week that was simply not logged is.
+  const rank = w => { let n = 0; for (let i = 1; i <= w; i++) if (!deload(i)) n++; return n; };
+  for (let i = 1; i < win.length; i++) {
+    if (rank(win[i].week) !== rank(win[i - 1].week) + 1) return null;
+  }
+  const load = h => (h.weight == null || !isFinite(h.weight)) ? 0 : h.weight;
+  const loadUp = win.slice(1).some(h => load(h) > load(win[0]));
+  const r0 = bestReps(win[0]);
+  const repsUp = r0 != null && win.slice(1).some(h => { const r = bestReps(h); return r != null && r > r0; });
+  if (!loadUp && win.every(h => h.effort === 'low')) {
+    return { kind: 'light', weeks: STALL_WINDOW, reason: `rated LOW ${STALL_WINDOW} weeks running with no load increase: add weight` };
+  }
+  if (!loadUp && !repsUp && win.some(h => h.effort === 'high')) {
+    return { kind: 'stalled', weeks: STALL_WINDOW, reason: `no load or rep gain in ${STALL_WINDOW} weeks at high effort` };
+  }
+  return null;
+}
+
+const FLAG_LABEL = { stalled: 'STALLED', light: 'TOO LIGHT' };
+
+// The flag for an exercise on the current program and week. `ex` is the
+// RESOLVED (swapped-in) exercise, so the history is the one actually trained.
+function exerciseFlag(dayId, ex, hist = getExerciseHistory(dayId, ex.id)) {
+  return progressionFlag(hist, WEEK_PHASES, { currentWeek });
 }
 
 // Most recent logged entry strictly before the current week, or null.
@@ -5921,6 +5995,15 @@ function addRest(delta) {
 
 const EFF_LABEL = { low: 'LOW', medium: 'MED', high: 'HIGH' };
 
+// A one-line warning under an exercise's name, with an optional SWAP link that
+// opens the same sheet as the card's ⇄ button. Shared by the progression flags
+// and anything else that wants to say "look at this exercise".
+function cardBannerHTML(kind, label, reason, swapOrigId) {
+  const swap = swapOrigId && EXERCISE_ALTERNATIVES[swapOrigId]
+    ? `<button class="ex-flag-swap" data-act="swap" data-orig="${esc(swapOrigId)}">SWAP</button>` : '';
+  return `<div class="ex-flag ${esc(kind)}"><div class="ex-flag-t"><b>${esc(label)}</b> · ${esc(reason)}</div>${swap}</div>`;
+}
+
 function exercisesHTML(day) {
   const act = activeSet(day);
   return day.exercises.map((orig, xi) => {
@@ -5945,7 +6028,14 @@ function exercisesHTML(day) {
     const ssLabel = supersetLabel(day, orig);
     if (ssLabel) tags += `<span class="tag ink hit" data-act="tip" data-t="superset">SUPERSET ${esc(ssLabel)}</span>`;
 
-    const hist = getExerciseHistory(day.id, ex.id).filter(h => h.weight != null);
+    const fullHist = getExerciseHistory(day.id, ex.id);
+    const hist = fullHist.filter(h => h.weight != null);
+    const flag = exerciseFlag(day.id, ex, fullHist);
+    // A stall can be a poor exercise fit, so offer the swap. TOO LIGHT never
+    // does: the fix there is load, not exercise choice.
+    const flagBanner = flag
+      ? cardBannerHTML(flag.kind, FLAG_LABEL[flag.kind], flag.reason, flag.kind === 'stalled' ? orig.id : null)
+      : '';
     let trend = `<div class="trend-empty">▂ LOG 2+ WEEKS TO SEE A TREND</div>`;
     if (hist.length >= 2) {
       const vals = hist.map(h => h.weight), mn = Math.min(...vals), mx = Math.max(...vals);
@@ -6014,6 +6104,7 @@ function exercisesHTML(day) {
           <div class="ex-count">${dh + sk}/${arr.length}</div>
         </div>
       </div>
+      ${flagBanner}
       <div class="tags">${tags}</div>
       ${ex.note ? `<div class="ex-note">${esc(ex.note)}${swapped ? '  ·  swapped' : ''}</div>` : ''}
       ${trend}
@@ -6104,7 +6195,7 @@ const DOT_COLOR = { low: 'var(--muted-2)', medium: 'var(--accent)', high: 'var(-
 
 function progressHTML() {
   const prog = curProg(), max = prog.totalWeeks;
-  let out = '', any = false;
+  let out = '', any = false, flags = 0;
 
   DAYS.forEach(d => {
     let rows = '';
@@ -6126,8 +6217,12 @@ function progressHTML() {
       const ws = hist.filter(h => h.weight != null).map(h => h.weight);
       const diff = ws.length >= 2 ? ws[ws.length - 1] - ws[0] : null;
       const delta = diff == null ? '—' : `${diff >= 0 ? '+' : ''}${diff % 1 ? diff.toFixed(1) : diff} lb`;
-      rows += `<div class="pe"><div class="pe-top"><div class="pe-n">${esc(ex.name)}</div>
-        <div class="pe-d">${delta}</div></div><div class="cells">${cells}</div></div>`;
+      const flag = exerciseFlag(d.id, ex, hist);
+      if (flag) flags++;
+      const tag = flag ? `<span class="flag-tag ${flag.kind}">${FLAG_LABEL[flag.kind]}</span>` : '';
+      const why = flag ? `<div class="pe-flag">${esc(flag.reason)}</div>` : '';
+      rows += `<div class="pe"><div class="pe-top"><div class="pe-n">${esc(ex.name)}${tag}</div>
+        <div class="pe-d">${delta}</div></div><div class="cells">${cells}</div>${why}</div>`;
     });
     if (rows) out += `<div class="pd-h">${esc(d.label)} · ${esc(d.title)}</div>${rows}`;
   });
@@ -6135,7 +6230,8 @@ function progressHTML() {
   const empty = `<div style="text-align:center;padding:48px 20px;font-size:12px;color:var(--muted-2);line-height:1.6">
     No weights or effort logged yet.<br>Track a few sessions and your progression appears here.</div>`;
 
-  return `<div class="vw"><div class="vw-sub">${esc(prog.name.toUpperCase())} · ● EFFORT · ▮ = THIS WEEK</div>
+  const flagNote = flags ? ` · ${flags} FLAG${flags === 1 ? '' : 'S'}` : '';
+  return `<div class="vw"><div class="vw-sub">${esc(prog.name.toUpperCase())} · ● EFFORT · ▮ = THIS WEEK${flagNote}</div>
     ${any ? out : empty}</div>`;
 }
 
