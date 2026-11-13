@@ -246,6 +246,8 @@ body {
 .ex-flag b { color: var(--accent); font-weight: 600; letter-spacing: 1px; }
 .ex-flag.light { border-left-color: var(--ink-soft); }
 .ex-flag.light b { color: var(--ink); }
+.ex-flag.joint { border-left-color: var(--danger); }
+.ex-flag.joint b { color: var(--danger); }
 .ex-flag-swap { flex: none; min-height: var(--tap); padding: 0 14px; font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 1px; background: transparent; color: var(--ink); border: 1px solid var(--ink); border-radius: 3px; cursor: pointer; }
 .ex-note { font-family: var(--font-mono); font-size: 9.5px; color: var(--muted-2); margin-top: 6px; line-height: 1.5; }
 .trend { display: flex; align-items: flex-end; gap: 14px; margin-top: 10px; }
@@ -280,6 +282,9 @@ body {
 .effort-k { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--muted-2); }
 .eff { font-family: var(--font-mono); font-size: 9px; padding: 0 14px; min-height: var(--tap); border-radius: 3px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted-2); }
 .eff.on { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
+.effort.joint { margin-top: 8px; }
+.eff.jnt.on.twinge { border-color: var(--accent); background: var(--accent); color: var(--on-dark); }
+.eff.jnt.on.pain { border-color: var(--danger); background: var(--danger); color: var(--on-dark); }
 .setwk { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .setstep { border: 1px solid var(--border); background: transparent; color: var(--muted-2); border-radius: 3px; width: var(--tap); min-height: var(--tap); cursor: pointer; font-family: var(--font-mono); font-size: 13px; line-height: 1; }
 .setstep:disabled { opacity: .35; cursor: default; }
@@ -382,6 +387,8 @@ body {
 .flag-tag { display: inline-block; vertical-align: 2px; margin-left: 7px; font-family: var(--font-mono); font-size: 8px; font-weight: 600; letter-spacing: 1px; color: var(--accent); border: 1px solid var(--accent); border-radius: 2px; padding: 1px 4px; }
 .flag-tag.light { color: var(--ink-soft); border-color: var(--ink-soft); }
 .pe-flag { font-family: var(--font-mono); font-size: 9px; color: var(--accent); margin-top: 6px; line-height: 1.45; }
+.cell.j-twinge .cell-dot { box-shadow: 0 0 0 1.5px var(--surface), 0 0 0 3px var(--accent); }
+.cell.j-pain .cell-dot { box-shadow: 0 0 0 1.5px var(--surface), 0 0 0 3px var(--danger); }
 .cell-dot { height: 4px; width: 4px; border-radius: 50%; margin: 2px auto 0; background: transparent; }
 .big-btn { width: 100%; min-height: 48px; background: var(--ink); border: none; border-radius: 4px; color: var(--on-ink); font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; cursor: pointer; }
 .big-btn.ghost { background: transparent; border: 1.5px solid var(--ink); color: var(--ink); }
@@ -477,7 +484,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '16';
+const APP_VERSION = '17';
 
 const THEME_KEY = 'gains_theme';
 
@@ -4657,6 +4664,7 @@ function migrateMovedExercises(saved) {
     Object.keys(sd.effort || {}).forEach(consider);
     Object.keys(sd.swaps || {}).forEach(consider);
     Object.keys(sd.setAdjust || {}).forEach(consider);
+    Object.keys(sd.joint || {}).forEach(consider);
     MOVABLE_MAPS.forEach(mapName => {
       Object.keys(sd[mapName] || {}).forEach(k => {
         consider(k);
@@ -4670,6 +4678,7 @@ function migrateMovedExercises(saved) {
       moveEntry(sd, dst, 'effort', exId);
       moveEntry(sd, dst, 'swaps', exId);
       moveEntry(sd, dst, 'setAdjust', exId);
+      moveEntry(sd, dst, 'joint', exId);
       MOVABLE_MAPS.forEach(mapName => {
         moveEntry(sd, dst, mapName, exId);
         Object.keys(sd[mapName] || {}).forEach(k => {
@@ -4705,7 +4714,11 @@ function initState() {
       effort: savedDay.effort || {},
       protocol: savedDay.protocol || [],
       swaps: savedDay.swaps || {},
-      setAdjust: savedDay.setAdjust || {}
+      setAdjust: savedDay.setAdjust || {},
+      // Shoulder response per exercise: 'ok' | 'twinge' | 'pain'. Never
+      // prefilled from earlier weeks (see prefillFromPreviousWeeks): a symptom
+      // belongs to the session it was felt in.
+      joint: savedDay.joint || {}
     };
     day.exercises.forEach(originalEx => {
       const ex = resolveExercise(day.id, originalEx);
@@ -4769,6 +4782,7 @@ function getExerciseHistory(dayId, exId) {
     const rawR = (dayState.reps || {})[exId];
     const reps = (rawR === '' || rawR == null) ? null : Number(rawR);
     const eff = (dayState.effort || {})[exId] || '';
+    const joint = (dayState.joint || {})[exId] || '';
     // Per-set reps, keyed by set index. The suffix must be all digits: a bare
     // startsWith(exId + '_') would credit `m3_squat_pause_0` to `m3_squat`,
     // silently mixing two different exercises' reps together.
@@ -4779,14 +4793,14 @@ function getExerciseHistory(dayId, exId) {
       const suffix = k.slice(exId.length + 1);
       if (/^\d+$/.test(suffix)) setReps[suffix] = Number(repsMap[k]);
     });
-    if (weight == null && reps == null && !eff) continue;
+    if (weight == null && reps == null && !eff && !joint) continue;
     // How much of the exercise was actually performed that week. Weight and
     // effort are prefilled from earlier weeks, so a week can carry both with
     // nothing logged; progressionFlag() needs to tell those apart.
     const arr = Array.isArray((dayState.sets || {})[exId]) ? dayState.sets[exId] : [];
     const doneSets = arr.filter(v => v === true).length;
     const openSets = arr.filter(v => v === false).length;
-    out.push({ week: w, weight, reps, effort: eff, setReps, doneSets, openSets });
+    out.push({ week: w, weight, reps, effort: eff, joint, setReps, doneSets, openSets });
   }
   return out;
 }
@@ -4844,6 +4858,22 @@ function progressionFlag(hist, weekPhases, opts = {}) {
 }
 
 const FLAG_LABEL = { stalled: 'STALLED', light: 'TOO LIGHT' };
+
+// Should this exercise's card warn about the shoulder before today's session?
+// Yes if LAST week's entry was PAIN, or it drew a TWINGE (or worse) in 2 of
+// the last 3 weeks. Returns null | { reason }.
+const JOINT_TWINGE_WINDOW = 3;
+const JOINT_TWINGE_MIN = 2;
+function jointCarryFlag(hist, week) {
+  const byWeek = {};
+  (hist || []).forEach(h => { byWeek[h.week] = h.joint || ''; });
+  if (byWeek[week - 1] === 'pain') return { reason: `PAIN logged in week ${week - 1}` };
+  let n = 0;
+  for (let w = week - JOINT_TWINGE_WINDOW; w < week; w++) {
+    if (byWeek[w] === 'twinge' || byWeek[w] === 'pain') n++;
+  }
+  return n >= JOINT_TWINGE_MIN ? { reason: `twinge in ${n} of the last ${JOINT_TWINGE_WINDOW} weeks` } : null;
+}
 
 // The flag for an exercise on the current program and week. `ex` is the
 // RESOLVED (swapped-in) exercise, so the history is the one actually trained.
@@ -5114,6 +5144,18 @@ function saveEffort(dayId, exId, level) {
     const btnLevel = btn.getAttribute('data-level');
     btn.className = 'effort-btn' + (btnLevel === state[dayId].effort[exId] ? ` active-${btnLevel}` : '');
   });
+}
+
+// Shoulder response for one exercise this session. Tapping the active level
+// clears it, the same as effort. No DOM patching: the click handler's
+// render() repaints the card.
+const JOINT_LEVELS = ['ok', 'twinge', 'pain'];
+function saveJoint(dayId, exId, level) {
+  if (!state[dayId] || !JOINT_LEVELS.includes(level)) return;
+  if (!state[dayId].joint) state[dayId].joint = {};
+  if (state[dayId].joint[exId] === level) delete state[dayId].joint[exId];
+  else state[dayId].joint[exId] = level;
+  saveState();
 }
 
 // Compatibility shim — the preserved logic layer calls this; it now just re-renders.
@@ -5994,6 +6036,7 @@ function addRest(delta) {
 }
 
 const EFF_LABEL = { low: 'LOW', medium: 'MED', high: 'HIGH' };
+const JOINT_LABEL = { ok: 'OK', twinge: 'TWINGE', pain: 'PAIN' };
 
 // A one-line warning under an exercise's name, with an optional SWAP link that
 // opens the same sheet as the card's ⇄ button. Shared by the progression flags
@@ -6033,9 +6076,12 @@ function exercisesHTML(day) {
     const flag = exerciseFlag(day.id, ex, fullHist);
     // A stall can be a poor exercise fit, so offer the swap. TOO LIGHT never
     // does: the fix there is load, not exercise choice.
-    const flagBanner = flag
+    const jointFlag = jointCarryFlag(fullHist, currentWeek);
+    const flagBanner = (jointFlag
+      ? cardBannerHTML('joint', 'SHOULDER FLAGGED LAST WEEK', jointFlag.reason, orig.id) : '')
+      + (flag
       ? cardBannerHTML(flag.kind, FLAG_LABEL[flag.kind], flag.reason, flag.kind === 'stalled' ? orig.id : null)
-      : '';
+      : '');
     let trend = `<div class="trend-empty">▂ LOG 2+ WEEKS TO SEE A TREND</div>`;
     if (hist.length >= 2) {
       const vals = hist.map(h => h.weight), mn = Math.min(...vals), mx = Math.max(...vals);
@@ -6081,6 +6127,11 @@ function exercisesHTML(day) {
       return `<button class="eff${on ? ' on' : ''}" data-act="eff" data-ex="${ex.id}" data-l="${l}">${EFF_LABEL[l]}</button>`;
     }).join('');
 
+    const jointNow = (state[day.id].joint || {})[ex.id] || '';
+    const joint = JOINT_LEVELS.map(l =>
+      `<button class="eff jnt${jointNow === l ? ' on ' + l : ''}" data-act="joint" data-ex="${ex.id}" data-l="${l}">${JOINT_LABEL[l]}</button>`
+    ).join('');
+
     const lastCol = prior
       ? `W${prior.week}${prior.effort ? ' · ' + EFF_LABEL[prior.effort] : ''}` : 'LAST';
 
@@ -6113,6 +6164,7 @@ function exercisesHTML(day) {
         ${rows}
       </div>
       <div class="effort"><span class="effort-k">EFFORT</span><div style="display:flex;gap:8px">${effort}</div></div>
+      <div class="effort joint"><span class="effort-k">SHOULDER</span><div style="display:flex;gap:8px">${joint}</div></div>
       <div class="setwk"><span class="effort-k">SETS THIS WEEK</span><div style="display:flex;align-items:center;gap:8px">
         <button class="setstep" data-act="setrm" data-ex="${ex.id}" aria-label="Remove a set this week"${arr.length <= 1 ? ' disabled' : ''}>−</button>
         <span class="setstep-n">${arr.length}</span>
@@ -6210,7 +6262,8 @@ function progressHTML() {
       for (let w = 1; w <= max; w++) {
         const h = byWeek[w], now = w === currentWeek;
         const val = h && h.weight != null ? (h.weight % 1 ? h.weight.toFixed(1) : h.weight) : '·';
-        cells += `<div class="cell${now && h ? ' now' : ''}${h ? '' : ' empty'}">
+        const jf = h && (h.joint === 'twinge' || h.joint === 'pain') ? ` j-${h.joint}` : '';
+        cells += `<div class="cell${now && h ? ' now' : ''}${h ? '' : ' empty'}${jf}">
           <div class="cell-w">W${w}</div><div class="cell-v">${val}</div>
           <div class="cell-dot" style="background:${h && h.effort ? DOT_COLOR[h.effort] : 'transparent'}"></div></div>`;
       }
@@ -6251,7 +6304,7 @@ function settingsHTML() {
 
     <div class="panel" style="margin-left:0;margin-right:0">
       <div class="panel-h">EXPORT</div>
-      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Download every logged set, weight, rep count, effort rating, timestamp, swap and protocol check across all programs and weeks as a JSON file.</div>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Download every logged set, weight, rep count, effort rating, shoulder flag, timestamp, swap and protocol check across all programs and weeks as a JSON file.</div>
       <div class="bk-age${backupIsStale(bkDays) ? ' stale' : ''}">LAST BACKUP · ${backupAgeLabel(bkDays)}</div>
       <button class="big-btn" data-act="export">↓ EXPORT DATA</button>
     </div>
@@ -6628,6 +6681,7 @@ function resetWeek() {
     state[day.id].reps = {};
     state[day.id].times = {};
     state[day.id].setAdjust = {};
+    state[day.id].joint = {};
     day.exercises.forEach(o => {
       const ex = resolveExercise(day.id, o);
       state[day.id].sets[ex.id] = Array(setsForWeek(ex)).fill(false);
@@ -6682,6 +6736,7 @@ document.addEventListener('click', e => {
     // away and re-prefilled from scratch.
   }
   else if (act === 'eff')     { saveEffort(curDay().id, el.dataset.ex, el.dataset.l); }
+  else if (act === 'joint')   { saveJoint(curDay().id, el.dataset.ex, el.dataset.l); }
   else if (act === 'swap')    { view.swap = { dayId: curDay().id, origId: el.dataset.orig }; }
   else if (act === 'log')     { logActiveSet(); }
   else if (act === 'w-') { view.pendW = Math.max(0, view.pendW - 2.5); }
@@ -6700,7 +6755,7 @@ document.addEventListener('click', e => {
   else if (act === 'backupshare') { backupShare(); }
   else if (act === 'import') { document.getElementById('importFile').click(); return; }
   else if (act === 'clearweek') {
-    view.confirm = { title: 'Clear Week?', msg: "This week's logged sets, weights, reps, effort, timestamps and protocol checks will be reset.", act: 'clearweek' };
+    view.confirm = { title: 'Clear Week?', msg: "This week's logged sets, weights, reps, effort, shoulder flags, timestamps and protocol checks will be reset.", act: 'clearweek' };
   }
   else if (act === 'restmin') { view.restMinimized = true; }
   else if (act === 'preset')  { setRest(Number(el.dataset.s)); }
