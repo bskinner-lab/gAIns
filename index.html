@@ -434,6 +434,9 @@ body {
 .dc-move b { display: block; font-weight: 600; }
 .dc-move span { display: block; font-size: 9px; opacity: .75; margin-top: 4px; }
 .dc-go { display: block; width: 100%; margin-top: 20px; background: var(--accent); border: none; border-radius: 6px; color: var(--on-dark); font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 1.5px; min-height: 54px; cursor: pointer; }
+.dc-bk { display: block; width: 100%; margin-top: 9px; background: none; border: 1px solid var(--bar-edge); border-radius: 6px; color: var(--on-dark); font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; min-height: var(--tap); cursor: pointer; }
+.bk-age { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; color: var(--muted-2); margin-bottom: 10px; }
+.bk-age.stale { color: var(--accent); font-weight: 600; }
 .dc-alt { display: block; width: 100%; margin-top: 9px; background: none; border: none; color: var(--on-dark); opacity: .5; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; min-height: var(--tap); cursor: pointer; }
 .tip-t { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; color: var(--accent); }
 .tip-d { font-size: 12.5px; line-height: 1.55; margin-top: 8px; }
@@ -466,7 +469,7 @@ body {
 // isn't working" apart from "the service worker served you yesterday's shell".
 // Must stay in lockstep with CACHE in sw.js ('gains-v<APP_VERSION>');
 // tools/version-sync.test.js fails the build if the two ever drift.
-const APP_VERSION = '14';
+const APP_VERSION = '15';
 
 const THEME_KEY = 'gains_theme';
 
@@ -5316,7 +5319,9 @@ document.addEventListener('touchstart', primeAudio, { once: true, passive: true 
 document.addEventListener('click', primeAudio, { once: true });
 
 // EXPORT / IMPORT
-function exportData() {
+// The export payload, built once and shared by the plain EXPORT download and
+// the week-complete SAVE BACKUP share sheet, so the two can never drift apart.
+function buildExportBlob() {
   const savedProgIdx = currentProgramIdx;
   const allPrograms = {};
   PROGRAMS.forEach((prog, pi) => {
@@ -5336,19 +5341,92 @@ function exportData() {
   });
   // Stays labelled 3 deliberately. The version integer is the import gate, so a
   // file labelled 4 is rejected outright by builds that predate `times`. The
-  // format is a structural superset of v3 — `times` and `startDate` are extra
-  // keys older builds ignore — so a 3-labelled file imports into both.
+  // format is a structural superset of v3 — `times`, `startDate` and any later
+  // per-day key are extra keys older builds ignore — so a 3-labelled file
+  // imports into both. Device-local metadata (gains_last_backup, …) is never
+  // part of it.
   const data = { programs: allPrograms, currentProgram: savedProgIdx, version: 3 };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const text = JSON.stringify(data, null, 2);
+  const blob = new Blob([text], { type: 'application/json' });
+  const date = new Date().toISOString().slice(0, 10);
+  return { blob, text, filename: `gains-backup-${date}.json` };
+}
+
+function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const date = new Date().toISOString().slice(0, 10);
   a.href = url;
-  a.download = `gains-backup-${date}.json`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function downloadExport() {
+  const { blob, filename } = buildExportBlob();
+  downloadBlob(blob, filename);
+}
+
+function exportData() {
+  downloadExport();
+  markBackedUp();
   view.importMsg = 'Exported all programs & weeks.';
   view.importOk = true;
+}
+
+// When the last backup left this device. Device-local on purpose: it is not
+// in the export and an import does not touch it — restoring a file says
+// nothing about whether THIS phone's data has been saved anywhere.
+const LAST_BACKUP_KEY = 'gains_last_backup';
+const BACKUP_STALE_DAYS = 7;
+
+function markBackedUp() {
+  try { localStorage.setItem(LAST_BACKUP_KEY, String(nowMs())); } catch (e) {}
+}
+
+// Whole days since the last backup, or null when there has never been one.
+function backupAgeDays() {
+  let raw = null;
+  try { raw = localStorage.getItem(LAST_BACKUP_KEY); } catch (e) {}
+  const t = Number(raw);
+  if (!raw || !isFinite(t) || t <= 0) return null;
+  return Math.max(0, Math.floor((nowMs() - t) / 86400000));
+}
+
+function backupAgeLabel(days) {
+  if (days == null) return 'NEVER';
+  if (days === 0) return 'TODAY';
+  return days === 1 ? '1 DAY AGO' : `${days} DAYS AGO`;
+}
+
+function backupIsStale(days) { return days == null || days > BACKUP_STALE_DAYS; }
+
+// A File the share sheet will take, or null. iOS Safari accepts
+// application/json; Chrome on Android rejects it but takes text/plain, so
+// retry with that before giving up (the .json filename is kept either way).
+function shareableBackupFile(blob, filename) {
+  if (typeof File !== 'function' || !navigator.canShare || !navigator.share) return null;
+  for (const type of ['application/json', 'text/plain']) {
+    try {
+      const file = new File([blob], filename, { type });
+      if (navigator.canShare({ files: [file] })) return file;
+    } catch (e) {}
+  }
+  return null;
+}
+
+// SAVE BACKUP. Must run synchronously inside the click handler: Safari only
+// opens the share sheet from inside a user gesture. A cancelled sheet rejects
+// with AbortError, which is not a backup and is not an error worth showing.
+function backupShare() {
+  const { blob, filename } = buildExportBlob();
+  const file = shareableBackupFile(blob, filename);
+  if (file) {
+    navigator.share({ files: [file], title: 'gAIns backup' })
+      .then(() => { markBackedUp(); render(); }, () => {});
+  } else {
+    downloadBlob(blob, filename);
+    markBackedUp();
+  }
 }
 
 function importData(event) {
@@ -6065,6 +6143,7 @@ function settingsHTML() {
   const prog = curProg(), s = dayStats(curDay().id);
   const cur = storedTheme() || 'auto';
   const tb = (v, l) => `<button class="theme-b${cur === v ? ' on' : ''}" data-act="theme" data-v="${v}">${l}</button>`;
+  const bkDays = backupAgeDays();
 
   return `<div class="vw">
     <div class="vw-sub">BACKUP &amp; RESTORE · v3 · ALL PROGRAMS &amp; WEEKS</div>
@@ -6077,6 +6156,7 @@ function settingsHTML() {
     <div class="panel" style="margin-left:0;margin-right:0">
       <div class="panel-h">EXPORT</div>
       <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:12px">Download every logged set, weight, rep count, effort rating, timestamp, swap and protocol check across all programs and weeks as a JSON file.</div>
+      <div class="bk-age${backupIsStale(bkDays) ? ' stale' : ''}">LAST BACKUP · ${backupAgeLabel(bkDays)}</div>
       <button class="big-btn" data-act="export">↓ EXPORT DATA</button>
     </div>
 
@@ -6336,6 +6416,14 @@ function doneCardHTML(d) {
   } else {
     cta = `<button class="dc-go" data-act="donex">DONE</button>`;
   }
+  // The end of a week is the natural moment to get the data off the phone.
+  if (d.weekDone) {
+    const days = backupAgeDays();
+    const label = days === 0 ? 'BACKUP SAVED TODAY ✓'
+      : (days != null && backupIsStale(days)) ? `SAVE BACKUP · LAST ${backupAgeLabel(days)}`
+      : 'SAVE BACKUP';
+    cta += `<button class="dc-bk" data-act="backupshare">${label}</button>`;
+  }
 
   return `<div class="dc">
     <div class="dc-mark">✓</div>
@@ -6469,7 +6557,7 @@ document.addEventListener('click', e => {
   // miss one and leave the bar frozen behind an overlay showing a stale set.
   if (act !== 'editw' && act !== 'editr') view.editing = null;
   // Any deliberate navigation retires a celebration that's still up.
-  if (act !== 'donex' && act !== 'doneback' && act !== 'donenext' && act !== 'doneprog') view.done = null;
+  if (act !== 'donex' && act !== 'doneback' && act !== 'donenext' && act !== 'doneprog' && act !== 'backupshare') view.done = null;
   if (act === 'prog')     { switchProgram(Number(el.dataset.i)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; view.selectedExId = null; }
   else if (act === 'wk')  { changeWeek(Number(el.dataset.d)); view.dayId = getStartDay(); view.pendKey = ''; view.latestPr = null; endRest(false); view.selectedExId = null; }
   else if (act === 'day') { view.name = 'day'; view.dayId = el.dataset.id; view.pendKey = ''; view.selectedExId = null; }
@@ -6513,6 +6601,7 @@ document.addEventListener('click', e => {
   else if (act === 'phase')  { view.openPhase = view.openPhase === Number(el.dataset.i) ? -1 : Number(el.dataset.i); }
   else if (act === 'theme')  { setTheme(el.dataset.v === 'auto' ? null : el.dataset.v); return; }
   else if (act === 'export') { exportData(); }
+  else if (act === 'backupshare') { backupShare(); }
   else if (act === 'import') { document.getElementById('importFile').click(); return; }
   else if (act === 'clearweek') {
     view.confirm = { title: 'Clear Week?', msg: "This week's logged sets, weights, reps, effort, timestamps and protocol checks will be reset.", act: 'clearweek' };
