@@ -1,7 +1,7 @@
 # Completeness roadmap: five features
 
 **Date:** 2026-11-13
-**Status:** planned, not started
+**Status:** phases 1–4 done (APP_VERSION 15–18); phase 5 not started — needs the user's setup and go-ahead
 **Execute in:** a fresh session, one phase per commit, in the order below.
 
 The idea behind all five: the app is the *sensor* half of a feedback loop, and

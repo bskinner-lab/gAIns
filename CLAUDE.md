@@ -21,7 +21,7 @@ A single `view` state object drives four render functions, all called by `render
 - `renderMasthead()` — title, week `‹ ›` selector, phase line, ⚙ settings, program chips, day/PLAN/PROGRESS tabs
 - `renderScroll()` — dispatches on `view.name`: `day` → `workoutHeaderHTML()` + `exercisesHTML()`, `plan` → `planHTML()`, `progress` → `progressHTML()`, else `settingsHTML()`
 - `renderBottomBar()` — sticky dark bar: active exercise, ± weight stepper (2.5 lb), LOG SET, minimized rest pill, or DAY COMPLETE
-- `renderOverlays()` — one overlay at a time, priority `confirm > done > tip > swap > rest`
+- `renderOverlays()` — one overlay at a time, priority `confirm > done > calib > tip > swap > rest`
 
 Each rebuilds its container's `innerHTML`. **All interaction goes through one delegated click handler** keyed on `data-act` attributes — add new UI by emitting `data-act="…"` and adding an `else if` branch there. A 500ms `setInterval` updates `view.now` (session clock + rest countdown); `visibilitychange` resyncs so the timestamp-based rest timer survives backgrounding.
 
@@ -29,8 +29,9 @@ Each rebuilds its container's `innerHTML`. **All interaction goes through one de
 
 - **Data constants**: `PROGRAMS` (multi-program: days, exercises, `mesocycle`, `weekPhases`, `protocolItems`), `EXERCISE_ALTERNATIVES` (swap options), `GLOSSARY`. `DAYS`/`MESOCYCLE`/`WEEK_PHASES`/`PROTOCOL_ITEMS` are reassigned from the active program on switch.
 - **Supersets**: two ADJACENT exercises on a day with the same `superset` key (`'A'`, `'B'`, …) run as alternating sets. `supersetStep()` decides the rest after each logged set: after the first half, a `SUPERSET_TRANSITION_SEC` walk (minimized, with the selection moved to the partner); after the second, the longer of the two `rest`s minus the time since the partner's half was logged, floored at `SUPERSET_MIN_REST_SEC`. Pairs must share no muscle — `tools/superset.test.js` and `insert-program.js` both enforce it.
-- **Globals**: the current week is `currentWeek` (not `week`); the program index is `currentProgramIdx`; workout data is `state`, keyed by day id → `{sets, weights, effort, protocol, swaps}`. `sets[exId]` entries are `true`, `'skipped'`, or `false`.
-- **Persistence**: `localStorage` under `hypertrophy_state_<progId>_w<week>`, plus `hypertrophy_week_<progId>`, `hypertrophy_program`, `hypertrophy_migrated_v3`. Theme preference lives in `gains_theme` (`light`/`dark`/absent = auto). Migration functions handle legacy v1/v2 layouts — don't break them.
+- **Globals**: the current week is `currentWeek` (not `week`); the program index is `currentProgramIdx`; workout data is `state`, keyed by day id → `{sets, weights, reps, times, effort, protocol, swaps, setAdjust, joint, calib}`. `sets[exId]` entries are `true`, `'skipped'`, or `false`. `joint[exId]` is the per-session shoulder response (`'ok' | 'twinge' | 'pain'`, never prefilled into the next week); `calib[exId]` is a RIR calibration result (`{ setIdx, prescribedRir, extra, at }`). Adding a per-day key means touching every site that enumerates them: `initState()`, `migrateMovedExercises()`, `resetWeek()`, the Clear Week confirm copy and the Settings export blurb.
+- **Live flags**: `progressionFlag()` (STALLED / TOO LIGHT over the last 3 consecutive training weeks, deloads skipped) and `jointCarryFlag()` (PAIN last week, or a twinge in 2 of 3) render through `cardBannerHTML()` on the day card. `calibrationTarget(day, weekIdx)` picks the one RIR calibration set per day in the first High Stimulus week; logging it opens `view.calib`.
+- **Persistence**: `localStorage` under `hypertrophy_state_<progId>_w<week>`, plus `hypertrophy_week_<progId>`, `hypertrophy_program`, `hypertrophy_migrated_v3`. Theme preference lives in `gains_theme` (`light`/`dark`/absent = auto). Device-local metadata, never exported: `gains_last_backup` (ms timestamp of the last EXPORT / SAVE BACKUP), `gains_calib` (`'off'` disables RIR calibration). The export stays labelled `version: 3`; new per-day keys ride along as a structural superset. Migration functions handle legacy v1/v2 layouts — don't break them.
 
 ### Compatibility shims
 
@@ -44,7 +45,7 @@ Each rebuilds its container's `innerHTML`. **All interaction goes through one de
 - **Light + dark themes** — toggled in Settings, defaults to `prefers-color-scheme`.
 - **Shoulder-cautious program** — tailored for a user with shoulder considerations. Protocol sections appear on push/pull/upper days.
 - **Week system** — 8-week mesocycle with phases (Foundation → Overload → High Stimulus → Overreach → Deload) that affect RPE targets and whether LLP is active.
-- **Sessions fit 50 minutes** — `tools/session-length.test.js` models a session (45 s per compound set, 32 s per isolation set, each set's `rest`, 5 min of prehab, superset rounds priced the way `supersetStep()` runs them) and fails meso4 weeks 6–8 and every later program at over 50 min. Make room by supersetting or cutting redundant sets, never by shortening `rest`.
+- **Sessions fit 50 minutes** — `tools/session-length.test.js` models a session (45 s per compound set, 32 s per isolation set, each set's `rest`, 5 min of prehab, superset rounds priced the way `supersetStep()` runs them) and fails meso4 weeks 6–8 and every later program at over 50 min. The RIR calibration failure set is priced at 20 s. Make room by supersetting or cutting redundant sets, never by shortening `rest`.
 - **Completion is loud, and it advances** — when a day's last set resolves, `syncCompletion()` fires the full-screen celebration in `view.done`; if that day also closed out the week, `openDayDone()` calls `changeWeek(1)` first, so the app is already on the next week when the overlay appears. `advanceToCurrentWeek()` repeats that on boot for a week finished in a previous session. Both are gated on `weekHasActivity()` so an untouched week can never walk itself forward.
 
 ## Bump the version on every change
@@ -68,7 +69,7 @@ To develop:
 There is no build step, but there **is** a test suite — Node's built-in runner, no dependencies, no `package.json`:
 
 ```bash
-node --test tools/*.test.js                # full suite (404 tests)
+node --test tools/*.test.js                # full suite (476 tests)
 node tools/smoke-render.js                 # render gate, program 0
 node tools/smoke-render.js index.html 2    # render gate, a specific program
 ```

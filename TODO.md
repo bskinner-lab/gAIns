@@ -61,13 +61,16 @@ Google Fonts CDN, adding a third-party origin to the critical path.
 
 ### 3. Make backups durable
 
-**Status:** not started
+**Status:** done — 2026-11-13 (APP_VERSION 15). See phase 1 of
+`docs/superpowers/plans/2026-11-13-completeness-roadmap.md`. Fully automatic
+off-device sync is phase 5 of the same plan, not started.
 
 The entire history lives in `localStorage` on one phone, protected only by an
 export you have to remember to run.
 
-- [ ] "Last backup was N days ago" nudge in Settings
-- [ ] Consider auto-export to Files/iCloud Drive on week completion
+- [x] "Last backup was N days ago" nudge in Settings (`gains_last_backup`)
+- [x] SAVE BACKUP on the week-complete card: share sheet to Files/iCloud,
+      download fallback
 
 ---
 
@@ -103,6 +106,10 @@ it just isn't wired to the UI.
 - [ ] Weekly set count per muscle, against MEV/MAV/MRV
 - [ ] Surface in PROGRESS (or a new view)
 
+> Related, shipped 2026-11-13: PROGRESS and the day card now flag STALLED /
+> TOO LIGHT lifts mid-block (`progressionFlag()`, a 3-week early warning that
+> mirrors the analyzer's stalled / under-stimulating buckets).
+
 ### 6. Progress view beyond weight
 
 **Status:** not started
@@ -115,6 +122,9 @@ become available — both better hypertrophy signals.
 - [ ] Estimated 1RM trend
 - [ ] Plot against real dates now that `times` exists (filter to `src: "log"`
       for pacing; exclude `est` from anything claiming precision)
+
+> Related, shipped 2026-11-13: the stall / too-light detector (see item 5's
+> note), a per-session shoulder flag, and the RIR calibration panel.
 
 ---
 
