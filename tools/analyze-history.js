@@ -624,6 +624,27 @@ function num(n, digits = 1) {
   return n === null || n === undefined ? '—' : Number(n).toFixed(digits).replace(/\.0$/, '');
 }
 
+/**
+ * RIR calibration results recorded in the app (state[dayId].calib[exId] =
+ * { setIdx, prescribedRir, extra, at }). `error` = extra − prescribedRir:
+ * positive means the lifter stops further from failure than they think.
+ * @returns {{ entries: {week:number, exId:string, predicted:number, actual:number, error:number}[], meanOffset: number|null }}
+ */
+function calibrationSummary(weeksObj) {
+  const entries = [];
+  const weekNums = Object.keys(weeksObj || {}).map(Number).sort((a, b) => a - b);
+  for (const w of weekNums) {
+    for (const dayData of Object.values(weeksObj[String(w)] || {})) {
+      for (const [exId, r] of Object.entries((dayData && dayData.calib) || {})) {
+        if (!r || typeof r.extra !== 'number' || typeof r.prescribedRir !== 'number') continue;
+        entries.push({ week: w, exId, predicted: r.prescribedRir, actual: r.extra, error: r.extra - r.prescribedRir });
+      }
+    }
+  }
+  const meanOffset = entries.length ? entries.reduce((a, e) => a + e.error, 0) / entries.length : null;
+  return { entries, meanOffset };
+}
+
 /** True if any set slot in the given week's data is not yet attempted (`false`). */
 function weekHasUnattempted(weekData) {
   for (const dayData of Object.values(weekData || {})) {
@@ -680,6 +701,7 @@ function analyze(raw, muscleMap, landmarks, exerciseAlternatives, appPrograms) {
       volume: volume[progId] || {},
       volumeWeeks,
       exerciseFlags: flagExercises(progStats),
+      calibration: calibrationSummary(normalized.programs[progId].weeks),
       volumeFlags: flagVolume(volume[progId] || {}, landmarks),
     };
   }
@@ -820,6 +842,20 @@ function renderReport(analysis) {
       for (const f of p.volumeFlags.above) lines.push(`- **${f.muscle}** over-trained: ${num(f.sets)} sets/week vs MRV ${f.mrv}`);
       lines.push('');
     }
+
+    lines.push(`## RIR calibration — ${progId}`, '');
+    const cal = p.calibration || { entries: [], meanOffset: null };
+    if (!cal.entries.length) lines.push('_none recorded_', '');
+    else {
+      lines.push('| Week | Exercise | Predicted RIR | Actual reps to failure | Error |', '|---|---|---|---|---|');
+      for (const e of cal.entries) {
+        lines.push(`| ${e.week} | ${e.exId} | ${num(e.predicted)} | ${num(e.actual)} | ${e.error > 0 ? '+' : ''}${num(e.error)} |`);
+      }
+      lines.push('');
+      const m = cal.meanOffset;
+      lines.push(`**Mean offset: ${m > 0 ? '+' : ''}${num(m)}** over ${cal.entries.length} set${cal.entries.length === 1 ? '' : 's'} ` +
+        `(positive = stops further from failure than predicted).`, '');
+    }
   }
   return lines.join('\n');
 }
@@ -847,7 +883,7 @@ if (require.main === module) main(process.argv);
 module.exports = {
   findNewestExport, normalizeExport, slopeOf, perExercise, EFFORT_LEVELS,
   resolveMuscles, buildInlineMuscleIndex, weeklyVolume, countWeeksWithCompletedSets, flagExercises, flagVolume,
-  analyze, renderReport, toNumber, buildLegacyIdMap, migrateLegacyState,
+  analyze, renderReport, calibrationSummary, toNumber, buildLegacyIdMap, migrateLegacyState,
   isLegacyDayState, excludeLegacyState, buildAltReverseMap, resolveDaySlots,
   pickDominantVariant, dominantVariantOf,
   REJECT_SKIP_RATE, STALL_MIN_WEEKS, LOW_EFFORT_SHARE, JOINT_LEVELS, JOINT_TWINGE_MIN_WEEKS,

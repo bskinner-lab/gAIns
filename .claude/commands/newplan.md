@@ -219,6 +219,15 @@ Apply, in this order:
       change and, for compounds, warm-up sets the model does not count —
       6–7 exercises a day, not 9.
 
+7. **Apply the RIR calibration**, if the report's "RIR calibration" section
+   has entries. A **mean offset ≥ +1.5** means the user stops well short of
+   the effort they think they are giving: say so in the program intro (the
+   first `mesocycle[].points` entry or the brief), and raise the RPE targets
+   of **isolation** exercises (`compound: false`) by half a point (e.g.
+   `'8–9'` → `'8.5–9.5'`). **Never raise them for compounds** — "no failure on
+   compounds" stands whatever the calibration says. An offset under +1.5, or
+   negative, changes nothing; mention it in the brief either way.
+
 ### Writing the JSON
 
 Write the result to `newplan.json` (gitignored) in exactly the shape

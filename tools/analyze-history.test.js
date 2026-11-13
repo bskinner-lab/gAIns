@@ -915,3 +915,26 @@ test('renderReport has a Shoulder flags section listing the flagged exercises', 
   const plain = renderReport(analyze(v3, muscleMap, landmarks));
   assert.match(plain.split('### Shoulder flags')[1].split('### Volume gaps')[0], /_none_/);
 });
+
+// ── RIR calibration (state[dayId].calib) ───────────────────────────────────
+
+test('calibrationSummary lists each record and the mean offset', () => {
+  const { calibrationSummary } = require('./analyze-history');
+  const raw = JSON.parse(JSON.stringify(v3));
+  raw.programs.meso1.weeks['2'].day1.calib = { rope_pushdown: { setIdx: 2, prescribedRir: 1, extra: 3, at: 1 } };
+  raw.programs.meso1.weeks['3'].day1.calib = { incline_db_press: { setIdx: 3, prescribedRir: 1, extra: 2 }, junk: { extra: 'x' } };
+  const sum = calibrationSummary(normalizeExport(raw).programs.meso1.weeks);
+  assert.deepStrictEqual(sum.entries.map(e => [e.week, e.exId, e.error]), [[2, 'rope_pushdown', 2], [3, 'incline_db_press', 1]]);
+  assert.strictEqual(sum.meanOffset, 1.5);
+
+  const report = renderReport(analyze(raw, muscleMap, landmarks));
+  const section = report.split('## RIR calibration — meso1')[1];
+  assert.ok(section, 'no RIR calibration section');
+  assert.match(section, /\| 2 \| rope_pushdown \| 1 \| 3 \| \+2 \|/);
+  assert.match(section, /\*\*Mean offset: \+1\.5\*\* over 2 sets/);
+});
+
+test('an export without calibration says none recorded', () => {
+  const report = renderReport(analyze(v3, muscleMap, landmarks));
+  assert.match(report.split('## RIR calibration — meso1')[1], /_none recorded_/);
+});
