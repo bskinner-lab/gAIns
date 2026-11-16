@@ -210,6 +210,7 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       ' adjustSetCount, adjustedSetTarget,' +
       ' setRest, endRest, expireRestIfDue,' +
       ' supersetPartner, supersetLabel, supersetStep, SUPERSET_TRANSITION_SEC, SUPERSET_MIN_REST_SEC,' +
+      ' pairKey, pairableNext, pairSuperset, unpairSuperset, sharedMuscles, programPairs, pairsKey, exercisesHTML,' +
       ' initState, saveState, loadState, prefillFromPreviousWeeks,' +
       ' exportData, importData,' +
       ' buildExportBlob, backupShare, markBackedUp, backupAgeDays,' +
@@ -233,6 +234,7 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       ' get setsForWeek() { return typeof setsForWeek === "function" ? setsForWeek : undefined; },' +
       ' get syncSetCount() { return typeof syncSetCount === "function" ? syncSetCount : undefined; },' +
       ' APP_VERSION,' +
+      ' MUSCLE_MAP, VOLUME_LANDMARKS, musclesFor, weeklyMuscleVolume, volumeStatus, muscleVolumeHTML, progressHTML, resolveExercise,' +
       ' isDayComplete, isWeekComplete, advanceToCurrentWeek, seedCompleteFlags,' +
       ' get currentWeek() { return currentWeek; },' +
       ' get currentProgramIdx() { return currentProgramIdx; },' +

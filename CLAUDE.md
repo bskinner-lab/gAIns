@@ -28,10 +28,10 @@ Each rebuilds its container's `innerHTML`. **All interaction goes through one de
 ### Data and state
 
 - **Data constants**: `PROGRAMS` (multi-program: days, exercises, `mesocycle`, `weekPhases`, `protocolItems`), `EXERCISE_ALTERNATIVES` (swap options), `GLOSSARY`. `DAYS`/`MESOCYCLE`/`WEEK_PHASES`/`PROTOCOL_ITEMS` are reassigned from the active program on switch.
-- **Supersets**: two ADJACENT exercises on a day with the same `superset` key (`'A'`, `'B'`, …) run as alternating sets. `supersetStep()` decides the rest after each logged set: after the first half, a `SUPERSET_TRANSITION_SEC` walk (minimized, with the selection moved to the partner); after the second, the longer of the two `rest`s minus the time since the partner's half was logged, floored at `SUPERSET_MIN_REST_SEC`. Pairs must share no muscle — `tools/superset.test.js` and `insert-program.js` both enforce it.
-- **Globals**: the current week is `currentWeek` (not `week`); the program index is `currentProgramIdx`; workout data is `state`, keyed by day id → `{sets, weights, reps, times, effort, protocol, swaps, setAdjust, joint, calib}`. `sets[exId]` entries are `true`, `'skipped'`, or `false`. `joint[exId]` is the per-session shoulder response (`'ok' | 'twinge' | 'pain'`, never prefilled into the next week); `calib[exId]` is a RIR calibration result (`{ setIdx, prescribedRir, extra, at }`). Adding a per-day key means touching every site that enumerates them: `initState()`, `migrateMovedExercises()`, `resetWeek()`, the Clear Week confirm copy and the Settings export blurb.
+- **Supersets**: two ADJACENT exercises on a day with the same `superset` key (`'A'`, `'B'`, …) run as alternating sets. `supersetStep()` decides the rest after each logged set: after the first half, a `SUPERSET_TRANSITION_SEC` walk (minimized, with the selection moved to the partner); after the second, the longer of the two `rest`s minus the time since the partner's half was logged, floored at `SUPERSET_MIN_REST_SEC`. Pairs must share no muscle — `tools/superset.test.js` and `insert-program.js` both enforce it. Read the key through `pairKey(day, orig)`, never `orig.superset` directly: the card's UNPAIR / PAIR WITH NEXT buttons override it this week (`state[dayId].pairs`) or every week (`hypertrophy_pairs_<progId>`), week winning. Hand-made pairs may share a muscle; the dialog warns instead of refusing.
+- **Globals**: the current week is `currentWeek` (not `week`); the program index is `currentProgramIdx`; workout data is `state`, keyed by day id → `{sets, weights, reps, times, effort, protocol, swaps, setAdjust, joint, calib, pairs}`. `sets[exId]` entries are `true`, `'skipped'`, or `false`. `joint[exId]` is the per-session shoulder response (`'ok' | 'twinge' | 'pain'`, never prefilled into the next week); `calib[exId]` is a RIR calibration result (`{ setIdx, prescribedRir, extra, at }`); `pairs[origId]` is a this-week superset override (a key, or `''` for straight sets). Adding a per-day key means touching every site that enumerates them: `initState()`, `migrateMovedExercises()`, `resetWeek()`, the Clear Week confirm copy and the Settings export blurb.
 - **Live flags**: `progressionFlag()` (STALLED / TOO LIGHT over the last 3 consecutive training weeks, deloads skipped) and `jointCarryFlag()` (PAIN last week, or a twinge in 2 of 3) render through `cardBannerHTML()` on the day card. `calibrationTarget(day, weekIdx)` picks the one RIR calibration set per day in the first High Stimulus week; logging it opens `view.calib`.
-- **Persistence**: `localStorage` under `hypertrophy_state_<progId>_w<week>`, plus `hypertrophy_week_<progId>`, `hypertrophy_program`, `hypertrophy_migrated_v3`. Theme preference lives in `gains_theme` (`light`/`dark`/absent = auto). Device-local metadata, never exported: `gains_last_backup` (ms timestamp of the last EXPORT / SAVE BACKUP), `gains_calib` (`'off'` disables RIR calibration). The export stays labelled `version: 3`; new per-day keys ride along as a structural superset. Migration functions handle legacy v1/v2 layouts — don't break them.
+- **Persistence**: `localStorage` under `hypertrophy_state_<progId>_w<week>`, plus `hypertrophy_week_<progId>`, `hypertrophy_program`, `hypertrophy_migrated_v3`, and `hypertrophy_pairs_<progId>` (every-week superset overrides, exported per program as `pairs` when non-empty). Theme preference lives in `gains_theme` (`light`/`dark`/absent = auto). Device-local metadata, never exported: `gains_last_backup` (ms timestamp of the last EXPORT / SAVE BACKUP), `gains_calib` (`'off'` disables RIR calibration). The export stays labelled `version: 3`; new per-day keys ride along as a structural superset. Migration functions handle legacy v1/v2 layouts — don't break them.
 
 ### Compatibility shims
 
@@ -40,7 +40,7 @@ Each rebuilds its container's `innerHTML`. **All interaction goes through one de
 ## Key Design Decisions
 
 - **Single file by design** — self-contained and portable. Don't split into separate files unless explicitly asked.
-- **No build step** — uses Google Fonts CDN (Oswald, IBM Plex Mono, Archivo) directly.
+- **No build step** — fonts (Oswald, IBM Plex Mono, Archivo) are self-hosted `.woff2` files in `fonts/`, precached by `sw.js`.
 - **localStorage persistence** — all progress, weights, effort, and swaps stored client-side.
 - **Light + dark themes** — toggled in Settings, defaults to `prefers-color-scheme`.
 - **Shoulder-cautious program** — tailored for a user with shoulder considerations. Protocol sections appear on push/pull/upper days.
@@ -69,7 +69,7 @@ To develop:
 There is no build step, but there **is** a test suite — Node's built-in runner, no dependencies, no `package.json`:
 
 ```bash
-node --test tools/*.test.js                # full suite (501 tests)
+node --test tools/*.test.js                # full suite (530 tests)
 node tools/smoke-render.js                 # render gate, program 0
 node tools/smoke-render.js index.html 2    # render gate, a specific program
 ```
