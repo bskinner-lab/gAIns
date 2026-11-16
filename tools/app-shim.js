@@ -215,7 +215,8 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       ' exportData, importData,' +
       ' buildExportBlob, backupShare, markBackedUp, backupAgeDays,' +
       ' progressionFlag, exerciseFlag, STALL_WINDOW,' +
-      ' calibrationTarget, calibrationWeekIdx, prescribedRirFromRpe, liveCalibration, calibrationResults, saveCalib,' +
+      ' calibrationTarget, calibrationWeekIdx, calibrationWeekIdxs, prescribedRirFromRpe, liveCalibration, calibrationResults, saveCalib,' +
+      ' calibratableExercise, calibSafeName, calibPredicted, allCalibrations, calibrationBias, calibrationBiases, biasHintFor, stepCalib,' +
       ' backfillProgram, programStartKey,' +
       // commitEdit is a forward reference: it does not exist in index.html yet
       // (Task 7 adds it). `typeof commitEdit` is legal even on an undeclared

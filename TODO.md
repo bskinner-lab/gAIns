@@ -173,19 +173,25 @@ picked by hand and keeps the old load.
 
 ### 10. RIR calibration audits
 
-**Status:** partly done — phase 4 of
-`docs/superpowers/plans/2026-11-13-completeness-roadmap.md` (APP_VERSION 18).
-One failure set per day in the first High Stimulus week, scored against the
-phase's prescribed RIR, shown as one mean in PROGRESS.
+**Status:** done — 2026-11-16 (APP_VERSION 22). Tests in
+`tools/rir-audits.test.js`, on top of phase 4's `tools/rir-calibration.test.js`.
 
-What is still missing:
+- [x] The lifter calls their own RIR at their normal stop, before going on to
+      failure; the audit scores against that call (`predictedRir`), and older
+      records fall back to the phase's prescription
+- [x] Audits repeat: the first Overload and the first High Stimulus week, one
+      safe isolation per day, so about six failure sets per block. Cable,
+      machine and dumbbell only (no free bar, Smith, skull crusher, Nordic, ab
+      wheel, sissy squat or lunge), and a twinge or pain on the lift skips it.
+      The Settings switch still turns it all off
+- [x] Bias per lift, by exercise name across every block (`calibrationBias()`),
+      shrunk by n/(n+1) and capped at ±2 reps, listed in PROGRESS
+- [x] The card applies it to the RPE cue ("Go 1 rep past where the RPE target
+      feels reached"), never on delt, chest, back or compound lifts, never in a
+      deload, and never on the set being audited
 
-- [ ] Let the lifter enter their own RIR guess before going to failure, rather
-      than scoring against the prescription
-- [ ] Repeat audits now and then across the block, on the same safe
-      isolations, not only once
-- [ ] Track the bias per exercise, not only one mean
-- [ ] Apply the learned bias to the RIR target shown on the card
+Not done: the app logs no per-set RIR outside an audit, so there is nothing
+else for the bias to correct yet.
 
 ### 11. Plateau autopsy
 

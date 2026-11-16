@@ -35,8 +35,8 @@ const isZone2 = ex => ex.reps.includes('min') && !ex.compound && ex.rpe === '5â€
 
 const work = ex => (ex.compound ? WORK_COMPOUND : WORK_ISOLATION);
 
-// The RIR calibration set (once per block, first High Stimulus week, one
-// isolation per day) carries on past the normal stop to true failure: a few
+// The RIR audit set (twice per block, the first Overload and first High
+// Stimulus weeks, one isolation per day) carries on past the normal stop to true failure: a few
 // more reps, about 20 s on top of the set.
 const CALIBRATION_SECONDS = 20;
 const calibrationCost = (day, week, prog) =>
@@ -188,17 +188,21 @@ test('the meso4 supersets are what make the budget hold', () => {
 });
 
 test('the RIR calibration set is priced into the model, and costs one failure set', () => {
-  // meso4 calibrates in week 5, which predates the 50-minute budget (see
+  // meso4 audits in weeks 3 and 5, which predate the 50-minute budget (see
   // above), so this pins the cost rather than the ceiling: every day with a
-  // target pays CALIBRATION_SECONDS once, and no other day or week pays at all.
-  const calWeek = MESO4.weekPhases.findIndex(p => p.label === 'High Stimulus') + 1;
-  assert.strictEqual(calWeek, 5);
-  const withCal = MESO4.days.filter(d => calibrationCost(d, calWeek, MESO4) > 0);
-  assert.ok(withCal.length >= 3, `only ${withCal.length} meso4 days calibrate`);
+  // target pays CALIBRATION_SECONDS once in each audit week, and no other day
+  // or week pays at all.
+  const calWeeks = app.calibrationWeekIdxs(MESO4).map(i => i + 1);
+  assert.deepStrictEqual(calWeeks, [3, 5]);
+  for (const calWeek of calWeeks) {
+    const withCal = MESO4.days.filter(d => calibrationCost(d, calWeek, MESO4) > 0);
+    assert.ok(withCal.length >= 3, `only ${withCal.length} meso4 days audit in week ${calWeek}`);
+  }
   for (const d of MESO4.days) {
     for (let w = 1; w <= MESO4.totalWeeks; w++) {
       const cost = calibrationCost(d, w, MESO4);
-      assert.strictEqual(cost, w === calWeek && withCal.includes(d) ? CALIBRATION_SECONDS : 0);
+      if (!calWeeks.includes(w)) assert.strictEqual(cost, 0, `${d.id} week ${w}`);
+      else assert.ok(cost === 0 || cost === CALIBRATION_SECONDS);
     }
   }
   // The budgeted weeks never carry it, so they still fit with it priced in.
