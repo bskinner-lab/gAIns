@@ -4,6 +4,8 @@ const fs = require('fs');
 const path = require('path');
 
 const EFFORT_LEVELS = ['low', 'medium', 'high'];
+// The app's per-session shoulder response (state[dayId].joint[exId]).
+const JOINT_LEVELS = ['ok', 'twinge', 'pain'];
 
 /** Newest *.json in dir by mtime, or null. */
 function findNewestExport(dir) {
@@ -224,13 +226,19 @@ function emptyStat() {
     dominantVariant: null,
     firstWeight: null, lastWeight: null, slope: null,
     effortCounts: { low: 0, medium: 0, high: 0 },
+    // One count per session (week) the shoulder was rated, so `twinge: 2`
+    // means two different weeks, which is what JOINT_TWINGE_MIN_WEEKS reads.
+    jointCounts: { ok: 0, twinge: 0, pain: 0 },
     swappedTo: {},
   };
 }
 
 /** One performed exercise's own weight series within a slot — see `emptyStat`. */
 function emptyVariant() {
-  return { weeks: [], weightPoints: [], firstWeight: null, lastWeight: null, slope: null };
+  return {
+    weeks: [], weightPoints: [], firstWeight: null, lastWeight: null, slope: null,
+    jointCounts: { ok: 0, twinge: 0, pain: 0 },
+  };
 }
 
 /**
@@ -334,6 +342,7 @@ function perExercise(normalized, exerciseAlternatives) {
         const sets = dayData.sets || {};
         const weights = dayData.weights || {};
         const effort = dayData.effort || {};
+        const joint = dayData.joint || {};
         const swaps = dayData.swaps || {};
 
         for (const [exId, slotKey] of resolveDaySlots(dayData, altReverse)) {
@@ -373,6 +382,11 @@ function perExercise(normalized, exerciseAlternatives) {
           }
           const eff = effort[slotKey];
           if (EFFORT_LEVELS.includes(eff)) s.effortCounts[eff]++;
+          // Per slot AND per performed variant: a pain flag on the original
+          // says nothing against the substitute that replaced it, and the
+          // design rule needs to know which movement hurt.
+          const jt = joint[slotKey];
+          if (JOINT_LEVELS.includes(jt)) { s.jointCounts[jt]++; variant.jointCounts[jt]++; }
           // Counts WEEKS a swap was recorded, not swap events — a swap made once
           // and left in place across later weeks increments this each week, which
           // is what makes it directly comparable to weeksTouched (e.g. "swapped in
@@ -422,6 +436,7 @@ function perExercise(normalized, exerciseAlternatives) {
 const REJECT_SKIP_RATE = 0.40;   // skipped more than 40% of sets actually attempted
 const STALL_MIN_WEEKS  = 4;      // weeks of logged weight needed to call a stall
 const LOW_EFFORT_SHARE = 0.5;    // majority-low effort counts as under-stimulating
+const JOINT_TWINGE_MIN_WEEKS = 2; // twinges in this many sessions flag the shoulder; any pain does
 
 /**
  * Id -> inline `muscles` object, built once from `PROGRAMS`. Generated
@@ -539,7 +554,7 @@ function weeklyVolume(normalized, muscleMap, exerciseAlternatives, programs) {
  * cases, which is wrong for the swap case.
  */
 function flagExercises(statsForProgram) {
-  const rejected = [], substituted = [], stalled = [], underStimulating = [];
+  const rejected = [], substituted = [], stalled = [], underStimulating = [], jointFlagged = [];
 
   for (const [exId, s] of Object.entries(statsForProgram)) {
     const swapWeeks = Object.values(s.swappedTo).reduce((a, n) => a + n, 0);
@@ -564,8 +579,21 @@ function flagExercises(statsForProgram) {
     if (effortTotal && s.effortCounts.low / effortTotal > LOW_EFFORT_SHARE && (s.slope === null || s.slope <= 0)) {
       underStimulating.push({ exId, reason: `${s.effortCounts.low}/${effortTotal} sessions rated low effort with no load progress` });
     }
+    const jc = s.jointCounts || { ok: 0, twinge: 0, pain: 0 };
+    if (jc.pain > 0 || jc.twinge >= JOINT_TWINGE_MIN_WEEKS) {
+      const parts = [];
+      if (jc.pain) parts.push(`pain in ${jc.pain} session${jc.pain === 1 ? '' : 's'}`);
+      if (jc.twinge) parts.push(`twinge in ${jc.twinge} session${jc.twinge === 1 ? '' : 's'}`);
+      const rated = jc.ok + jc.twinge + jc.pain;
+      // Which performed movement drew the flags, when the slot was swapped.
+      const hurt = Object.entries(s.variants || {})
+        .filter(([, v]) => v.jointCounts && (v.jointCounts.pain || v.jointCounts.twinge))
+        .map(([k]) => k);
+      const via = hurt.length && !(hurt.length === 1 && hurt[0] === exId) ? ` (on ${hurt.join(', ')})` : '';
+      jointFlagged.push({ exId, counts: { ...jc }, variants: hurt, reason: `${parts.join(', ')} of ${rated} rated${via}` });
+    }
   }
-  return { rejected, substituted, stalled, underStimulating };
+  return { rejected, substituted, stalled, underStimulating, jointFlagged };
 }
 
 /**
@@ -594,6 +622,27 @@ function flagVolume(volumeForProgram, landmarks) {
 
 function num(n, digits = 1) {
   return n === null || n === undefined ? '—' : Number(n).toFixed(digits).replace(/\.0$/, '');
+}
+
+/**
+ * RIR calibration results recorded in the app (state[dayId].calib[exId] =
+ * { setIdx, prescribedRir, extra, at }). `error` = extra − prescribedRir:
+ * positive means the lifter stops further from failure than they think.
+ * @returns {{ entries: {week:number, exId:string, predicted:number, actual:number, error:number}[], meanOffset: number|null }}
+ */
+function calibrationSummary(weeksObj) {
+  const entries = [];
+  const weekNums = Object.keys(weeksObj || {}).map(Number).sort((a, b) => a - b);
+  for (const w of weekNums) {
+    for (const dayData of Object.values(weeksObj[String(w)] || {})) {
+      for (const [exId, r] of Object.entries((dayData && dayData.calib) || {})) {
+        if (!r || typeof r.extra !== 'number' || typeof r.prescribedRir !== 'number') continue;
+        entries.push({ week: w, exId, predicted: r.prescribedRir, actual: r.extra, error: r.extra - r.prescribedRir });
+      }
+    }
+  }
+  const meanOffset = entries.length ? entries.reduce((a, e) => a + e.error, 0) / entries.length : null;
+  return { entries, meanOffset };
 }
 
 /** True if any set slot in the given week's data is not yet attempted (`false`). */
@@ -652,6 +701,7 @@ function analyze(raw, muscleMap, landmarks, exerciseAlternatives, appPrograms) {
       volume: volume[progId] || {},
       volumeWeeks,
       exerciseFlags: flagExercises(progStats),
+      calibration: calibrationSummary(normalized.programs[progId].weeks),
       volumeFlags: flagVolume(volume[progId] || {}, landmarks),
     };
   }
@@ -772,12 +822,39 @@ function renderReport(analysis) {
         lines.push('');
       }
     }
+    lines.push('### Shoulder flags', '');
+    lines.push(
+      '_Sessions where the user tapped TWINGE or PAIN on the exercise. Any pain, or a ' +
+      'twinge in 2+ sessions, lands here. Replace the movement or move it to a more ' +
+      'shoulder-neutral variant; never carry it forward unchanged._',
+      ''
+    );
+    const jf = p.exerciseFlags.jointFlagged || [];
+    if (!jf.length) lines.push('_none_', '');
+    else {
+      for (const f of jf) lines.push(`- \`${f.exId}\` — ${f.reason}`);
+      lines.push('');
+    }
     lines.push('### Volume gaps', '');
     if (!p.volumeFlags.below.length && !p.volumeFlags.above.length) lines.push('_none_', '');
     else {
       for (const f of p.volumeFlags.below) lines.push(`- **${f.muscle}** under-trained: ${num(f.sets)} sets/week vs MEV ${f.mev}`);
       for (const f of p.volumeFlags.above) lines.push(`- **${f.muscle}** over-trained: ${num(f.sets)} sets/week vs MRV ${f.mrv}`);
       lines.push('');
+    }
+
+    lines.push(`## RIR calibration — ${progId}`, '');
+    const cal = p.calibration || { entries: [], meanOffset: null };
+    if (!cal.entries.length) lines.push('_none recorded_', '');
+    else {
+      lines.push('| Week | Exercise | Predicted RIR | Actual reps to failure | Error |', '|---|---|---|---|---|');
+      for (const e of cal.entries) {
+        lines.push(`| ${e.week} | ${e.exId} | ${num(e.predicted)} | ${num(e.actual)} | ${e.error > 0 ? '+' : ''}${num(e.error)} |`);
+      }
+      lines.push('');
+      const m = cal.meanOffset;
+      lines.push(`**Mean offset: ${m > 0 ? '+' : ''}${num(m)}** over ${cal.entries.length} set${cal.entries.length === 1 ? '' : 's'} ` +
+        `(positive = stops further from failure than predicted).`, '');
     }
   }
   return lines.join('\n');
@@ -806,8 +883,8 @@ if (require.main === module) main(process.argv);
 module.exports = {
   findNewestExport, normalizeExport, slopeOf, perExercise, EFFORT_LEVELS,
   resolveMuscles, buildInlineMuscleIndex, weeklyVolume, countWeeksWithCompletedSets, flagExercises, flagVolume,
-  analyze, renderReport, toNumber, buildLegacyIdMap, migrateLegacyState,
+  analyze, renderReport, calibrationSummary, toNumber, buildLegacyIdMap, migrateLegacyState,
   isLegacyDayState, excludeLegacyState, buildAltReverseMap, resolveDaySlots,
   pickDominantVariant, dominantVariantOf,
-  REJECT_SKIP_RATE, STALL_MIN_WEEKS, LOW_EFFORT_SHARE,
+  REJECT_SKIP_RATE, STALL_MIN_WEEKS, LOW_EFFORT_SHARE, JOINT_LEVELS, JOINT_TWINGE_MIN_WEEKS,
 };

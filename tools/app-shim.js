@@ -68,7 +68,7 @@ function makeElement(id) {
 
 const GLOBAL_KEYS = [
   'window', 'document', 'localStorage', 'navigator', 'Notification',
-  'AudioContext', 'webkitAudioContext', 'Blob', 'URL', 'FileReader',
+  'AudioContext', 'webkitAudioContext', 'Blob', 'File', 'URL', 'FileReader',
   'setInterval', 'setTimeout', 'clearInterval', 'clearTimeout',
   'requestAnimationFrame', 'alert',
 ];
@@ -163,6 +163,11 @@ function setupApp({ htmlPath, storage: seed } = {}) {
   // Capture what exportData serialises so tests can assert on it.
   let lastBlob = null;
   setGlobal('Blob', function (parts) { lastBlob = parts && parts[0]; });
+  // File carries what it was built from, so a share-sheet test can read back
+  // the name, type and content the app handed to navigator.share.
+  setGlobal('File', function (parts, name, opts) {
+    this.parts = parts; this.name = name; this.type = (opts && opts.type) || '';
+  });
   setGlobal('URL', { createObjectURL: () => 'blob:stub', revokeObjectURL() {} });
   // Synchronous FileReader: importData calls readAsText and acts in onload.
   // Test files are plain objects carrying a `_content` string.
@@ -208,6 +213,9 @@ function setupApp({ htmlPath, storage: seed } = {}) {
       ' pairKey, pairableNext, pairSuperset, unpairSuperset, sharedMuscles, programPairs, pairsKey, exercisesHTML,' +
       ' initState, saveState, loadState, prefillFromPreviousWeeks,' +
       ' exportData, importData,' +
+      ' buildExportBlob, backupShare, markBackedUp, backupAgeDays,' +
+      ' progressionFlag, exerciseFlag, STALL_WINDOW,' +
+      ' calibrationTarget, calibrationWeekIdx, prescribedRirFromRpe, liveCalibration, calibrationResults, saveCalib,' +
       ' backfillProgram, programStartKey,' +
       // commitEdit is a forward reference: it does not exist in index.html yet
       // (Task 7 adds it). `typeof commitEdit` is legal even on an undeclared

@@ -62,13 +62,16 @@ launch used to need live network, and the fonts came from the Google Fonts CDN.
 
 ### 3. Make backups durable
 
-**Status:** not started
+**Status:** done — 2026-11-13 (APP_VERSION 15). See phase 1 of
+`docs/superpowers/plans/2026-11-13-completeness-roadmap.md`. Fully automatic
+off-device sync is phase 5 of the same plan, not started.
 
 The entire history lives in `localStorage` on one phone, protected only by an
 export you have to remember to run.
 
-- [ ] "Last backup was N days ago" nudge in Settings
-- [ ] Consider auto-export to Files/iCloud Drive on week completion
+- [x] "Last backup was N days ago" nudge in Settings (`gains_last_backup`)
+- [x] SAVE BACKUP on the week-complete card: share sheet to Files/iCloud,
+      download fallback
 
 ---
 
@@ -89,7 +92,7 @@ charts the exercise-level `h.weight`.
 
 ### 5. Weekly volume per muscle vs. landmarks
 
-**Status:** done — 2026-11-12 (`APP_VERSION` 15). Tests in
+**Status:** done — 2026-11-12, shipped in PR #27 (`APP_VERSION` 19). Tests in
 `tools/muscle-volume.test.js`.
 
 PROGRESS now opens with WEEKLY SETS: for the selected week, done / planned hard
@@ -104,6 +107,10 @@ IN MAV, ABOVE MAV, OVER MRV; a deload week only flags OVER MRV).
 - [x] Surface in PROGRESS (`muscleVolumeHTML()`)
 - [ ] Later, if wanted: a week-by-week trend per muscle across the block
 
+> Related, shipped 2026-11-13: PROGRESS and the day card now flag STALLED /
+> TOO LIGHT lifts mid-block (`progressionFlag()`, a 3-week early warning that
+> mirrors the analyzer's stalled / under-stimulating buckets).
+
 ### 6. Progress view beyond weight
 
 **Status:** not started
@@ -116,6 +123,9 @@ become available — both better hypertrophy signals.
 - [ ] Estimated 1RM trend
 - [ ] Plot against real dates now that `times` exists (filter to `src: "log"`
       for pacing; exclude `est` from anything claiming precision)
+
+> Related, shipped 2026-11-13: the stall / too-light detector (see item 5's
+> note), a per-session shoulder flag, and the RIR calibration panel.
 
 ---
 
@@ -164,5 +174,4 @@ For context on where the app is now; each has its own tests in `tools/`.
 
 ## Suggested sequence
 
-3 → 4 → 6. Item 3 is small and protects everything else, so
-fold it in whenever convenient; item 6 builds on item 4's per-set weights.
+4 → 6. Item 6 builds on item 4's per-set weights.
