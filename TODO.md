@@ -153,6 +153,94 @@ a build step, which is why it's last.
 
 ---
 
+## Tier 4 — New feature ideas
+
+From a 2026-11-13 brainstorm, added 2026-11-16. Ideas, not plans: each needs a
+design pass before it starts. Most of them read e1RM trends, so items 4 and 6
+come first. The brainstorm picked item 14 as the headline feature.
+
+### 9. Gym equipment swap
+
+**Status:** not started
+
+`EXERCISE_ALTERNATIVES` and the card's swap already exist, but every swap is
+picked by hand and keeps the old load.
+
+- [ ] Tag the equipment your gym has, once, in Settings
+- [ ] One tap on a card: "taken" swaps in the best alternative for the same
+      muscles and resistance profile, limited to equipment you have
+- [ ] Suggest an adjusted starting load for the substitute
+
+### 10. RIR calibration audits
+
+**Status:** partly done — phase 4 of
+`docs/superpowers/plans/2026-11-13-completeness-roadmap.md` (APP_VERSION 18).
+One failure set per day in the first High Stimulus week, scored against the
+phase's prescribed RIR, shown as one mean in PROGRESS.
+
+What is still missing:
+
+- [ ] Let the lifter enter their own RIR guess before going to failure, rather
+      than scoring against the prescription
+- [ ] Repeat audits now and then across the block, on the same safe
+      isolations, not only once
+- [ ] Track the bias per exercise, not only one mean
+- [ ] Apply the learned bias to the RIR target shown on the card
+
+### 11. Plateau autopsy
+
+**Status:** not started. Builds on `progressionFlag()` (item 5's note).
+
+- [ ] When a lift stalls for 3 or more sessions, write a short report on the
+      likely cause: weekly sets for that muscle, exercise order, how long
+      you've been on the movement, and sleep or bodyweight if those are ever
+      logged
+- [ ] End it with one suggested fix, linked to the existing swap or ± sets
+      stepper where it fits
+
+### 12. Program history and "bisect"
+
+**Status:** not started. Needs item 6's e1RM trend.
+
+- [ ] Save every program edit (swap, ± sets, superset change, new block) as a
+      dated entry
+- [ ] When a lift stalls, find the change point in its e1RM trend and point to
+      the nearest edit, noting anything else that changed at the same time
+- [ ] One-tap revert of that edit
+
+### 13. Exercise yield leaderboard
+
+**Status:** not started. Needs items 4 and 6.
+
+- [ ] Score each exercise on progress per hard set, against pump, soreness and
+      shoulder flags. Pump and soreness aren't logged yet; `joint` and effort
+      are
+- [ ] Rank them in PROGRESS, and feed low scorers to `/newplan` as rotation
+      candidates
+- [ ] Let the lifter pin favorites so they are never rotated out
+
+### 14. Split-body A/B trials
+
+**Status:** not started. Needs items 4 and 6, plus per-side logging: reps like
+`8–10 each` are logged as one set today.
+
+- [ ] On unilateral lifts, assign each side a protocol at random (for example
+      2 sets to failure vs 4 sets at 2 RIR)
+- [ ] Log 2 to 3 baseline weeks first to measure side-to-side noise
+- [ ] After 6 to 8 weeks, report which protocol won by comparing each side's
+      e1RM slope against that noise
+
+### 15. Bet against your coach (wild card)
+
+**Status:** not started
+
+- [ ] The app posts odds on each top set; the lifter can take the other side
+- [ ] Score both by Brier score over time
+- [ ] A form-break stop so a bet never pushes a set past good form, and a
+      Settings switch to turn the whole thing off
+
+---
+
 ## Shipped outside this list
 
 For context on where the app is now; each has its own tests in `tools/`.
@@ -174,4 +262,5 @@ For context on where the app is now; each has its own tests in `tools/`.
 
 ## Suggested sequence
 
-4 → 6. Item 6 builds on item 4's per-set weights.
+4 → 6. Item 6 builds on item 4's per-set weights. Of Tier 4, items 9 to 11 can
+start any time; 12 to 14 wait for item 6.
