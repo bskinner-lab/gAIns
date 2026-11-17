@@ -626,7 +626,8 @@ function num(n, digits = 1) {
 
 /**
  * RIR calibration results recorded in the app (state[dayId].calib[exId] =
- * { setIdx, prescribedRir, extra, at }). `error` = extra − prescribedRir:
+ * { setIdx, prescribedRir, predictedRir?, extra, at }). `error` = extra −
+ * predictedRir (the lifter's call), or − prescribedRir on older records:
  * positive means the lifter stops further from failure than they think.
  * @returns {{ entries: {week:number, exId:string, predicted:number, actual:number, error:number}[], meanOffset: number|null }}
  */
@@ -636,8 +637,13 @@ function calibrationSummary(weeksObj) {
   for (const w of weekNums) {
     for (const dayData of Object.values(weeksObj[String(w)] || {})) {
       for (const [exId, r] of Object.entries((dayData && dayData.calib) || {})) {
-        if (!r || typeof r.extra !== 'number' || typeof r.prescribedRir !== 'number') continue;
-        entries.push({ week: w, exId, predicted: r.prescribedRir, actual: r.extra, error: r.extra - r.prescribedRir });
+        if (!r || typeof r.extra !== 'number') continue;
+        // The lifter's own call where they made one (APP_VERSION 22+), else
+        // the phase's prescribed RIR, which is all older records carry.
+        const predicted = typeof r.predictedRir === 'number' ? r.predictedRir
+          : typeof r.prescribedRir === 'number' ? r.prescribedRir : null;
+        if (predicted === null) continue;
+        entries.push({ week: w, exId, predicted, actual: r.extra, error: r.extra - predicted });
       }
     }
   }

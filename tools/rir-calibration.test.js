@@ -56,12 +56,13 @@ test('calibrationTarget picks the right exercise and set on each meso4 day', () 
   });
 });
 
-test('null outside the High Stimulus week, and for programs without inline muscles', () => {
+test('null outside the audit weeks (3 and 5), and for programs without inline muscles', () => {
   for (let w = 0; w < MESO4.totalWeeks; w++) {
-    if (w === 4) continue;
+    if (w === 2 || w === 4) continue;
     for (const d of MESO4.days) assert.strictEqual(calibrationTarget(d, w, MESO4), null, `meso4 ${d.id} week ${w + 1}`);
   }
-  // Week 6 is also High Stimulus, but only the FIRST one calibrates.
+  // Week 6 is also High Stimulus, but only the FIRST one audits (week 3 is
+  // the first Overload; tools/rir-audits.test.js covers it).
   assert.strictEqual(MESO4.weekPhases[5].label, 'High Stimulus');
   const meso1 = prog('meso1');
   for (const d of meso1.days) assert.strictEqual(calibrationTarget(d, calibrationWeekIdx(meso1), meso1), null);
@@ -108,7 +109,7 @@ test('the target set shows a CALIBRATE badge and the card carries the note', () 
     click(app, { act: 'day', id: 'day2' });
     const html = app.elements.get('scroll').innerHTML;
     assert.strictEqual((html.match(/class="calib-b">CALIBRATE/g) || []).length, 1);
-    assert.match(html, /RIR CALIBRATION<\/b> · Last set: stop where you'd normally stop/);
+    assert.match(html, /RIR AUDIT<\/b> · Last set: stop where you'd normally stop/);
     const card = html.slice(html.indexOf('Bayesian'));
     assert.match(card, /class="calib-b"/);
   });
@@ -125,14 +126,17 @@ test('logging the target set opens view.calib; SAVE stores the record', () => {
     assert.ok(app.view.calib, 'the calibration overlay did not open');
     assert.strictEqual(app.view.calib.exId, ex);
     assert.strictEqual(app.view.calib.prescribedRir, 1);
-    assert.match(app.elements.get('overlays').innerHTML, /How many more reps to failure\?/);
+    // Step one: the call, made before going on to failure.
+    assert.match(app.elements.get('overlays').innerHTML, /How many reps do you have left\?/);
     assert.ok(app.view.restEnd, 'the rest timer keeps running underneath');
+    click(app, { act: 'calibnext' });
+    assert.match(app.elements.get('overlays').innerHTML, /How many more reps to failure\?/);
 
     click(app, { act: 'calib+' }); click(app, { act: 'calib+' }); click(app, { act: 'calib+' });
     click(app, { act: 'calib-' });
     click(app, { act: 'calibsave' });
     assert.strictEqual(app.view.calib, null);
-    assert.deepStrictEqual(app.state.day2.calib[ex], { setIdx: last, prescribedRir: 1, extra: 2, at: 1234 });
+    assert.deepStrictEqual(app.state.day2.calib[ex], { setIdx: last, prescribedRir: 1, extra: 2, at: 1234, predictedRir: 1 });
     const saved = JSON.parse(app.storage.getItem('hypertrophy_state_meso4_w5'));
     assert.strictEqual(saved.day2.calib[ex].extra, 2);
     // Done: the badge goes away.
@@ -146,6 +150,7 @@ test('the stepper stays within 0–10', () => {
     upToLast(app, 'day2', 'm4_bayesian_curl');
     click(app, { act: 'selectex', ex: 'm4_bayesian_curl' });
     click(app, { act: 'log' });
+    click(app, { act: 'calibnext' });
     click(app, { act: 'calib-' });
     assert.strictEqual(app.view.calib.extra, 0);
     for (let i = 0; i < 15; i++) click(app, { act: 'calib+' });
@@ -215,9 +220,10 @@ test('closing out the week on the calibration set still saves into that week', (
     assert.strictEqual(app.currentWeek, 6);
     assert.ok(app.view.calib, 'the calibration must survive the week advance');
     // The celebration wins; the calibration waits behind it.
-    assert.doesNotMatch(app.elements.get('overlays').innerHTML, /reps to failure/);
+    assert.doesNotMatch(app.elements.get('overlays').innerHTML, /reps (to failure|do you have left)/);
     click(app, { act: 'donex' });
-    assert.match(app.elements.get('overlays').innerHTML, /reps to failure/);
+    assert.match(app.elements.get('overlays').innerHTML, /reps do you have left/);
+    click(app, { act: 'calibnext' });
     click(app, { act: 'calib+' });
     click(app, { act: 'calibsave' });
 
